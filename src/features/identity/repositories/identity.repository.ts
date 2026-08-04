@@ -19,6 +19,18 @@ type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"];
 type UserPreferencesRow = Database["public"]["Tables"]["user_preferences"]["Row"];
 
 const AVATAR_BUCKET = "avatars";
+const IDENTITY_TABLE_MISSING_CODES = new Set(["42P01", "PGRST205"]);
+const PERMISSION_ERROR_CODES = new Set(["42501", "PGRST301"]);
+const UNIQUE_CONFLICT_CODE = "23505";
+
+type SupabaseLikeError = {
+  code?: string;
+  details?: string;
+  hint?: string;
+  message?: string;
+  name?: string;
+  status?: number;
+};
 
 function requireSupabase() {
   const supabase = getSupabaseClient();
@@ -36,6 +48,57 @@ function defaultNotifications(): NotificationPreferences {
     securityAlerts: true,
     operationalReports: false,
   };
+}
+
+function isDevelopment() {
+  return Boolean(import.meta.env.DEV);
+}
+
+function readSupabaseError(error: unknown): SupabaseLikeError {
+  if (!error || typeof error !== "object") return {};
+
+  const record = error as Record<string, unknown>;
+  const normalized: SupabaseLikeError = {};
+
+  if (typeof record["code"] === "string") normalized.code = record["code"];
+  if (typeof record["details"] === "string") normalized.details = record["details"];
+  if (typeof record["hint"] === "string") normalized.hint = record["hint"];
+  if (typeof record["message"] === "string") normalized.message = record["message"];
+  if (typeof record["name"] === "string") normalized.name = record["name"];
+  if (typeof record["status"] === "number") normalized.status = record["status"];
+
+  return normalized;
+}
+
+function logIdentityDebug(event: string, payload?: Record<string, unknown>) {
+  if (!isDevelopment()) return;
+  console.debug(`[Automy Identity] ${event}`, payload ?? {});
+}
+
+function logIdentityError(event: string, error: unknown, payload?: Record<string, unknown>) {
+  if (!isDevelopment()) return;
+  console.error(`[Automy Identity] ${event}`, {
+    ...payload,
+    error: readSupabaseError(error),
+  });
+}
+
+function toIdentityRepositoryError(
+  fallbackMessage: string,
+  error: unknown,
+  messages?: Partial<Record<"database" | "permission", string>>,
+) {
+  const { code } = readSupabaseError(error);
+
+  if (code && IDENTITY_TABLE_MISSING_CODES.has(code)) {
+    return new RepositoryError(messages?.database ?? "Erro ao acessar banco.", { cause: error });
+  }
+
+  if (code && PERMISSION_ERROR_CODES.has(code)) {
+    return new RepositoryError(messages?.permission ?? "Permissão insuficiente.", { cause: error });
+  }
+
+  return new RepositoryError(fallbackMessage, { cause: error });
 }
 
 function mapProfile(row: UserProfileRow): IdentityProfile {
@@ -117,8 +180,18 @@ export const identityRepository = {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      logIdentityError("signInWithPassword failed", error);
       throw new RepositoryError("Não foi possível entrar com estes dados.", { cause: error });
     }
+
+    if (!data.session) {
+      logIdentityDebug("signInWithPassword returned without session", {
+        userId: data.user?.id ?? null,
+      });
+      throw new RepositoryError("Não foi possível iniciar uma sessão.");
+    }
+
+    logIdentityDebug("signInWithPassword succeeded", { userId: data.user?.id ?? null });
 
     return data.session;
   },
@@ -164,41 +237,94 @@ export const identityRepository = {
     const firstName = typeof metadata["first_name"] === "string" ? metadata["first_name"] : "";
     const lastName = typeof metadata["last_name"] === "string" ? metadata["last_name"] : "";
 
-    const [profileResult, preferencesResult] = await Promise.all([
-      supabase.from("user_profiles").upsert(
-        {
-          auth_user_id: authUserId,
-          first_name: firstName,
-          last_name: lastName,
-          created_by: authUserId,
-          updated_by: authUserId,
-        },
-        { onConflict: "auth_user_id", ignoreDuplicates: true },
-      ),
-      supabase.from("user_preferences").upsert(
-        {
-          auth_user_id: authUserId,
-          language: detectBrowserLanguage(),
-          time_zone: detectTimeZone(),
-          notifications: defaultNotifications(),
-          created_by: authUserId,
-          updated_by: authUserId,
-        },
-        { onConflict: "auth_user_id", ignoreDuplicates: true },
-      ),
-    ]);
+    logIdentityDebug("ensureIdentityRecords started", { authUserId });
 
-    if (profileResult.error) {
-      throw new RepositoryError("Não foi possível preparar o perfil do usuário.", {
-        cause: profileResult.error,
+    const { data: existingProfile, error: profileReadError } = await supabase
+      .from("user_profiles")
+      .select("id")
+      .eq("auth_user_id", authUserId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (profileReadError) {
+      logIdentityError("profile read failed", profileReadError, { authUserId });
+      throw toIdentityRepositoryError("Não foi possível carregar seu perfil.", profileReadError, {
+        database: "Erro ao acessar banco.",
+        permission: "Permissão insuficiente para carregar seu perfil.",
       });
     }
 
-    if (preferencesResult.error) {
-      throw new RepositoryError("Não foi possível preparar as preferências do usuário.", {
-        cause: preferencesResult.error,
+    if (!existingProfile) {
+      logIdentityDebug("profile missing; creating", { authUserId });
+
+      const { error: profileCreateError } = await supabase.from("user_profiles").insert({
+        auth_user_id: authUserId,
+        first_name: firstName,
+        last_name: lastName,
+        created_by: authUserId,
+        updated_by: authUserId,
       });
+
+      if (
+        profileCreateError &&
+        readSupabaseError(profileCreateError).code !== UNIQUE_CONFLICT_CODE
+      ) {
+        logIdentityError("profile create failed", profileCreateError, { authUserId });
+        throw toIdentityRepositoryError("Não foi possível criar seu perfil.", profileCreateError, {
+          database: "Erro ao acessar banco.",
+          permission: "Permissão insuficiente para criar seu perfil.",
+        });
+      }
     }
+
+    const { data: existingPreferences, error: preferencesReadError } = await supabase
+      .from("user_preferences")
+      .select("id")
+      .eq("auth_user_id", authUserId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (preferencesReadError) {
+      logIdentityError("preferences read failed", preferencesReadError, { authUserId });
+      throw toIdentityRepositoryError(
+        "Não foi possível carregar suas preferências.",
+        preferencesReadError,
+        {
+          database: "Erro ao acessar banco.",
+          permission: "Permissão insuficiente para carregar suas preferências.",
+        },
+      );
+    }
+
+    if (!existingPreferences) {
+      logIdentityDebug("preferences missing; creating", { authUserId });
+
+      const { error: preferencesCreateError } = await supabase.from("user_preferences").insert({
+        auth_user_id: authUserId,
+        language: detectBrowserLanguage(),
+        time_zone: detectTimeZone(),
+        notifications: defaultNotifications(),
+        created_by: authUserId,
+        updated_by: authUserId,
+      });
+
+      if (
+        preferencesCreateError &&
+        readSupabaseError(preferencesCreateError).code !== UNIQUE_CONFLICT_CODE
+      ) {
+        logIdentityError("preferences create failed", preferencesCreateError, { authUserId });
+        throw toIdentityRepositoryError(
+          "Não foi possível criar suas preferências.",
+          preferencesCreateError,
+          {
+            database: "Erro ao acessar banco.",
+            permission: "Permissão insuficiente para criar suas preferências.",
+          },
+        );
+      }
+    }
+
+    logIdentityDebug("ensureIdentityRecords completed", { authUserId });
   },
 
   getProfile: async (authUserId: string) => {
@@ -211,7 +337,11 @@ export const identityRepository = {
       .maybeSingle();
 
     if (error) {
-      throw new RepositoryError("Não foi possível carregar o perfil.", { cause: error });
+      logIdentityError("getProfile failed", error, { authUserId });
+      throw toIdentityRepositoryError("Não foi possível carregar seu perfil.", error, {
+        database: "Erro ao acessar banco.",
+        permission: "Permissão insuficiente para carregar seu perfil.",
+      });
     }
 
     return data ? mapProfile(data) : null;
@@ -227,7 +357,11 @@ export const identityRepository = {
       .maybeSingle();
 
     if (error) {
-      throw new RepositoryError("Não foi possível carregar as preferências.", { cause: error });
+      logIdentityError("getPreferences failed", error, { authUserId });
+      throw toIdentityRepositoryError("Não foi possível carregar suas preferências.", error, {
+        database: "Erro ao acessar banco.",
+        permission: "Permissão insuficiente para carregar suas preferências.",
+      });
     }
 
     return data ? mapPreferences(data) : null;
