@@ -78,13 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Automy — Gestão operacional" },
-      { name: "description", content: "Painel administrativo interno da Automy." },
+      { title: "Dashboard — Automy" },
+      { name: "description", content: "Visão executiva da operação Automy." },
       { name: "author", content: "Automy" },
-      { property: "og:title", content: "Automy — Gestão operacional" },
-      { property: "og:description", content: "Painel administrativo interno da Automy." },
+      { property: "og:title", content: "Dashboard — Automy" },
+      { property: "og:description", content: "Visão executiva da operação Automy." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Dashboard — Automy" },
+      { name: "twitter:description", content: "Visão executiva da operação Automy." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c4a93219-8cd9-4491-90bb-4638732bd453/id-preview-ad21c744--d503aba9-3cb5-415f-9f83-3b26b811844a.lovable.app-1785842872279.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c4a93219-8cd9-4491-90bb-4638732bd453/id-preview-ad21c744--d503aba9-3cb5-415f-9f83-3b26b811844a.lovable.app-1785842872279.png" },
     ],
     links: [
       {
