@@ -6,14 +6,21 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useNavigate,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { useIdentity } from "@/features/identity/context/identity-context";
+import { IdentityProvider } from "@/features/identity/context/identity-provider";
 import { reportRuntimeError } from "../lib/error-reporting";
 import { AppShell } from "@/shared/layout/app-shell";
 import { ToastViewport } from "@/shared/components/toast";
 import { APP_DESCRIPTION, APP_NAME } from "@/shared/constants/app";
+import { LoadingScreen } from "@/shared/components/ui";
+
+const PUBLIC_ROUTES = new Set(["/login", "/recuperar-senha", "/redefinir-senha"]);
 
 function NotFoundComponent() {
   return (
@@ -130,10 +137,48 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <IdentityProvider>
+        <RootContent />
+      </IdentityProvider>
       <ToastViewport />
     </QueryClientProvider>
   );
+}
+
+function RootContent() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (PUBLIC_ROUTES.has(pathname)) {
+    return <Outlet />;
+  }
+
+  return (
+    <ProtectedApplication>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </ProtectedApplication>
+  );
+}
+
+function ProtectedApplication({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { session, isLoading } = useIdentity();
+
+  useEffect(() => {
+    if (!isLoading && !session && !PUBLIC_ROUTES.has(pathname)) {
+      navigate({ to: "/login" });
+    }
+  }, [isLoading, navigate, pathname, session]);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!session) {
+    return <LoadingScreen />;
+  }
+
+  return children;
 }

@@ -2,6 +2,13 @@
 
 ## 2026-08-04
 
+- Implementado modulo de Identidade com Supabase Auth.
+- Adicionadas rotas de login, recuperacao e redefinicao de senha.
+- Adicionada protecao de rotas privadas.
+- Criada tela real de Perfil em Configuracoes.
+- Adicionado upload de avatar via Supabase Storage.
+- Adicionadas preferencias por usuario.
+- Criada migration de identidade com `user_profiles`, `user_preferences` e bucket `avatars`.
 - Removidos mocks e dados ficticios dos modulos principais.
 - Repositories preparados para leitura via Supabase.
 - Paginas convertidas para consumo via React Query.

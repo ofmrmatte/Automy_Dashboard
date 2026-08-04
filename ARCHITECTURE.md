@@ -31,6 +31,17 @@ Pagina -> React Query -> Service -> Repository -> Supabase
 
 Componentes visuais nao acessam APIs, Supabase ou Prisma diretamente.
 
+## Identidade
+
+O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias do usuario.
+
+- Auth: Supabase Auth com e-mail e senha.
+- Sessao: `IdentityProvider` persiste e observa a sessao do Supabase.
+- Rotas publicas: `/login`, `/recuperar-senha`, `/redefinir-senha`.
+- Rotas privadas: todas as demais rotas sao protegidas no root route.
+- Perfil: dados pessoais, avatar, senha, preferencias e sessoes ativas.
+- Avatar: Supabase Storage no bucket privado `avatars`, com signed URLs.
+
 ## Supabase
 
 O client fica em `src/shared/lib/supabase/client.ts` e le:
@@ -58,6 +69,14 @@ A migration inicial cria:
 - `activity_logs`
 
 Todas as entidades usam UUID, auditoria, soft delete e RLS.
+
+A migration de identidade adiciona:
+
+- `user_profiles`
+- `user_preferences`
+- bucket Storage `avatars`
+
+Essas estruturas usam RLS por `auth.uid()`.
 
 ## Prisma
 

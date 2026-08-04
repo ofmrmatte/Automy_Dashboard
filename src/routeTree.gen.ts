@@ -14,7 +14,10 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProdutosRouteImport } from './routes/produtos'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as ClientesClienteIdRouteImport } from './routes/clientes.$clienteId'
@@ -44,9 +47,24 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -71,7 +89,10 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/produtos': typeof ProdutosRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
@@ -82,7 +103,10 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/produtos': typeof ProdutosRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
@@ -94,7 +118,10 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/produtos': typeof ProdutosRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
@@ -107,7 +134,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/login'
     | '/produtos'
+    | '/recuperar-senha'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
     | '/clientes/$clienteId'
@@ -118,7 +148,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/login'
     | '/produtos'
+    | '/recuperar-senha'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
     | '/clientes/$clienteId'
@@ -129,7 +162,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/login'
     | '/produtos'
+    | '/recuperar-senha'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
     | '/clientes/$clienteId'
@@ -141,7 +177,10 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LoginRoute: typeof LoginRoute
   ProdutosRoute: typeof ProdutosRoute
+  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   RelatoriosRoute: typeof RelatoriosRoute
   SuporteRoute: typeof SuporteRoute
 }
@@ -183,11 +222,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produtos': {
       id: '/produtos'
       path: '/produtos'
       fullPath: '/produtos'
       preLoaderRoute: typeof ProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/relatorios': {
@@ -232,7 +292,10 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LoginRoute: LoginRoute,
   ProdutosRoute: ProdutosRoute,
+  RecuperarSenhaRoute: RecuperarSenhaRoute,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   RelatoriosRoute: RelatoriosRoute,
   SuporteRoute: SuporteRoute,
 }

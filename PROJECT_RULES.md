@@ -16,6 +16,7 @@ Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo tempora
 - Sempre utilizar Service Layer.
 - Nunca acessar Prisma diretamente pelas paginas.
 - Nunca acessar API diretamente pelos componentes.
+- Nunca acessar Supabase diretamente pelas paginas ou componentes.
 - Paginas devem consumir services via React Query ou hooks de aplicacao.
 - Componentes visuais nao devem conhecer Supabase, Prisma, fetch ou contratos externos.
 - Repositories sao a fronteira de persistencia.

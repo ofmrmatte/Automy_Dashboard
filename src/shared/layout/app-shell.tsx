@@ -1,28 +1,56 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronLeft, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { Bell, ChevronLeft, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { useIdentity } from "@/features/identity/context/identity-context";
 import { APP_DESCRIPTION, APP_NAVIGATION, APP_NAME } from "@/shared/constants/app";
 import { Button, Input } from "@/shared/components/ui";
+import { toast } from "@/shared/components/toast";
 import { cn } from "@/shared/utils/cn";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { avatarUrl, preferences, profile, signOut, updatePreferences, user } = useIdentity();
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [dark, setDark] = useState(false);
+  const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ");
+  const displayName = fullName || user?.email || "Conta";
+  const displayRole = profile?.jobTitle || user?.email || "";
+  const initials = (fullName || user?.email || "A")
+    .split(/\s|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
   useEffect(() => {
     const stored = localStorage.getItem("automy-theme");
-    const useDark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    const preference = preferences?.theme ?? stored ?? "system";
+    const useDark =
+      preference === "system"
+        ? matchMedia("(prefers-color-scheme: dark)").matches
+        : preference === "dark";
+
     setDark(useDark);
     document.documentElement.classList.toggle("dark", useDark);
-  }, []);
+  }, [preferences?.theme]);
 
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("automy-theme", next ? "dark" : "light");
+    if (preferences) {
+      updatePreferences({ ...preferences, theme: next ? "dark" : "light" }).catch((error) => {
+        toast.danger(error instanceof Error ? error.message : "Não foi possível salvar o tema.");
+      });
+    }
+  };
+
+  const handleLogout = () => {
+    signOut("local").catch((error) => {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível sair.");
+    });
   };
 
   return (
@@ -143,13 +171,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
             <div className="ml-1 flex items-center gap-2 border-l border-border pl-3">
               <div className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold">
-                A
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="hidden min-w-0 xl:block">
-                <div className="text-xs font-medium">Conta</div>
-                <div className="text-[10px] text-muted-foreground">Não autenticado</div>
+                <div className="max-w-32 truncate text-xs font-medium">{displayName}</div>
+                <div className="max-w-32 truncate text-[10px] text-muted-foreground">
+                  {displayRole}
+                </div>
               </div>
             </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Sair">
+              <LogOut className="size-4" />
+            </Button>
           </div>
         </header>
         <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</main>

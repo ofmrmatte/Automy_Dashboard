@@ -48,6 +48,7 @@ export type Database = {
           phone?: string | null;
           status?: string;
         };
+        Relationships: [];
       };
       users: {
         Row: AuditColumns & {
@@ -74,6 +75,7 @@ export type Database = {
           email?: string;
           status?: string;
         };
+        Relationships: [];
       };
       roles: {
         Row: AuditColumns & {
@@ -94,6 +96,7 @@ export type Database = {
           description?: string | null;
           is_system?: boolean;
         };
+        Relationships: [];
       };
       permissions: {
         Row: AuditColumns & {
@@ -111,6 +114,7 @@ export type Database = {
           name?: string;
           description?: string | null;
         };
+        Relationships: [];
       };
       role_permissions: {
         Row: AuditColumns & {
@@ -125,6 +129,70 @@ export type Database = {
           role_id?: string;
           permission_id?: string;
         };
+        Relationships: [];
+      };
+      user_profiles: {
+        Row: AuditColumns & {
+          auth_user_id: string;
+          first_name: string | null;
+          last_name: string | null;
+          phone: string | null;
+          job_title: string | null;
+          company_name: string | null;
+          avatar_path: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          auth_user_id: string;
+          first_name?: string | null;
+          last_name?: string | null;
+          phone?: string | null;
+          job_title?: string | null;
+          company_name?: string | null;
+          avatar_path?: string | null;
+        };
+        Update: AuditUpdateColumns & {
+          auth_user_id?: string;
+          first_name?: string | null;
+          last_name?: string | null;
+          phone?: string | null;
+          job_title?: string | null;
+          company_name?: string | null;
+          avatar_path?: string | null;
+        };
+        Relationships: [];
+      };
+      user_preferences: {
+        Row: AuditColumns & {
+          auth_user_id: string;
+          theme: "system" | "light" | "dark";
+          language: string;
+          time_zone: string;
+          date_format: string;
+          time_format: "24h" | "12h";
+          currency: string;
+          notifications: Json;
+        };
+        Insert: AuditInsertColumns & {
+          auth_user_id: string;
+          theme?: "system" | "light" | "dark";
+          language?: string;
+          time_zone?: string;
+          date_format?: string;
+          time_format?: "24h" | "12h";
+          currency?: string;
+          notifications?: Json;
+        };
+        Update: AuditUpdateColumns & {
+          auth_user_id?: string;
+          theme?: "system" | "light" | "dark";
+          language?: string;
+          time_zone?: string;
+          date_format?: string;
+          time_format?: "24h" | "12h";
+          currency?: string;
+          notifications?: Json;
+        };
+        Relationships: [];
       };
       clients: {
         Row: AuditColumns & {
@@ -157,6 +225,7 @@ export type Database = {
           owner_user_id?: string | null;
           status?: string;
         };
+        Relationships: [];
       };
       contacts: {
         Row: AuditColumns & {
@@ -186,6 +255,7 @@ export type Database = {
           role?: string | null;
           is_primary?: boolean;
         };
+        Relationships: [];
       };
       addresses: {
         Row: AuditColumns & {
@@ -227,6 +297,7 @@ export type Database = {
           postal_code?: string | null;
           country?: string;
         };
+        Relationships: [];
       };
       products: {
         Row: AuditColumns & {
@@ -253,6 +324,7 @@ export type Database = {
           description?: string | null;
           status?: string;
         };
+        Relationships: [];
       };
       contracts: {
         Row: AuditColumns & {
@@ -287,6 +359,7 @@ export type Database = {
           ends_at?: string | null;
           status?: string;
         };
+        Relationships: [];
       };
       activity_logs: {
         Row: AuditColumns & {
@@ -313,6 +386,7 @@ export type Database = {
           action?: string;
           metadata?: Json;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

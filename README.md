@@ -72,8 +72,16 @@ VITE_SUPABASE_URL=https://hpynyyvunyyejjoqvvjw.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-A migration inicial esta em:
+As migrations ficam em:
 
 ```bash
-supabase/migrations/20260804153000_initial_production_schema.sql
+supabase/migrations
 ```
+
+Rotas de autenticacao:
+
+- `/login`
+- `/recuperar-senha`
+- `/redefinir-senha`
+
+No Supabase Auth, configure a URL de redirecionamento de recuperacao de senha para `/redefinir-senha` no dominio de producao.
