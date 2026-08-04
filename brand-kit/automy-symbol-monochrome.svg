@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">Automy brand asset</title>
+  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
+
+
+  <g id="symbol-artwork">
+
+  <g id="automy-symbol" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path id="left-ascending-stroke" d="M54 190 C70 150 88 98 110 52" stroke="#0F172A" stroke-width="30"/>
+    <path id="right-ascending-stroke" d="M121 52 C142 99 162 150 180 190" stroke="#0F172A" stroke-width="30"/>
+    <path id="data-flow-crossbar" d="M104 126 C124 135 147 146 170 156" stroke="#0F172A" stroke-width="26"/>
+  </g>
+
+  </g>
+
+</svg>

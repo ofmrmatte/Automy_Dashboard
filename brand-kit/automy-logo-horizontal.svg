@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="180" viewBox="0 0 640 180" role="img" aria-labelledby="title desc">
+  <title id="title">Automy brand asset</title>
+  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
+
+
+  <defs>
+    <linearGradient id="horizontal-blue" x1="48" y1="198" x2="132" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="horizontal-teal" x1="104" y1="126" x2="170" y2="156" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="0.48" stop-color="#14B8A6"/>
+      <stop offset="1" stop-color="#5EEAD4"/>
+    </linearGradient>
+  </defs>
+
+  <g id="logo-horizontal">
+    <g id="symbol" transform="translate(28 22) scale(0.58)">
+
+  <g id="automy-symbol" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path id="left-ascending-stroke" d="M54 190 C70 150 88 98 110 52" stroke="url(#horizontal-blue)" stroke-width="30"/>
+    <path id="right-ascending-stroke" d="M121 52 C142 99 162 150 180 190" stroke="url(#horizontal-blue)" stroke-width="30"/>
+    <path id="control-gap" d="M117 122 C128 122 140 122 151 122" stroke="#FFFFFF" stroke-width="30" opacity="0.98"/>
+    <path id="data-flow-crossbar" d="M104 126 C124 135 147 146 170 156" stroke="url(#horizontal-teal)" stroke-width="26"/>
+  </g>
+
+    </g>
+    <text id="wordmark" x="166" y="93" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="62" font-weight="700" font-kerning="normal" letter-spacing="-0.4">Automy</text>
+    <text id="descriptor" x="169" y="128" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="9.5" font-weight="600" letter-spacing="3.1">SOFTWARE PARA LOGISTICA E TRANSPORTADORAS</text>
+  </g>
+
+</svg>

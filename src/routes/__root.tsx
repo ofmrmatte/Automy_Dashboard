@@ -10,8 +10,10 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AppShell } from "../components/app-shell";
+import { reportRuntimeError } from "../lib/error-reporting";
+import { AppShell } from "@/shared/layout/app-shell";
+import { ToastViewport } from "@/shared/components/toast";
+import { APP_DESCRIPTION, APP_NAME } from "@/shared/constants/app";
 
 function NotFoundComponent() {
   return (
@@ -39,7 +41,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportRuntimeError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -78,24 +80,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dashboard — Automy" },
-      { name: "description", content: "Visão executiva da operação Automy." },
-      { name: "author", content: "Automy" },
-      { property: "og:title", content: "Dashboard — Automy" },
-      { property: "og:description", content: "Visão executiva da operação Automy." },
+      { title: APP_NAME },
+      { name: "application-name", content: APP_NAME },
+      { name: "description", content: APP_DESCRIPTION },
+      { name: "author", content: APP_NAME },
+      { name: "theme-color", content: "#2563EB" },
+      { property: "og:title", content: APP_NAME },
+      { property: "og:description", content: APP_DESCRIPTION },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — Automy" },
-      { name: "twitter:description", content: "Visão executiva da operação Automy." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c4a93219-8cd9-4491-90bb-4638732bd453/id-preview-ad21c744--d503aba9-3cb5-415f-9f83-3b26b811844a.lovable.app-1785842872279.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c4a93219-8cd9-4491-90bb-4638732bd453/id-preview-ad21c744--d503aba9-3cb5-415f-9f83-3b26b811844a.lovable.app-1785842872279.png" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: APP_NAME },
+      { name: "twitter:description", content: APP_DESCRIPTION },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { rel: "icon", href: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { rel: "icon", href: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -106,7 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
@@ -123,7 +130,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell><Outlet /></AppShell>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+      <ToastViewport />
     </QueryClientProvider>
   );
 }

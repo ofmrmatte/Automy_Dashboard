@@ -1,8 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Boxes, Download, FileText, Headphones, Receipt, Users } from "lucide-react";
-import { useState } from "react";
-import { Button, Card, Select } from "../components/ui";
-import { PageHeader } from "../components/page-parts";
-const reports = [{ title: "Clientes", text: "Carteira, planos, status e dados cadastrais.", icon: Users }, { title: "Financeiro", text: "Receitas, cobranças e inadimplência.", icon: Receipt }, { title: "Contratos", text: "Vigências, valores e renovações.", icon: FileText }, { title: "Suporte", text: "Tickets, SLAs e produtividade da equipe.", icon: Headphones }, { title: "Produtos", text: "Adoção, versões e clientes por produto.", icon: Boxes }];
-export const Route = createFileRoute("/relatorios")({ head: () => ({ meta: [{ title: "Relatórios — Automy" }, { name: "description", content: "Relatórios operacionais da Automy." }, { property: "og:title", content: "Relatórios — Automy" }, { property: "og:description", content: "Relatórios operacionais da Automy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: Reports });
-function Reports() { const [done, setDone] = useState(""); return <div><PageHeader title="Relatórios" description="Exporte dados operacionais para análise e compartilhamento." /><div className="mb-6 flex flex-wrap gap-3"><Select aria-label="Período"><option>Últimos 30 dias</option><option>Este trimestre</option><option>Este ano</option></Select><Select aria-label="Formato"><option>PDF</option><option>CSV</option><option>XLSX</option></Select>{done && <div className="flex items-center rounded-lg bg-success/10 px-3 text-sm text-success">Relatório de {done} preparado.</div>}</div><section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{reports.map((r) => <Card key={r.title} className="p-6"><div className="grid size-10 place-items-center rounded-lg bg-accent"><r.icon className="size-5" /></div><h2 className="mt-5 font-semibold">{r.title}</h2><p className="mt-1 min-h-10 text-sm text-muted-foreground">{r.text}</p><Button variant="secondary" className="mt-5 w-full" onClick={() => setDone(r.title)}><Download className="size-4" />Exportar relatório</Button></Card>)}</section></div>; }
+import { ReportsPage } from "@/features/reports/pages/reports-page";
+
+export const Route = createFileRoute("/relatorios")({
+  head: () => ({
+    meta: [
+      { title: "Relatórios — Automy" },
+      { name: "description", content: "Relatórios operacionais da Automy." },
+      { property: "og:title", content: "Relatórios — Automy" },
+      { property: "og:description", content: "Relatórios operacionais da Automy." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Reports,
+});
+
+function Reports() {
+  return <ReportsPage />;
+}

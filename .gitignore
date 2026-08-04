@@ -1,6 +1,7 @@
 # Logs
 logs
 *.log
+*.rar
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -14,6 +15,7 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
+temp/
 *.local
 
 # Wrangler / Cloudflare

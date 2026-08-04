@@ -1,18 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Eye, Plus, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Badge, Button, Field, Input, Modal, Pagination, SearchInput, Select } from "../components/ui";
-import { PageHeader, TableShell, td, th } from "../components/page-parts";
-import { clients, toneFor } from "../lib/mock-data";
+import { createFileRoute } from "@tanstack/react-router";
+import { ClientsPage } from "@/features/clients/pages/clients-page";
 
-export const Route = createFileRoute("/clientes")({ head: () => ({ meta: [{ title: "Clientes — Automy" }, { name: "description", content: "Gestão da carteira de clientes Automy." }, { property: "og:title", content: "Clientes — Automy" }, { property: "og:description", content: "Gestão da carteira de clientes Automy." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: ClientsPage });
-
-function ClientsPage() {
-  const [search, setSearch] = useState(""); const [status, setStatus] = useState("Todos"); const [modal, setModal] = useState(false);
-  const filtered = useMemo(() => clients.filter((c) => (c.name + c.legal + c.cnpj).toLowerCase().includes(search.toLowerCase()) && (status === "Todos" || c.status === status)), [search, status]);
-  return <div><PageHeader title="Clientes" description="Gerencie empresas, planos e relacionamentos da sua carteira." action={<Button onClick={() => setModal(true)}><Plus className="size-4" />Novo cliente</Button>} />
-    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center"><SearchInput value={search} onChange={setSearch} placeholder="Buscar cliente ou CNPJ..." /><div className="flex items-center gap-2"><SlidersHorizontal className="size-4 text-muted-foreground" /><Select value={status} onChange={(e) => setStatus(e.target.value)}><option>Todos</option><option>Ativo</option><option>Implantação</option><option>Pendente</option></Select></div></div>
-    <TableShell footer={<Pagination />}><table className="w-full"><thead><tr><th className={th}>Cliente</th><th className={th}>Razão social / CNPJ</th><th className={th}>Localização</th><th className={th}>Responsável</th><th className={th}>Plano</th><th className={th}>Status</th><th className={th}>Cadastro</th><th className={th}><span className="sr-only">Ações</span></th></tr></thead><tbody>{filtered.map((c) => <tr key={c.id} className="hover:bg-muted/30"><td className={td}><div className="flex items-center gap-3"><div className="grid size-9 place-items-center rounded-lg bg-accent text-xs font-semibold">{c.initials}</div><span className="font-medium">{c.name}</span></div></td><td className={td}><div>{c.legal}</div><div className="text-xs text-muted-foreground">{c.cnpj}</div></td><td className={td}>{c.city}, {c.state}</td><td className={td}>{c.owner}</td><td className={td}>{c.plan}</td><td className={td}><Badge tone={toneFor(c.status)}>{c.status}</Badge></td><td className={td}>{c.joined}</td><td className={td}><Link to="/clientes/$clienteId" params={{ clienteId: c.id }} aria-label={`Visualizar ${c.name}`} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><Eye className="size-4" /></Link></td></tr>)}</tbody></table></TableShell>
-    <Modal open={modal} onClose={() => setModal(false)} title="Novo cliente" description="Cadastre os dados iniciais da empresa."><form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); setModal(false); }}><Field label="Nome fantasia"><Input required placeholder="Ex.: Acme Tecnologia" /></Field><Field label="CNPJ"><Input required placeholder="00.000.000/0000-00" /></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Plano"><Select><option>Growth</option><option>Scale</option><option>Enterprise</option></Select></Field><Field label="Responsável"><Input placeholder="Nome completo" /></Field></div><div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button><Button type="submit">Salvar cliente</Button></div></form></Modal>
-  </div>;
-}
+export const Route = createFileRoute("/clientes")({
+  head: () => ({
+    meta: [
+      { title: "Clientes — Automy" },
+      { name: "description", content: "Gestão da carteira de clientes Automy." },
+      { property: "og:title", content: "Clientes — Automy" },
+      { property: "og:description", content: "Gestão da carteira de clientes Automy." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: ClientsPage,
+});
