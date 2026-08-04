@@ -36,15 +36,15 @@ export function LoginPage() {
 
   return (
     <AuthLayout title="Entrar na Automy" description="Acesse sua conta para continuar.">
-      <form className="grid gap-5" onSubmit={onSubmit}>
+      <form className="grid gap-6 [&>label]:gap-2.5 [&>label]:text-[15px]" onSubmit={onSubmit}>
         <Field label="E-mail">
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+            <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="email"
               autoComplete="email"
               placeholder="seu.email@empresa.com"
-              className="h-12 pl-12 text-base"
+              className="h-14 bg-background/80 pl-12 text-base shadow-xs placeholder:text-muted-foreground/70 hover:border-primary/40 hover:bg-background focus:border-primary focus:ring-primary/20"
               {...form.register("email")}
             />
           </div>
@@ -52,12 +52,12 @@ export function LoginPage() {
         </Field>
         <Field label="Senha">
           <div className="relative">
-            <LockKeyhole className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="password"
               autoComplete="current-password"
               placeholder="Digite sua senha"
-              className="h-12 pl-12 text-base"
+              className="h-14 bg-background/80 pl-12 text-base shadow-xs placeholder:text-muted-foreground/70 hover:border-primary/40 hover:bg-background focus:border-primary focus:ring-primary/20"
               {...form.register("password")}
             />
           </div>
@@ -68,28 +68,20 @@ export function LoginPage() {
             <Checkbox className="size-5" />
             Lembrar de mim
           </label>
-          <Link to="/recuperar-senha" className="text-sm font-medium text-primary">
+          <Link
+            to="/recuperar-senha"
+            className="text-sm font-medium text-muted-foreground transition-colors duration-200 ease-[var(--ease-automy)] hover:text-primary"
+          >
             Recuperar senha
           </Link>
         </div>
         <Button
           type="submit"
           loading={form.formState.isSubmitting}
-          className="h-12 w-full text-base"
+          className="h-14 w-full text-base font-semibold shadow-xs hover:-translate-y-px hover:shadow-card active:translate-y-0"
         >
           <LogIn className="size-4" />
           Entrar
-        </Button>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-xs font-medium uppercase text-muted-foreground">
-          <span className="h-px bg-border" />
-          OU
-          <span className="h-px bg-border" />
-        </div>
-        <Button type="button" variant="secondary" className="h-12 w-full text-base">
-          <span className="grid size-5 place-items-center rounded-full border border-border text-sm font-semibold">
-            G
-          </span>
-          Entrar com Google
         </Button>
       </form>
     </AuthLayout>
