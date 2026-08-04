@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Building2,
@@ -10,8 +11,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { clientService } from "@/features/clients/services/client.service";
-import { Badge, Button, Card } from "@/shared/components/ui";
+import { clientDetailQueryOptions } from "@/features/clients/api/client.queries";
+import { EmptyState } from "@/shared/components/empty-state";
+import { Badge, Button, Card, Loader } from "@/shared/components/ui";
 import { toneForStatus } from "@/shared/types/status";
 
 const CLIENT_DETAIL_TABS = [
@@ -26,15 +28,35 @@ const CLIENT_DETAIL_TABS = [
 
 export function ClientDetailPage({ clientId }: { clientId: string }) {
   const [tab, setTab] = useState("Dados gerais");
-  const client = clientService.getClientByIdSnapshot(clientId);
+  const { data: client, error, isLoading } = useQuery(clientDetailQueryOptions(clientId));
+
+  if (isLoading) {
+    return (
+      <Card>
+        <Loader />
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <EmptyState title="Não foi possível carregar o cliente" description={error.message} />
+      </Card>
+    );
+  }
 
   if (!client) {
     return (
-      <Card className="p-8 text-center">
-        <h1 className="font-semibold">Cliente não encontrado</h1>
-        <Link to="/clientes" className="mt-3 inline-block text-sm text-primary">
-          Voltar para clientes
-        </Link>
+      <Card>
+        <EmptyState
+          title="Cliente não encontrado"
+          action={
+            <Link to="/clientes" className="inline-block text-sm text-primary">
+              Voltar para clientes
+            </Link>
+          }
+        />
       </Card>
     );
   }
@@ -128,8 +150,7 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
             </div>
             <h2 className="mt-4 font-semibold">{tab}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Dados simulados de {tab.toLowerCase()} de {client.name}, organizados para consulta
-              operacional.
+              Nenhum registro real de {tab.toLowerCase()} foi cadastrado para este cliente.
             </p>
             <Button variant="secondary" className="mt-5">
               Adicionar registro

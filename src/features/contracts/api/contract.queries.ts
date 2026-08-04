@@ -9,5 +9,6 @@ export function contractsQueryOptions() {
   return queryOptions({
     queryKey: contractQueryKeys.all,
     queryFn: () => contractService.listContracts(),
+    enabled: typeof window !== "undefined",
   });
 }

@@ -1,3 +1,14 @@
+import type { AuditableEntity } from "@/shared/types/entity";
+
+export type DashboardSummary = {
+  activeClients: number;
+  onboardingClients: number;
+  monthlyRevenue: number;
+  annualRevenue: number;
+  openTickets: number;
+  expiringContracts: number;
+};
+
 export type ClientGrowthPoint = {
   month: string;
   active: number;
@@ -9,7 +20,8 @@ export type RevenueGrowthPoint = {
   revenue: number;
 };
 
-export type Activity = {
+export type Activity = AuditableEntity & {
+  id: string;
   title: string;
   meta: string;
 };

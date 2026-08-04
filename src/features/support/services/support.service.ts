@@ -3,7 +3,6 @@ import type { Ticket, TicketFilter } from "@/features/support/types";
 import { normalizeSearch } from "@/shared/utils/formatters";
 
 export const supportService = {
-  getTicketsSnapshot: () => supportRepository.listTicketsSnapshot(),
   listTickets: () => supportRepository.listTickets(),
   filterTickets: (tickets: Ticket[], filter: TicketFilter) => {
     const term = normalizeSearch(filter.search);

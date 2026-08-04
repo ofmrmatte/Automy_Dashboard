@@ -1,8 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ticketsQueryOptions } from "@/features/support/api/support.queries";
 import { supportService } from "@/features/support/services/support.service";
 import type { Ticket, TicketFilter } from "@/features/support/types";
 import { DataTable, type DataTableColumn } from "@/shared/components/data-table";
+import { EmptyState } from "@/shared/components/empty-state";
 import { FilterBar } from "@/shared/components/filter-bar";
 import { PageHeader } from "@/shared/components/page-header";
 import { Badge, Button, Select } from "@/shared/components/ui";
@@ -37,7 +40,7 @@ const ticketColumns: Array<DataTableColumn<Ticket>> = [
 export function SupportPage() {
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState<TicketFilter["priority"]>("Todas");
-  const tickets = supportService.getTicketsSnapshot();
+  const { data: tickets = [], error, isLoading } = useQuery(ticketsQueryOptions());
   const rows = useMemo(
     () => supportService.filterTickets(tickets, { search, priority }),
     [tickets, search, priority],
@@ -67,7 +70,19 @@ export function SupportPage() {
           <option>Baixa</option>
         </Select>
       </FilterBar>
-      <DataTable columns={ticketColumns} data={rows} getRowKey={(ticket) => ticket.id} />
+      <DataTable
+        columns={ticketColumns}
+        data={rows}
+        getRowKey={(ticket) => ticket.id}
+        loading={isLoading}
+        error={error}
+        emptyState={
+          <EmptyState
+            title="Nenhum ticket aberto"
+            description="Tickets reais aparecerão aqui quando o módulo de suporte for integrado."
+          />
+        }
+      />
     </div>
   );
 }

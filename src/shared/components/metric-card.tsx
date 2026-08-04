@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
-import { Card } from "@/shared/components/ui";
+import { Card, Skeleton } from "@/shared/components/ui";
 
 export function MetricCard({
   label,
@@ -8,6 +8,7 @@ export function MetricCard({
   icon: Icon,
   positive = true,
   helper,
+  loading = false,
 }: {
   label: string;
   value: string;
@@ -15,6 +16,7 @@ export function MetricCard({
   icon: LucideIcon;
   positive?: boolean;
   helper?: string;
+  loading?: boolean;
 }) {
   return (
     <Card className="p-5">
@@ -24,9 +26,13 @@ export function MetricCard({
           <Icon className="size-4" />
         </div>
       </div>
-      <div className="mt-4 text-2xl font-semibold tracking-tight">{value}</div>
+      {loading ? (
+        <Skeleton className="mt-4 h-8 w-24" />
+      ) : (
+        <div className="mt-4 text-2xl font-semibold tracking-tight">{value}</div>
+      )}
       <div className="mt-2 flex items-center gap-1.5 text-xs">
-        {change && (
+        {!loading && change && (
           <span className={positive ? "text-success" : "text-destructive"}>
             {positive ? (
               <ArrowUpRight className="inline size-3.5" />
@@ -36,7 +42,7 @@ export function MetricCard({
             {change}
           </span>
         )}
-        <span className="text-muted-foreground">{helper}</span>
+        {!loading && <span className="text-muted-foreground">{helper}</span>}
       </div>
     </Card>
   );

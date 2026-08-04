@@ -1,7 +1,9 @@
+import type { AuditableEntity } from "@/shared/types/entity";
+
 export type TicketPriority = "Crítica" | "Alta" | "Média" | "Baixa";
 export type TicketStatus = "Em andamento" | "Aberto" | "Aguardando" | "Resolvido";
 
-export type Ticket = {
+export type Ticket = AuditableEntity & {
   id: string;
   client: string;
   title: string;

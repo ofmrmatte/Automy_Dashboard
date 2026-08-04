@@ -1,6 +1,5 @@
-import { chargesMock } from "@/features/finance/mocks/charges.mock";
+import type { Charge } from "@/features/finance/types";
 
 export const financeRepository = {
-  listChargesSnapshot: () => chargesMock,
-  listCharges: async () => chargesMock,
+  listCharges: async (): Promise<Charge[]> => [],
 };

@@ -3,7 +3,6 @@ import type { Charge, ChargeFilter } from "@/features/finance/types";
 import { normalizeSearch } from "@/shared/utils/formatters";
 
 export const financeService = {
-  getChargesSnapshot: () => financeRepository.listChargesSnapshot(),
   listCharges: () => financeRepository.listCharges(),
   filterCharges: (charges: Charge[], filter: ChargeFilter) => {
     const term = normalizeSearch(filter.search);

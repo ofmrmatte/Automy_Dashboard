@@ -10,6 +10,7 @@ export function clientsQueryOptions() {
   return queryOptions({
     queryKey: clientQueryKeys.all,
     queryFn: () => clientService.listClients(),
+    enabled: typeof window !== "undefined",
   });
 }
 
@@ -17,5 +18,6 @@ export function clientDetailQueryOptions(clientId: string) {
   return queryOptions({
     queryKey: clientQueryKeys.detail(clientId),
     queryFn: () => clientService.getClientById(clientId),
+    enabled: typeof window !== "undefined",
   });
 }

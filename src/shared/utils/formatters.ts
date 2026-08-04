@@ -9,12 +9,23 @@ const brazilDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
+const brazilLongDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
 export function formatCurrency(value: number): string {
   return brazilCurrencyFormatter.format(value);
 }
 
 export function formatDate(value: Date | string | number): string {
   return brazilDateFormatter.format(new Date(value));
+}
+
+export function formatLongDate(value: Date | string | number): string {
+  const formatted = brazilLongDateFormatter.format(new Date(value));
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 export function formatCnpj(value: string): string {
@@ -36,4 +47,13 @@ export function normalizeSearch(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+export function getInitials(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }

@@ -1,6 +1,9 @@
+import type { AuditableEntity } from "@/shared/types/entity";
+
 export type ChargeStatus = "Pago" | "Pendente" | "Atrasado";
 
-export type Charge = {
+export type Charge = AuditableEntity & {
+  id: string;
   invoice: string;
   client: string;
   due: string;

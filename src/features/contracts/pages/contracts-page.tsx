@@ -1,8 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { FileText, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { contractsQueryOptions } from "@/features/contracts/api/contract.queries";
 import { contractService } from "@/features/contracts/services/contract.service";
 import type { Contract, ContractFilter } from "@/features/contracts/types";
 import { DataTable, type DataTableColumn } from "@/shared/components/data-table";
+import { EmptyState } from "@/shared/components/empty-state";
 import { FilterBar } from "@/shared/components/filter-bar";
 import { PageHeader } from "@/shared/components/page-header";
 import { Badge, Button, Select } from "@/shared/components/ui";
@@ -39,7 +42,7 @@ const contractColumns: Array<DataTableColumn<Contract>> = [
 export function ContractsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ContractFilter["status"]>("Todos");
-  const contracts = contractService.getContractsSnapshot();
+  const { data: contracts = [], error, isLoading } = useQuery(contractsQueryOptions());
   const rows = useMemo(
     () => contractService.filterContracts(contracts, { search, status }),
     [contracts, search, status],
@@ -69,7 +72,19 @@ export function ContractsPage() {
           <option>Pendente</option>
         </Select>
       </FilterBar>
-      <DataTable columns={contractColumns} data={rows} getRowKey={(contract) => contract.client} />
+      <DataTable
+        columns={contractColumns}
+        data={rows}
+        getRowKey={(contract) => contract.id}
+        loading={isLoading}
+        error={error}
+        emptyState={
+          <EmptyState
+            title="Nenhum contrato encontrado"
+            description="Contratos reais aparecerão aqui quando forem cadastrados."
+          />
+        }
+      />
     </div>
   );
 }

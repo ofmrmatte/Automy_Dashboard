@@ -1,6 +1,8 @@
+import type { AuditableEntity } from "@/shared/types/entity";
+
 export type ClientStatus = "Ativo" | "Implantação" | "Pendente";
 
-export type Client = {
+export type Client = AuditableEntity & {
   id: string;
   initials: string;
   name: string;

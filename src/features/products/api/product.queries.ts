@@ -9,5 +9,6 @@ export function productsQueryOptions() {
   return queryOptions({
     queryKey: productQueryKeys.all,
     queryFn: () => productService.listProducts(),
+    enabled: typeof window !== "undefined",
   });
 }

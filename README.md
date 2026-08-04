@@ -6,6 +6,8 @@ Automy — Plataforma inteligente para controle e gestão operacional.
 
 Aplicação web SaaS para gestão, automação e controle operacional de empresas de logística e transportadoras.
 
+Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios ou placeholders de desenvolvimento.
+
 ## Stack
 
 - React
@@ -60,3 +62,18 @@ As cores, raios, sombras, tipografia e tokens semânticos estão centralizados e
 ## Estrutura
 
 A aplicação segue organização feature-first em `src/features`, com componentes compartilhados em `src/shared`.
+
+## Supabase
+
+Configure as variaveis de ambiente:
+
+```bash
+VITE_SUPABASE_URL=https://hpynyyvunyyejjoqvvjw.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=
+```
+
+A migration inicial esta em:
+
+```bash
+supabase/migrations/20260804153000_initial_production_schema.sql
+```

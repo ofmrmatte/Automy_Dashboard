@@ -11,9 +11,7 @@ function matchesClientFilter(client: Client, filter: ClientFilter) {
 }
 
 export const clientService = {
-  getClientsSnapshot: () => clientRepository.listSnapshot(),
   listClients: () => clientRepository.list(),
-  getClientByIdSnapshot: (clientId: string) => clientRepository.findByIdSnapshot(clientId),
   getClientById: (clientId: string) => clientRepository.findById(clientId),
   filterClients: (clients: Client[], filter: ClientFilter) =>
     clients.filter((client) => matchesClientFilter(client, filter)),

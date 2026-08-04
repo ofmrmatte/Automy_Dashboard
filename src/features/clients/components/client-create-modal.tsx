@@ -16,7 +16,7 @@ export function ClientCreateModal({ open, onClose }: { open: boolean; onClose: (
         }}
       >
         <Field label="Nome fantasia">
-          <Input required placeholder="Ex.: Acme Tecnologia" />
+          <Input required placeholder="Nome da empresa" />
         </Field>
         <Field label="CNPJ">
           <Input required placeholder="00.000.000/0000-00" />

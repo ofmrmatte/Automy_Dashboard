@@ -1,6 +1,9 @@
+import type { AuditableEntity } from "@/shared/types/entity";
+
 export type ContractStatus = "Ativo" | "Implantação" | "Renovação" | "Pendente";
 
-export type Contract = {
+export type Contract = AuditableEntity & {
+  id: string;
   client: string;
   plan: string;
   value: string;

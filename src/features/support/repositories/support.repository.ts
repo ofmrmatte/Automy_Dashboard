@@ -1,6 +1,5 @@
-import { ticketsMock } from "@/features/support/mocks/tickets.mock";
+import type { Ticket } from "@/features/support/types";
 
 export const supportRepository = {
-  listTicketsSnapshot: () => ticketsMock,
-  listTickets: async () => ticketsMock,
+  listTickets: async (): Promise<Ticket[]> => [],
 };

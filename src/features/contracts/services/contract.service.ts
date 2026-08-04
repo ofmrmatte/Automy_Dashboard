@@ -3,7 +3,6 @@ import type { Contract, ContractFilter } from "@/features/contracts/types";
 import { normalizeSearch } from "@/shared/utils/formatters";
 
 export const contractService = {
-  getContractsSnapshot: () => contractRepository.listSnapshot(),
   listContracts: () => contractRepository.list(),
   filterContracts: (contracts: Contract[], filter: ContractFilter) => {
     const term = normalizeSearch(filter.search);

@@ -55,16 +55,10 @@ export function SettingsPage() {
             >
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label={active === "Empresa" ? "Razão social" : "Nome completo"}>
-                  <Input
-                    defaultValue={active === "Empresa" ? "Automy Sistemas Ltda." : "Marina Costa"}
-                  />
+                  <Input />
                 </Field>
                 <Field label={active === "Empresa" ? "CNPJ" : "E-mail"}>
-                  <Input
-                    defaultValue={
-                      active === "Empresa" ? "42.845.991/0001-02" : "marina@automy.com.br"
-                    }
-                  />
+                  <Input />
                 </Field>
               </div>
               <Field label="Fuso horário">
@@ -83,7 +77,7 @@ export function SettingsPage() {
             </form>
           ) : (
             <div className="mt-6 space-y-3">
-              {SETTINGS_TOGGLE_LABELS.map((item, index) => (
+              {SETTINGS_TOGGLE_LABELS.map((item) => (
                 <label
                   key={item}
                   className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-lg border border-border p-4"
@@ -94,7 +88,7 @@ export function SettingsPage() {
                       Controle esta preferência para todos os usuários.
                     </div>
                   </div>
-                  <Checkbox defaultChecked={index !== 1} />
+                  <Checkbox />
                 </label>
               ))}
             </div>

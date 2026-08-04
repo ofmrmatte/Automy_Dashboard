@@ -9,5 +9,6 @@ export function chargesQueryOptions() {
   return queryOptions({
     queryKey: financeQueryKeys.charges,
     queryFn: () => financeService.listCharges(),
+    enabled: typeof window !== "undefined",
   });
 }

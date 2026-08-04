@@ -9,5 +9,6 @@ export function ticketsQueryOptions() {
   return queryOptions({
     queryKey: supportQueryKeys.tickets,
     queryFn: () => supportService.listTickets(),
+    enabled: typeof window !== "undefined",
   });
 }

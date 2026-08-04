@@ -140,15 +140,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
             <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
               <Bell className="size-4" />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-destructive" />
             </Button>
             <div className="ml-1 flex items-center gap-2 border-l border-border pl-3">
               <div className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold">
-                MC
+                A
               </div>
               <div className="hidden min-w-0 xl:block">
-                <div className="text-xs font-medium">Marina Costa</div>
-                <div className="text-[10px] text-muted-foreground">Administradora</div>
+                <div className="text-xs font-medium">Conta</div>
+                <div className="text-[10px] text-muted-foreground">Não autenticado</div>
               </div>
             </div>
           </div>

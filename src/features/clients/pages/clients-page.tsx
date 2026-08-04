@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Eye, Plus, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
+import { clientsQueryOptions } from "@/features/clients/api/client.queries";
 import { ClientCreateModal } from "@/features/clients/components/client-create-modal";
 import { clientService } from "@/features/clients/services/client.service";
 import type { Client, ClientFilter } from "@/features/clients/types";
 import { DataTable, type DataTableColumn } from "@/shared/components/data-table";
+import { EmptyState } from "@/shared/components/empty-state";
 import { FilterBar } from "@/shared/components/filter-bar";
 import { PageHeader } from "@/shared/components/page-header";
 import { Badge, Button, Select } from "@/shared/components/ui";
@@ -62,7 +65,7 @@ export function ClientsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ClientFilter["status"]>("Todos");
   const [modal, setModal] = useState(false);
-  const clients = clientService.getClientsSnapshot();
+  const { data: clients = [], error, isLoading } = useQuery(clientsQueryOptions());
   const filtered = useMemo(
     () => clientService.filterClients(clients, { search, status }),
     [clients, search, status],
@@ -99,7 +102,19 @@ export function ClientsPage() {
           </Select>
         </div>
       </FilterBar>
-      <DataTable columns={clientColumns} data={filtered} getRowKey={(client) => client.id} />
+      <DataTable
+        columns={clientColumns}
+        data={filtered}
+        getRowKey={(client) => client.id}
+        loading={isLoading}
+        error={error}
+        emptyState={
+          <EmptyState
+            title="Sem clientes cadastrados"
+            description="Os clientes cadastrados aparecerão aqui quando existirem registros reais."
+          />
+        }
+      />
       <ClientCreateModal open={modal} onClose={() => setModal(false)} />
     </div>
   );
