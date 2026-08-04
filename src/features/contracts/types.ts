@@ -10,6 +10,9 @@ export type Contract = AuditableEntity & {
   start: string;
   renewal: string;
   status: ContractStatus;
+  signerName?: string | null;
+  witnessName?: string | null;
+  contractText?: string | null;
 };
 
 export type ContractFilter = {

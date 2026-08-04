@@ -4,6 +4,8 @@ import { normalizeSearch } from "@/shared/utils/formatters";
 
 export const contractService = {
   listContracts: () => contractRepository.list(),
+  createContract: (payload: Parameters<typeof contractRepository.create>[0]) =>
+    contractRepository.create(payload),
   filterContracts: (contracts: Contract[], filter: ContractFilter) => {
     const term = normalizeSearch(filter.search);
     return contracts.filter(

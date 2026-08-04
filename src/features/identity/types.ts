@@ -1,5 +1,22 @@
-import type { Session, User } from "@supabase/supabase-js";
 import type { AuditableEntity } from "@/shared/types/entity";
+
+export type AuthUser = {
+  id: string;
+  app_metadata: Record<string, unknown>;
+  user_metadata: Record<string, unknown>;
+  aud: string;
+  created_at: string;
+  email?: string;
+};
+
+export type AuthSession = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  expires_at: number;
+  token_type: string;
+  user: AuthUser;
+};
 
 export type ThemePreference = "system" | "light" | "dark";
 export type TimeFormatPreference = "24h" | "12h";
@@ -34,8 +51,8 @@ export type IdentityPreferences = AuditableEntity & {
 };
 
 export type IdentitySession = {
-  session: Session | null;
-  user: User | null;
+  session: AuthSession | null;
+  user: AuthUser | null;
 };
 
 export type ProfileUpdatePayload = {

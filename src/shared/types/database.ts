@@ -361,6 +361,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      charges: {
+        Row: AuditColumns & {
+          company_id: string | null;
+          contract_id: string | null;
+          client_id: string | null;
+          invoice: string;
+          client_name: string;
+          due_date: string | null;
+          amount: number;
+          method: string;
+          status: "Pago" | "Pendente" | "Atrasado";
+          provider: string;
+          provider_topic: string | null;
+          provider_action: string | null;
+          provider_payment_id: string | null;
+          provider_subscription_id: string | null;
+          provider_status: string | null;
+          external_reference: string | null;
+          paid_at: string | null;
+          pending_at: string | null;
+          last_notification_at: string;
+          payload: Json;
+        };
+        Insert: AuditInsertColumns & {
+          company_id?: string | null;
+          contract_id?: string | null;
+          client_id?: string | null;
+          invoice: string;
+          client_name?: string;
+          due_date?: string | null;
+          amount?: number;
+          method?: string;
+          status?: "Pago" | "Pendente" | "Atrasado";
+          provider?: string;
+          provider_topic?: string | null;
+          provider_action?: string | null;
+          provider_payment_id?: string | null;
+          provider_subscription_id?: string | null;
+          provider_status?: string | null;
+          external_reference?: string | null;
+          paid_at?: string | null;
+          pending_at?: string | null;
+          last_notification_at?: string;
+          payload?: Json;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string | null;
+          contract_id?: string | null;
+          client_id?: string | null;
+          invoice?: string;
+          client_name?: string;
+          due_date?: string | null;
+          amount?: number;
+          method?: string;
+          status?: "Pago" | "Pendente" | "Atrasado";
+          provider?: string;
+          provider_topic?: string | null;
+          provider_action?: string | null;
+          provider_payment_id?: string | null;
+          provider_subscription_id?: string | null;
+          provider_status?: string | null;
+          external_reference?: string | null;
+          paid_at?: string | null;
+          pending_at?: string | null;
+          last_notification_at?: string;
+          payload?: Json;
+        };
+        Relationships: [];
+      };
       activity_logs: {
         Row: AuditColumns & {
           company_id: string;

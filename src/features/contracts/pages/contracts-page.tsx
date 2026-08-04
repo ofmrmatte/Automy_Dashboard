@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileText, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { contractsQueryOptions } from "@/features/contracts/api/contract.queries";
+import { ContractCreateModal } from "@/features/contracts/components/contract-create-modal";
 import { contractService } from "@/features/contracts/services/contract.service";
 import type { Contract, ContractFilter } from "@/features/contracts/types";
 import { DataTable, type DataTableColumn } from "@/shared/components/data-table";
@@ -42,6 +43,7 @@ const contractColumns: Array<DataTableColumn<Contract>> = [
 export function ContractsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ContractFilter["status"]>("Todos");
+  const [open, setOpen] = useState(false);
   const { data: contracts = [], error, isLoading } = useQuery(contractsQueryOptions());
   const rows = useMemo(
     () => contractService.filterContracts(contracts, { search, status }),
@@ -54,7 +56,7 @@ export function ContractsPage() {
         title="Contratos"
         description="Acompanhe valores, vigências e renovações da carteira."
         action={
-          <Button>
+          <Button onClick={() => setOpen(true)}>
             <Plus className="size-4" />
             Novo contrato
           </Button>
@@ -85,6 +87,7 @@ export function ContractsPage() {
           />
         }
       />
+      <ContractCreateModal open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

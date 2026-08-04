@@ -6,7 +6,6 @@ import type {
 } from "@/features/dashboard/types";
 import type { Database } from "@/shared/types/database";
 import { RepositoryError } from "@/shared/api/errors";
-import { getSupabaseClient } from "@/shared/lib/supabase/client";
 import { formatDate } from "@/shared/utils/formatters";
 
 type ActivityLogRow = Database["public"]["Tables"]["activity_logs"]["Row"];
@@ -47,31 +46,17 @@ function mapActivity(row: ActivityLogRow): Activity {
 
 export const dashboardRepository = {
   getSummary: async (): Promise<DashboardSummary> => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return emptySummary;
-
-    const [clientsResult, contractsResult] = await Promise.all([
-      supabase.from("clients").select("id, status").is("deleted_at", null),
-      supabase.from("contracts").select("id, monthly_value, ends_at").is("deleted_at", null),
-    ]);
-
-    if (clientsResult.error) {
-      throw new RepositoryError("Não foi possível carregar indicadores de clientes.", {
-        cause: clientsResult.error,
-      });
+    const response = await fetch("/api/dashboard/summary");
+    if (!response.ok) {
+      throw new RepositoryError("Não foi possível carregar indicadores do dashboard.");
     }
 
-    if (contractsResult.error) {
-      throw new RepositoryError("Não foi possível carregar indicadores de contratos.", {
-        cause: contractsResult.error,
-      });
-    }
-
-    const clients = (clientsResult.data ?? []) as Pick<ClientRow, "id" | "status">[];
-    const contracts = (contractsResult.data ?? []) as Pick<
-      ContractRow,
-      "id" | "monthly_value" | "ends_at"
-    >[];
+    const payload = (await response.json()) as {
+      clients?: Pick<ClientRow, "status">[];
+      contracts?: Pick<ContractRow, "monthly_value" | "ends_at">[];
+    };
+    const clients = payload.clients ?? [];
+    const contracts = payload.contracts ?? [];
     const monthlyRevenue = contracts.reduce(
       (total, contract) => total + (contract.monthly_value ?? 0),
       0,
@@ -90,20 +75,12 @@ export const dashboardRepository = {
   getClientGrowth: async (): Promise<ClientGrowthPoint[]> => [],
   getRevenueGrowth: async (): Promise<RevenueGrowthPoint[]> => [],
   getRecentActivities: async (): Promise<Activity[]> => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return [];
-
-    const { data, error } = await supabase
-      .from("activity_logs")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (error) {
-      throw new RepositoryError("Não foi possível carregar atividades recentes.", { cause: error });
+    const response = await fetch("/api/dashboard/activity");
+    if (!response.ok) {
+      throw new RepositoryError("Não foi possível carregar atividades recentes.");
     }
 
-    return (data ?? []).map(mapActivity);
+    const payload = (await response.json()) as { activities?: ActivityLogRow[] };
+    return (payload.activities ?? []).map(mapActivity);
   },
 };

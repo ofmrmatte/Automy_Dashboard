@@ -25,7 +25,7 @@ export default defineConfig(({ command, mode }) => {
       },
       server: { entry: "server" },
     }),
-    command === "build" ? nitro({ defaultPreset: "cloudflare-module" }) : undefined,
+    command === "build" ? nitro({ defaultPreset: process.env.NITRO_PRESET ?? "node-server" }) : undefined,
     viteReact(),
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),

@@ -1,6 +1,9 @@
-import type { Session } from "@supabase/supabase-js";
 import { identityRepository } from "@/features/identity/repositories/identity.repository";
-import type { PreferencesUpdatePayload, ProfileUpdatePayload } from "@/features/identity/types";
+import type {
+  AuthSession,
+  PreferencesUpdatePayload,
+  ProfileUpdatePayload,
+} from "@/features/identity/types";
 
 export const identityService = {
   getSession: () => identityRepository.getSession(),
@@ -11,7 +14,7 @@ export const identityService = {
   updatePassword: (password: string, currentPassword?: string) =>
     identityRepository.updatePassword(password, currentPassword),
   signOut: (scope: "global" | "local" | "others" = "local") => identityRepository.signOut(scope),
-  ensureIdentityRecords: (session: Session) => identityRepository.ensureIdentityRecords(session),
+  ensureIdentityRecords: (session: AuthSession) => identityRepository.ensureIdentityRecords(session),
   getProfile: (authUserId: string) => identityRepository.getProfile(authUserId),
   getPreferences: (authUserId: string) => identityRepository.getPreferences(authUserId),
   getAvatarUrl: (avatarPath: string | null) => identityRepository.getAvatarUrl(avatarPath),

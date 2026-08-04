@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
-import type { Session, User } from "@supabase/supabase-js";
 import type {
+  AuthSession,
+  AuthUser,
   IdentityPreferences,
   IdentityProfile,
   PreferencesUpdatePayload,
@@ -8,8 +9,8 @@ import type {
 } from "@/features/identity/types";
 
 export type IdentityContextValue = {
-  session: Session | null;
-  user: User | null;
+  session: AuthSession | null;
+  user: AuthUser | null;
   profile: IdentityProfile | null;
   preferences: IdentityPreferences | null;
   avatarUrl: string | null;

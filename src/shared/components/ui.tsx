@@ -178,12 +178,14 @@ export function Modal({
   title,
   description,
   children,
+  size = "md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   children: ReactNode;
+  size?: "md" | "lg" | "xl";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -200,7 +202,14 @@ export function Modal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-lg rounded-modal border border-border bg-background shadow-modal">
+      <div
+        className={cn(
+          "max-h-[92vh] w-full overflow-hidden rounded-modal border border-border bg-background shadow-modal",
+          size === "md" && "max-w-lg",
+          size === "lg" && "max-w-3xl",
+          size === "xl" && "max-w-6xl",
+        )}
+      >
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-border p-5">
           <div className="min-w-0">
             <h2 className="font-semibold text-foreground">{title}</h2>
@@ -210,7 +219,7 @@ export function Modal({
             <X className="size-4" />
           </Button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="max-h-[calc(92vh-88px)] overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );

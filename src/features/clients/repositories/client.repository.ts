@@ -1,10 +1,12 @@
 import type { Client, ClientStatus } from "@/features/clients/types";
 import type { Database } from "@/shared/types/database";
 import { RepositoryError } from "@/shared/api/errors";
-import { getSupabaseClient } from "@/shared/lib/supabase/client";
 import { formatCnpj, formatDate, getInitials } from "@/shared/utils/formatters";
 
-type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+type ClientRow = Database["public"]["Tables"]["clients"]["Row"] & {
+  owner_name?: string | null;
+  plan_name?: string | null;
+};
 
 function mapClientStatus(status: string): ClientStatus {
   if (status === "active" || status === "Ativo") return "Ativo";
@@ -23,8 +25,8 @@ function mapClient(row: ClientRow): Client {
     cnpj: row.document ? formatCnpj(row.document) : "",
     city: row.city ?? "",
     state: row.state ?? "",
-    owner: "",
-    plan: "",
+    owner: row.owner_name ?? "",
+    plan: row.plan_name ?? "",
     status: mapClientStatus(row.status),
     joined: formatDate(row.created_at),
     createdAt: row.created_at,
@@ -37,36 +39,45 @@ function mapClient(row: ClientRow): Client {
 
 export const clientRepository = {
   list: async () => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return [];
-
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      throw new RepositoryError("Não foi possível carregar clientes.", { cause: error });
+    const response = await fetch("/api/clients");
+    if (!response.ok) {
+      throw new RepositoryError("Não foi possível carregar clientes.");
     }
 
-    return (data ?? []).map(mapClient);
+    const payload = (await response.json()) as { clients?: ClientRow[] };
+    return (payload.clients ?? []).map(mapClient);
   },
   findById: async (clientId: string) => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return undefined;
-
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("id", clientId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (error) {
-      throw new RepositoryError("Não foi possível carregar o cliente.", { cause: error });
+    const response = await fetch(`/api/clients?id=${encodeURIComponent(clientId)}`);
+    if (!response.ok) {
+      throw new RepositoryError("Não foi possível carregar o cliente.");
     }
 
-    return data ? mapClient(data) : undefined;
+    const payload = (await response.json()) as { client?: ClientRow | null };
+    return payload.client ? mapClient(payload.client) : undefined;
+  },
+  create: async (payload: {
+    tradeName: string;
+    legalName: string;
+    document: string;
+    city: string;
+    state: string;
+    owner: string;
+    plan: string;
+    status: ClientStatus;
+  }) => {
+    const response = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível salvar o cliente.");
+    }
+
+    const result = (await response.json()) as { client: ClientRow };
+    return mapClient(result.client);
   },
 };

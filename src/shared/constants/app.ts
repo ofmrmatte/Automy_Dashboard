@@ -1,5 +1,6 @@
 import {
   Boxes,
+  CalendarDays,
   ChartNoAxesCombined,
   CircleDollarSign,
   FileText,
@@ -19,6 +20,7 @@ export const APP_NAVIGATION = [
   { label: "Contratos", to: "/contratos", icon: FileText },
   { label: "Produtos", to: "/produtos", icon: Boxes },
   { label: "Financeiro", to: "/financeiro", icon: CircleDollarSign },
+  { label: "Call de agendamento", to: "/call-de-agendamento", icon: CalendarDays },
   { label: "Suporte", to: "/suporte", icon: Headphones },
   { label: "Relatórios", to: "/relatorios", icon: ChartNoAxesCombined },
   { label: "Configurações", to: "/configuracoes", icon: Settings },

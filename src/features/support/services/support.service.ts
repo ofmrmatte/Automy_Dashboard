@@ -4,6 +4,8 @@ import { normalizeSearch } from "@/shared/utils/formatters";
 
 export const supportService = {
   listTickets: () => supportRepository.listTickets(),
+  createTicket: (payload: Parameters<typeof supportRepository.createTicket>[0]) =>
+    supportRepository.createTicket(payload),
   filterTickets: (tickets: Ticket[], filter: TicketFilter) => {
     const term = normalizeSearch(filter.search);
     return tickets.filter(

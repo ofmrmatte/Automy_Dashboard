@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ticketsQueryOptions } from "@/features/support/api/support.queries";
+import { TicketCreateModal } from "@/features/support/components/ticket-create-modal";
 import { supportService } from "@/features/support/services/support.service";
 import type { Ticket, TicketFilter } from "@/features/support/types";
 import { DataTable, type DataTableColumn } from "@/shared/components/data-table";
@@ -40,6 +41,7 @@ const ticketColumns: Array<DataTableColumn<Ticket>> = [
 export function SupportPage() {
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState<TicketFilter["priority"]>("Todas");
+  const [open, setOpen] = useState(false);
   const { data: tickets = [], error, isLoading } = useQuery(ticketsQueryOptions());
   const rows = useMemo(
     () => supportService.filterTickets(tickets, { search, priority }),
@@ -52,7 +54,7 @@ export function SupportPage() {
         title="Suporte"
         description="Priorize chamados e acompanhe o trabalho da equipe."
         action={
-          <Button>
+          <Button onClick={() => setOpen(true)}>
             <Plus className="size-4" />
             Novo ticket
           </Button>
@@ -79,10 +81,11 @@ export function SupportPage() {
         emptyState={
           <EmptyState
             title="Nenhum ticket aberto"
-            description="Tickets reais aparecerão aqui quando o módulo de suporte for integrado."
+            description="Tickets salvos no banco aparecerão aqui."
           />
         }
       />
+      <TicketCreateModal open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

@@ -2,6 +2,25 @@ import type { AuditableEntity } from "@/shared/types/entity";
 
 export type ProductStatus = "Ativo" | "Beta" | "Descontinuando";
 
+export type ProductCommercialTerms = {
+  hostedOnAutomyUrl: boolean;
+  customUrl: boolean;
+  userLimit: number;
+  segment: string;
+  implementationDays: number;
+  implementationFee: number;
+  paymentMethod: string;
+  installments: number;
+  discountPercent: number;
+  hasMonthlyFee: boolean;
+  monthlyFee: number;
+  hasDatabaseCost: boolean;
+  databaseCost: number;
+  extraUserPrice: number;
+  loyaltyMonths: number;
+  deliverables: string;
+};
+
 export type Product = AuditableEntity & {
   id: string;
   name: string;
@@ -9,6 +28,9 @@ export type Product = AuditableEntity & {
   version: string;
   clients: number;
   status: ProductStatus;
+  description?: string;
+  commercialTerms?: ProductCommercialTerms | null;
+  contractTemplate?: string | null;
 };
 
 export type ProductFilter = {

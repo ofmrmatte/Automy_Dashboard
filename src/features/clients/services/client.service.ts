@@ -13,6 +13,8 @@ function matchesClientFilter(client: Client, filter: ClientFilter) {
 export const clientService = {
   listClients: () => clientRepository.list(),
   getClientById: (clientId: string) => clientRepository.findById(clientId),
+  createClient: (payload: Parameters<typeof clientRepository.create>[0]) =>
+    clientRepository.create(payload),
   filterClients: (clients: Client[], filter: ClientFilter) =>
     clients.filter((client) => matchesClientFilter(client, filter)),
 };

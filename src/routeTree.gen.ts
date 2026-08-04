@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CallDeAgendamentoRouteImport } from './routes/call-de-agendamento'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContratosRouteImport } from './routes/contratos'
@@ -25,6 +26,11 @@ import { Route as ClientesClienteIdRouteImport } from './routes/clientes.$client
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CallDeAgendamentoRoute = CallDeAgendamentoRouteImport.update({
+  id: '/call-de-agendamento',
+  path: '/call-de-agendamento',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesRoute = ClientesRouteImport.update({
@@ -85,6 +91,7 @@ const ClientesClienteIdRoute = ClientesClienteIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/call-de-agendamento': typeof CallDeAgendamentoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/call-de-agendamento': typeof CallDeAgendamentoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
@@ -114,6 +122,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/call-de-agendamento': typeof CallDeAgendamentoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/call-de-agendamento'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/call-de-agendamento'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/call-de-agendamento'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
@@ -173,6 +185,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CallDeAgendamentoRoute: typeof CallDeAgendamentoRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/call-de-agendamento': {
+      id: '/call-de-agendamento'
+      path: '/call-de-agendamento'
+      fullPath: '/call-de-agendamento'
+      preLoaderRoute: typeof CallDeAgendamentoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes': {
@@ -288,6 +308,7 @@ const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CallDeAgendamentoRoute: CallDeAgendamentoRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
