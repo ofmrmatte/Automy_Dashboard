@@ -285,18 +285,24 @@ Critério de pronto:
 
 Objetivo: entregar administracao e analise operacional.
 
-Escopo:
+Status nesta branch: Relatorios implementado como Fase 11 funcional inicial; Configuracoes avancadas ja foram entregues na Fase 3. Falta validar exports por role e evoluir envio/agendamento automatico.
+
+Escopo entregue:
 
 - Filtros reais por periodo.
-- Exportacao XLSX.
-- Exportacao PDF.
-- Relatorios por modulo.
+- Exportacao CSV, XLSX e PDF.
+- Relatorios por modulo: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria.
 - Configuracoes da empresa.
 - Configuracoes de seguranca.
 - Integracoes.
 - Notificacoes.
 - Preferencias organizacionais.
 - Dominio e dados institucionais.
+
+Pendencias:
+
+- Validacao por manager/operator/read_only.
+- Agendamento e envio automatico de relatorios quando houver provedor transacional aprovado.
 
 Critério de pronto:
 

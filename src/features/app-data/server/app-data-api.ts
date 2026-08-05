@@ -69,6 +69,7 @@ const APP_DATA_PATHS = new Set([
   "/api/dashboard/charts",
   "/api/dashboard/recent-clients",
   "/api/dashboard/activity",
+  "/api/reports",
 ]);
 
 function isMissingTableError(error: unknown) {
@@ -1728,6 +1729,328 @@ async function resolveUserTimezone(context: AuthenticatedUserContext) {
   return preferences[0]?.time_zone || "America/Sao_Paulo";
 }
 
+type ReportKind =
+  | "clients"
+  | "products"
+  | "contracts"
+  | "finance"
+  | "scheduling"
+  | "support"
+  | "users"
+  | "permissions"
+  | "audit";
+
+type ReportPeriod = "all" | "last_30_days" | "quarter" | "year";
+
+const reportPermissions: Record<ReportKind, PermissionKey> = {
+  clients: "clients.read",
+  products: "products.read",
+  contracts: "contracts.read",
+  finance: "finance.read",
+  scheduling: "schedule.read",
+  support: "support.read",
+  users: "users.read",
+  permissions: "users.read",
+  audit: "audit.read",
+};
+
+const reportTitles: Record<ReportKind, string> = {
+  clients: "Clientes",
+  products: "Produtos",
+  contracts: "Contratos",
+  finance: "Financeiro",
+  scheduling: "Agenda",
+  support: "Suporte",
+  users: "Usuários",
+  permissions: "Permissões",
+  audit: "Auditoria",
+};
+
+function reportPeriodStart(period: ReportPeriod) {
+  const now = new Date();
+  if (period === "last_30_days") return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  if (period === "quarter") {
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    return new Date(Date.UTC(now.getUTCFullYear(), quarterStartMonth, 1));
+  }
+  if (period === "year") return new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  return null;
+}
+
+function parseReportKind(value: string | null): ReportKind | null {
+  const kinds: ReportKind[] = [
+    "clients",
+    "products",
+    "contracts",
+    "finance",
+    "scheduling",
+    "support",
+    "users",
+    "permissions",
+    "audit",
+  ];
+  return kinds.includes(value as ReportKind) ? (value as ReportKind) : null;
+}
+
+function parseReportPeriod(value: string | null): ReportPeriod {
+  if (value === "last_30_days" || value === "quarter" || value === "year") return value;
+  return "all";
+}
+
+async function handleReports(url: URL, context: AuthenticatedUserContext) {
+  await ensureBusinessSchema();
+
+  const kind = parseReportKind(url.searchParams.get("kind"));
+  if (!kind) return jsonResponse({ error: "Relatório não informado." }, { status: 400 });
+
+  const permissionError = requirePermission(context, reportPermissions[kind]);
+  if (permissionError) return permissionError;
+
+  const period = parseReportPeriod(url.searchParams.get("period"));
+  const start = reportPeriodStart(period)?.toISOString() ?? null;
+  const rows = await reportRows(kind, context, start);
+
+  return jsonResponse({
+    report: {
+      kind,
+      title: reportTitles[kind],
+      period,
+      generatedAt: new Date().toISOString(),
+      rows,
+    },
+  });
+}
+
+async function reportRows(
+  kind: ReportKind,
+  context: AuthenticatedUserContext,
+  start: string | null,
+) {
+  const params = [context.companyId, start];
+
+  if (kind === "clients") {
+    return queryRows(
+      `
+      select
+        trade_name as cliente,
+        legal_name as razao_social,
+        document as cnpj,
+        segment as segmento,
+        email,
+        phone as telefone,
+        city as cidade,
+        state as estado,
+        status,
+        created_at,
+        updated_at
+      from public.clients
+      where company_id = $1
+        and deleted_at is null
+        and ($2::timestamptz is null or created_at >= $2::timestamptz)
+      order by created_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "products") {
+    return queryRows(
+      `
+      select
+        name as produto,
+        category as categoria,
+        version as versao,
+        status,
+        base_price as preco_base,
+        billing_mode as modalidade,
+        created_at,
+        updated_at
+      from public.products
+      where company_id = $1
+        and deleted_at is null
+        and ($2::timestamptz is null or created_at >= $2::timestamptz)
+      order by created_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "contracts") {
+    return queryRows(
+      `
+      select
+        contracts.name as contrato,
+        clients.trade_name as cliente,
+        products.name as produto,
+        contracts.monthly_value as valor_mensal,
+        contracts.implementation_value as valor_implantacao,
+        contracts.starts_at as inicio,
+        contracts.ends_at as vencimento,
+        contracts.billing_period as periodicidade,
+        contracts.status,
+        contracts.created_at,
+        contracts.updated_at
+      from public.contracts
+      left join public.clients on clients.id = contracts.client_id
+      left join public.products on products.id = contracts.product_id
+      where contracts.company_id = $1
+        and contracts.deleted_at is null
+        and ($2::timestamptz is null or contracts.created_at >= $2::timestamptz)
+      order by contracts.created_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "finance") {
+    return queryRows(
+      `
+      select
+        invoice as fatura,
+        client_name as cliente,
+        reference as referencia,
+        due_date as vencimento,
+        amount as valor,
+        paid_value as valor_pago,
+        paid_at as pago_em,
+        method as metodo,
+        provider,
+        status,
+        reconciliation_status as conciliacao,
+        created_at,
+        updated_at
+      from public.charges
+      where company_id = $1
+        and deleted_at is null
+        and ($2::timestamptz is null or created_at >= $2::timestamptz)
+      order by created_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "scheduling") {
+    return queryRows(
+      `
+      select
+        title as titulo,
+        client_name as cliente,
+        start_at as inicio_utc,
+        end_at as fim_utc,
+        timezone,
+        status,
+        reminder_minutes as lembrete_minutos,
+        created_at,
+        updated_at
+      from public.scheduled_calls
+      where company_id = $1
+        and deleted_at is null
+        and ($2::timestamptz is null or created_at >= $2::timestamptz)
+      order by start_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "support") {
+    return queryRows(
+      `
+      select
+        ticket_number as ticket,
+        client_name as cliente,
+        title as titulo,
+        category as categoria,
+        priority as prioridade,
+        owner as responsavel,
+        status,
+        first_response_due_at as primeira_resposta_sla,
+        resolution_due_at as resolucao_sla,
+        resolved_at as resolvido_em,
+        closed_at as fechado_em,
+        created_at,
+        updated_at
+      from public.support_tickets
+      where company_id = $1
+        and deleted_at is null
+        and ($2::timestamptz is null or created_at >= $2::timestamptz)
+      order by updated_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "users") {
+    return queryRows(
+      `
+      select
+        users.name as nome,
+        users.email,
+        roles.name as perfil,
+        users.status,
+        "user".last_login as ultimo_acesso,
+        users.created_at,
+        users.updated_at
+      from public.users
+      left join public.roles on roles.id = users.role_id
+      left join public."user" on "user".id = users.auth_user_id
+      where users.company_id = $1
+        and users.deleted_at is null
+        and ($2::timestamptz is null or users.created_at >= $2::timestamptz)
+      order by users.created_at desc
+      limit 2000
+      `,
+      params,
+    );
+  }
+
+  if (kind === "permissions") {
+    return queryRows(
+      `
+      select
+        roles.key as role,
+        roles.name as perfil,
+        permissions.key as permissao,
+        permissions.name as nome,
+        permissions.description as descricao
+      from public.roles
+      join public.role_permissions on role_permissions.role_id = roles.id
+        and role_permissions.deleted_at is null
+      join public.permissions on permissions.id = role_permissions.permission_id
+        and permissions.deleted_at is null
+      where (roles.company_id is null or roles.company_id = $1)
+        and roles.deleted_at is null
+      order by roles.key, permissions.key
+      limit 2000
+      `,
+      [context.companyId],
+    );
+  }
+
+  return queryRows(
+    `
+    select
+      action,
+      resource_type as recurso,
+      resource_id,
+      metadata,
+      created_at
+    from public.audit_logs
+    where company_id = $1
+      and deleted_at is null
+      and ($2::timestamptz is null or created_at >= $2::timestamptz)
+    order by created_at desc
+    limit 2000
+    `,
+    params,
+  );
+}
+
 async function handleTickets(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
@@ -2844,6 +3167,7 @@ export async function handleAppDataApiRequest(request: Request) {
   if (url.pathname === "/api/products") return handleProducts(auth.context);
   if (url.pathname === "/api/support/tickets") return handleTickets(auth.context);
   if (url.pathname === "/api/scheduled-calls") return handleScheduledCalls(auth.context);
+  if (url.pathname === "/api/reports") return handleReports(url, auth.context);
   if (url.pathname === "/api/settings/profile") {
     return handleSetting(request, url, "profile", auth.context.authUserId);
   }

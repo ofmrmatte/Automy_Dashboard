@@ -14,6 +14,9 @@
 
 ## Unreleased
 
+- Implementado modulo Relatorios com endpoint protegido `/api/reports`, filtros reais por periodo, RBAC por dominio e exportacao CSV, XLSX e PDF a partir de dados reais do Railway PostgreSQL.
+- Relatorios agora cobrem Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria, sempre com `company_id` derivado da sessao.
+- Criado exportador client-side reutilizavel para gerar arquivos vazios validos quando nao houver registros, sem mocks ou placeholders.
 - Implementado modulo Suporte completo com criar, listar, visualizar, editar, atribuir, alterar prioridade/status, mensagens internas, resolver, reabrir, cancelar, soft delete, busca, filtro, paginacao, auditoria e activity log.
 - Criada migration `20260806030000_support_ticket_lifecycle.sql` para ciclo de vida de tickets, SLA, responsavel, tags, mensagens, eventos e anexos por metadados.
 - Finalizado endpoint protegido `/api/support/tickets` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `support.read`/`support.manage`.

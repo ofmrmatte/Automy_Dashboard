@@ -53,6 +53,7 @@ async function verifyAnonymousApiProtection() {
     "/api/dashboard/charts",
     "/api/dashboard/recent-clients",
     "/api/dashboard/activity",
+    "/api/reports?kind=clients&period=all",
     "/api/finance/charges",
     "/api/identity/profile",
     "/api/identity/preferences",
@@ -252,6 +253,11 @@ async function verifyAdminFlow() {
     headers: { cookie },
   });
   assertStatus("Admin lendo /api/settings/notifications", notificationSettingsResponse.status, 200);
+
+  const reportResponse = await request("/api/reports?kind=clients&period=all", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/reports", reportResponse.status, 200);
 }
 
 async function verifyReadOnlyWriteBlock() {

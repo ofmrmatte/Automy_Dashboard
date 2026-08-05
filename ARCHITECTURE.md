@@ -191,6 +191,17 @@ O modulo `src/features/scheduling` usa formulario React Hook Form + Zod e persis
 - Todas as escritas exigem `schedule.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Lembretes ficam modelados por `reminder_minutes`; disparo ativo dependera do modulo de notificacoes/agendador.
 
+## Relatorios
+
+O modulo `src/features/reports` usa repository/service e consome o endpoint protegido `/api/reports`.
+
+- `GET /api/reports?kind=&period=` retorna linhas normalizadas de relatorio a partir do Railway PostgreSQL.
+- `kind` suporta `clients`, `products`, `contracts`, `finance`, `scheduling`, `support`, `users`, `permissions` e `audit`.
+- `period` suporta `all`, `last_30_days`, `quarter` e `year`, aplicado server-side quando o relatorio possui data operacional.
+- Cada tipo de relatorio exige a permissao de leitura do dominio correspondente; Auditoria exige `audit.read`.
+- A API deriva `company_id` da sessao Better Auth e nunca aceita empresa enviada pelo cliente.
+- Exportacoes CSV, XLSX e PDF sao geradas no cliente a partir do payload real; arquivos vazios continuam validos e nao usam dados ficticios.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:

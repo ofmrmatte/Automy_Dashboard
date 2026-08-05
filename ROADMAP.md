@@ -25,7 +25,7 @@
 
 ## Proxima Etapa
 
-- Seguir para Relatorios completos sem reintroduzir mocks.
+- Seguir para Busca Global sem reintroduzir mocks.
 - Validar Fase 7 autenticada em producao apos deploy da branch.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
@@ -130,6 +130,15 @@
 - Implementados busca, filtros por prioridade/status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
 - Pendencias: storage oficial para anexos binarios, notificacoes/SLA automatizados e validacao por usuarios reais de cada role.
 
+## Fase 11 - Relatorios
+
+- Implementado endpoint unico `/api/reports` com `kind` e `period`.
+- Relatorios disponiveis: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria.
+- Exportacoes CSV, XLSX e PDF usam dados reais do Railway PostgreSQL e respeitam RBAC por dominio.
+- Arquivos vazios sao gerados com estrutura valida e mensagem de ausencia de registros.
+- Filtros por periodo sao aplicados server-side com `company_id` derivado da sessao.
+- Pendencias: validacao por usuarios reais de cada role e evolucao futura para agendamento/envio automatico de relatorios.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -147,7 +156,7 @@
 - Financeiro: CRUD de cobrancas, baixa manual, cancelamento, metricas e conciliacao Mercado Pago preparada.
 - Agenda: CRUD de calls com UTC/timezone, cliente vinculado, responsavel e lembretes preparados.
 - Suporte: ciclo real de tickets, mensagens, eventos, SLA e anexos por metadados.
-- Relatorios: exportacao somente com dados reais.
+- Relatorios: endpoint real com filtros por periodo e exportacao CSV/XLSX/PDF.
 
 ## Qualidade
 
