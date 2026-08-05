@@ -1419,10 +1419,10 @@ async function handleDashboardSummary(context: AuthenticatedUserContext) {
       ? queryRows<{ pending_charges: number; overdue_charges: number }>(
           `
           select
-            count(*) filter (where status = 'Pendente')::int as pending_charges,
+            count(*) filter (where status = 'pending')::int as pending_charges,
             count(*) filter (
-              where status = 'Atrasado'
-                or (status = 'Pendente' and due_date is not null and due_date < current_date)
+              where status = 'overdue'
+                or (status = 'pending' and due_date is not null and due_date < current_date)
             )::int as overdue_charges
           from public.charges
           where deleted_at is null
@@ -1649,7 +1649,12 @@ async function handleDashboardCharts(context: AuthenticatedUserContext) {
           `
             select
               case
-                when status = 'Pendente' and due_date is not null and due_date < current_date then 'Atrasado'
+                when status = 'pending' and due_date is not null and due_date < current_date then 'Atrasado'
+                when status = 'pending' then 'Pendente'
+                when status = 'paid' then 'Pago'
+                when status = 'overdue' then 'Atrasado'
+                when status = 'canceled' then 'Cancelado'
+                when status = 'failed' then 'Falhou'
                 else status
               end as name,
               count(*)::int as value

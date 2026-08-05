@@ -194,7 +194,9 @@ Critério de pronto:
 
 Objetivo: transformar o financeiro em modulo operacional.
 
-Escopo:
+Status nesta branch: implementado como Fase 8 funcional inicial. Falta validar Mercado Pago em sandbox/producao com credenciais oficiais e definir se a geracao de pagamentos externos sera feita pela Automy ou por fluxo operacional externo.
+
+Escopo entregue:
 
 - CRUD de cobrancas.
 - Baixa manual.
@@ -202,16 +204,23 @@ Escopo:
 - Vencimento/inadimplencia.
 - Receita mensal/anual real.
 - Recebimentos previstos.
-- Integracao Mercado Pago sandbox e producao.
-- Webhook com assinatura obrigatoria em producao.
-- Relatorios financeiros.
+- Endpoint protegido com RBAC `finance.read` e `finance.manage`.
+- Audit logs e activity logs.
+- Webhook Mercado Pago com assinatura obrigatoria em producao, protecao contra replay, idempotencia e eventos persistidos.
+- Conciliacao de webhook contra cobranca existente por referencia externa ou pagamento ja conhecido.
+
+Pendencias:
+
+- Credenciais Mercado Pago sandbox/producao.
+- Fluxo comercial para geracao de pagamento externo.
+- Relatorios financeiros avancados.
 - Permissoes `finance.read` e `finance.manage`.
-- Audit logs.
 
 Critério de pronto:
 
 - Metric cards financeiros nao usam zero hardcoded.
-- Webhook cria/atualiza cobranca real.
+- Cobrancas persistem apos refresh/login.
+- Webhook atualiza cobranca real quando a referencia externa corresponde a uma cobranca existente.
 
 ## Sprint 7 - Agenda e timezone de agendamentos
 

@@ -192,6 +192,7 @@ As migrations ativas da foundation sao:
 - `20260805223000_clients_operational_fields.sql`
 - `20260805233000_products_operational_fields.sql`
 - `20260806000000_contracts_lifecycle_fields.sql`
+- `20260806010000_finance_billing_lifecycle.sql`
 
 A migration foundation cria:
 
@@ -214,6 +215,7 @@ A migration foundation cria:
 - `support_tickets`
 - `scheduled_calls`
 - `charges`
+- `payment_webhook_events`
 - `app_settings`
 - Better Auth: `user`, `session`, `account`, `verification`, `rate_limit`
 

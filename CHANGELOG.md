@@ -14,6 +14,10 @@
 
 ## Unreleased
 
+- Implementado modulo Financeiro completo com criar, listar, visualizar, editar, marcar como paga, cancelar, detectar atraso, soft delete, filtros, paginacao, validacao RHF+Zod, auditoria e activity log.
+- Criada migration `20260806010000_finance_billing_lifecycle.sql` para status oficiais `pending/paid/overdue/canceled/failed`, campos de conciliacao, indices financeiros e eventos de webhook.
+- Finalizado endpoint protegido `/api/finance/charges` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `finance.read`/`finance.manage`.
+- Preservada integracao Mercado Pago com assinatura de webhook, janela anti-replay, idempotencia por evento, registro de eventos e conciliacao apenas quando houver cobranca correspondente.
 - Implementado modulo Contratos completo com CRUD real, visualizar, editar, ativar, suspender, renovar, cancelar, encerrar, soft delete, filtros, paginacao, validação RHF+Zod, itens de contrato, auditoria e activity log.
 - Criada migration `20260806000000_contracts_lifecycle_fields.sql` para ciclo de vida, campos comerciais e `contract_items`.
 - Implementado modulo Produtos completo com CRUD real, visualizar, editar, ativar/inativar, soft delete, busca, filtros, paginacao, validação RHF+Zod, termos comerciais, modelo de contrato, auditoria e activity log.

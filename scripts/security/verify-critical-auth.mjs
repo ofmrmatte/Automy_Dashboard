@@ -75,6 +75,17 @@ async function verifyAnonymousApiProtection() {
   const writeResponse = await request("/api/finance/charges", { method: "POST", body: "{}" });
   assertStatus("POST /api/finance/charges sem sessao", writeResponse.status, 401);
 
+  const updateFinanceResponse = await request("/api/finance/charges", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/finance/charges sem sessao", updateFinanceResponse.status, 401);
+
+  const deleteFinanceResponse = await request("/api/finance/charges?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/finance/charges sem sessao", deleteFinanceResponse.status, 401);
+
   const createUserResponse = await request("/api/users", { method: "POST", body: "{}" });
   assertStatus("POST /api/users sem sessao", createUserResponse.status, 401);
 
@@ -201,7 +212,7 @@ async function verifyAdminFlow() {
     headers: { cookie },
     body: "{}",
   });
-  assertStatus("Admin autorizado antes do metodo nao implementado", writeResponse.status, 405);
+  assertStatus("Admin autorizado antes da validacao financeira", writeResponse.status, 400);
 
   const profileResponse = await request("/api/identity/profile", {
     headers: { cookie },

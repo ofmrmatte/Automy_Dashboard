@@ -1,5 +1,14 @@
-import { listFinanceCharges, upsertMercadoPagoCharge } from "@/features/finance/server/finance-db";
+import {
+  createFinanceCharge,
+  deleteFinanceCharge,
+  FinanceDomainError,
+  listFinanceCharges,
+  recordMercadoPagoWebhookEvent,
+  updateFinanceCharge,
+  upsertMercadoPagoCharge,
+} from "@/features/finance/server/finance-db";
 import type { Charge } from "@/features/finance/types";
+import { chargeFormSchema, chargePatchSchema } from "@/features/finance/validation";
 import { jsonResponse, requireAuthenticatedUser, requirePermission } from "@/shared/server/authz";
 
 type MercadoPagoNotification = {
@@ -86,10 +95,20 @@ async function validateMercadoPagoSignature(request: Request, dataId: string) {
   const receivedSignature = xSignature?.v1;
 
   if (!xRequestId || !timestamp || !receivedSignature) return false;
+  if (isReplayTimestamp(timestamp)) return false;
 
   const manifest = `id:${dataId};request-id:${xRequestId};ts:${timestamp};`;
   const expectedSignature = await createHmacSha256Hex(manifest, secret);
   return timingSafeEqual(expectedSignature, receivedSignature);
+}
+
+function isReplayTimestamp(timestamp: string) {
+  const timestampNumber = Number(timestamp);
+  if (!Number.isFinite(timestampNumber)) return true;
+
+  const timestampMs = timestampNumber > 10_000_000_000 ? timestampNumber : timestampNumber * 1000;
+  const ageMs = Math.abs(Date.now() - timestampMs);
+  return ageMs > 10 * 60 * 1000;
 }
 
 function getDataId(url: URL, notification: MercadoPagoNotification) {
@@ -143,10 +162,10 @@ async function fetchMercadoPagoResource(topic: string, dataId: string) {
 }
 
 function mapChargeStatus(status: string | undefined): Charge["status"] {
-  if (status === "approved" || status === "accredited") return "Pago";
-  if (status === "rejected" || status === "cancelled" || status === "charged_back")
-    return "Atrasado";
-  return "Pendente";
+  if (status === "approved" || status === "accredited") return "paid";
+  if (status === "cancelled") return "canceled";
+  if (status === "rejected" || status === "charged_back") return "failed";
+  return "pending";
 }
 
 function formatDateOnly(value: string | undefined) {
@@ -174,6 +193,9 @@ async function handleMercadoPagoWebhook(request: Request) {
   const notification = (await request.json()) as MercadoPagoNotification;
   const dataId = getDataId(url, notification);
   const topic = getTopic(url, notification);
+  const requestId = request.headers.get("x-request-id");
+  const signatureParts = parseSignatureHeader(request.headers.get("x-signature"));
+  const eventId = `${topic || "unknown"}:${dataId || notification.id || requestId || crypto.randomUUID()}`;
 
   if (!dataId || !topic) {
     return jsonResponse({ error: "Notificação sem tópico ou data.id." }, { status: 400 });
@@ -181,15 +203,41 @@ async function handleMercadoPagoWebhook(request: Request) {
 
   const isSignatureValid = await validateMercadoPagoSignature(request, dataId);
   if (!isSignatureValid) {
+    await recordMercadoPagoWebhookEvent({
+      eventId,
+      requestId,
+      signatureTimestamp: signatureParts?.ts
+        ? new Date(Number(signatureParts.ts) * 1000).toISOString()
+        : null,
+      topic,
+      dataId,
+      action: notification.action ?? null,
+      status: "failed",
+      error: "Assinatura inválida ou fora da janela de replay.",
+      payload: notification,
+    });
     return jsonResponse({ error: "Assinatura inválida." }, { status: 401 });
   }
 
   const resource = await fetchMercadoPagoResource(topic, dataId);
   if (!resource) {
+    await recordMercadoPagoWebhookEvent({
+      eventId,
+      requestId,
+      signatureTimestamp: signatureParts?.ts
+        ? new Date(Number(signatureParts.ts) * 1000).toISOString()
+        : null,
+      topic,
+      dataId,
+      action: notification.action ?? null,
+      status: "ignored",
+      error: "Recurso não buscado por credencial ausente ou tópico não suportado.",
+      payload: notification,
+    });
     return jsonResponse({ received: true, stored: false, topic, dataId });
   }
 
-  await upsertMercadoPagoCharge({
+  const charge = await upsertMercadoPagoCharge({
     invoice: `MP-${resource.id ?? dataId}`,
     clientName: getClientName(resource),
     dueDate: formatDateOnly(resource.date_of_expiration ?? resource.money_release_date),
@@ -207,7 +255,23 @@ async function handleMercadoPagoWebhook(request: Request) {
     payload: { notification, resource },
   });
 
-  return jsonResponse({ received: true, stored: true, topic, dataId });
+  await recordMercadoPagoWebhookEvent({
+    eventId,
+    requestId,
+    signatureTimestamp: signatureParts?.ts
+      ? new Date(Number(signatureParts.ts) * 1000).toISOString()
+      : null,
+    topic,
+    dataId,
+    action: notification.action ?? null,
+    status: charge ? "processed" : "ignored",
+    error: charge ? null : "Cobrança correspondente não encontrada para conciliação.",
+    payload: { notification, resource },
+    chargeId: charge?.id ?? null,
+    companyId: charge?.company_id ?? null,
+  });
+
+  return jsonResponse({ received: true, stored: Boolean(charge), topic, dataId });
 }
 
 async function handleFinanceCharges(request: Request) {
@@ -224,13 +288,53 @@ async function handleFinanceCharges(request: Request) {
     return jsonResponse({ error: "Método não permitido." }, { status: 405 });
   }
 
-  if (request.method !== "GET") {
-    return jsonResponse({ error: "Método não permitido." }, { status: 405 });
-  }
-
   try {
-    return jsonResponse({ charges: await listFinanceCharges(auth.context.companyId) });
+    if (request.method === "GET") {
+      return jsonResponse(await listFinanceCharges(auth.context.companyId));
+    }
+
+    if (request.method === "POST") {
+      const parsed = chargeFormSchema.safeParse(await request.json());
+      if (!parsed.success) {
+        return jsonResponse(
+          { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+          { status: 400 },
+        );
+      }
+
+      return jsonResponse(
+        { charge: await createFinanceCharge(parsed.data, auth.context) },
+        { status: 201 },
+      );
+    }
+
+    if (request.method === "PATCH" || request.method === "PUT") {
+      const parsed = chargePatchSchema.safeParse(await request.json());
+      if (!parsed.success) {
+        return jsonResponse(
+          { error: parsed.error.issues[0]?.message ?? "Cobrança não informada." },
+          { status: 400 },
+        );
+      }
+
+      return jsonResponse({ charge: await updateFinanceCharge(parsed.data, auth.context) });
+    }
+
+    if (request.method === "DELETE") {
+      const url = new URL(request.url);
+      const id = url.searchParams.get("id") ?? "";
+      if (!id) return jsonResponse({ error: "Cobrança não informada." }, { status: 400 });
+
+      await deleteFinanceCharge(id, auth.context);
+      return jsonResponse({ ok: true });
+    }
+
+    return jsonResponse({ error: "Método não permitido." }, { status: 405 });
   } catch (error) {
+    if (error instanceof FinanceDomainError) {
+      return jsonResponse({ error: error.message }, { status: error.status });
+    }
+
     console.error(error);
     return jsonResponse({ error: "Erro ao acessar dados financeiros." }, { status: 500 });
   }

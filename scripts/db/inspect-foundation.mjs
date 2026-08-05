@@ -59,6 +59,7 @@ const expectedTables = [
   "support_tickets",
   "scheduled_calls",
   "charges",
+  "payment_webhook_events",
   "app_settings",
   "schema_migrations",
 ];

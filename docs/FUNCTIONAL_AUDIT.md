@@ -90,10 +90,10 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Contratos     | Listagem/busca/filtro/paginacao       | FUNCIONAL         | baixa      | roles com `contracts.read`    | endpoint real com cliente/produto, filtro por termo/status e paginacao               | produtos/clientes            | evoluir para server-side em alto volume       |
 | Contratos     | Criacao                               | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, cliente/produto reais, item de contrato, audit/activity log                 | `contracts.manage`           | validar por role                              |
 | Contratos     | Edicao/ciclo de vida                  | FUNCIONAL         | baixa      | admin/manager                 | PATCH cobre ativar, suspender, renovar, cancelar, encerrar e edicao comercial        | ciclo de vida de contrato    | validar por role                              |
-| Financeiro    | Listagem de cobrancas                 | PARCIAL           | alta       | roles com `finance.read`      | endpoint protegido e company_id aplicado                                             | charges reais                | manter                                        |
-| Financeiro    | Metricas no Dashboard                 | FUNCIONAL         | baixa      | roles com `finance.read`      | Dashboard agrega `charges` e contratos reais quando permitido                        | charges/contratos reais      | completar CRUD financeiro                     |
-| Financeiro    | Criacao/edicao/baixa/cancelamento     | NAO IMPLEMENTADA  | alta       | admin                         | endpoint rejeita metodos nao GET                                                     | CRUD financeiro              | implementar depois da modelagem               |
-| Financeiro    | Mercado Pago webhook                  | PARCIAL           | media      | sistema                       | webhook existe e valida assinatura quando secret configurado                         | env Mercado Pago             | validar end-to-end com sandbox                |
+| Financeiro    | Listagem de cobrancas                 | FUNCIONAL         | baixa      | roles com `finance.read`      | endpoint protegido, company_id aplicado, metricas reais e empty states               | charges reais                | validar por role                              |
+| Financeiro    | Metricas no Dashboard                 | FUNCIONAL         | baixa      | roles com `finance.read`      | Dashboard agrega `charges` e contratos reais quando permitido                        | charges/contratos reais      | manter                                        |
+| Financeiro    | Criacao/edicao/baixa/cancelamento     | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, endpoint POST/PATCH/DELETE, soft delete, audit/activity log                 | `finance.manage`             | validar por role                              |
+| Financeiro    | Mercado Pago webhook                  | FUNCIONAL/PARCIAL | media      | sistema                       | assinatura, anti-replay, idempotencia e eventos persistidos; sandbox depende env     | env Mercado Pago             | validar end-to-end com sandbox                |
 | Agenda        | Calendario e criacao                  | PARCIAL           | media      | admin/manager/operator        | endpoint POST e listagem existem                                                     | `schedule.manage`            | manter e testar                               |
 | Agenda        | Timezone/UTC                          | QUEBRADA          | alta       | todos                         | armazena `scheduled_date` e `scheduled_time` separados, sem timezone/UTC             | user_preferences             | remodelar agendamentos com timezone           |
 | Agenda        | Edicao/cancelamento/lembretes         | NAO IMPLEMENTADA  | media      | operadores                    | sem endpoints                                                                        | workflow agenda              | implementar sprint 7                          |
@@ -157,8 +157,8 @@ Fluxos ausentes:
 | contratos a vencer 60d  | `contracts.ends_at` nos proximos 60 dias                    | real, mas depende de contratos   |
 | receita mensal          | soma de `contracts.monthly_value` filtrada por `company_id` | real, mas depende de contratos   |
 | receita anual           | receita mensal * 12                                         | derivado                         |
-| cobrancas pendentes     | `charges.status = Pendente` conforme permissao              | real, mas depende de cobrancas   |
-| cobrancas vencidas      | `charges.status = Atrasado` ou pendente vencida             | real, mas depende de cobrancas   |
+| cobrancas pendentes     | `charges.status = pending` conforme permissao               | real, mas depende de cobrancas   |
+| cobrancas vencidas      | `charges.status = overdue` ou pendente vencida              | real, mas depende de cobrancas   |
 | chamados abertos        | `support_tickets.status` nao resolvido                      | real, mas depende de tickets     |
 | chamados criticos       | `support_tickets.priority = Critica/Critica` aberto         | real, mas depende de tickets     |
 | agendamentos futuros    | `scheduled_calls` agendadas a partir da data atual          | real, mas depende de agenda      |
@@ -236,14 +236,14 @@ Persistencia real implementada:
 - contratos: criar/listar/visualizar/editar/ciclo de vida/soft delete;
 - suporte: criar/listar tickets basicos;
 - agenda: criar/listar calls basicas;
-- financeiro: listar charges e receber webhook Mercado Pago;
+- financeiro: criar/listar/visualizar/editar/baixar/cancelar/excluir charges e receber webhook Mercado Pago;
 - perfil/preferencias: salvar em `user_profiles` e `user_preferences`.
 
 Persistencia ausente ou incompleta:
 
 - documentos/anexos de clientes;
 - ciclo completo de contratos;
-- CRUD financeiro;
+- geracao externa de pagamentos Mercado Pago;
 - ticket messages/SLA/anexos;
 - agenda com timezone/UTC;
 - auditoria automatica em CRUDs;
@@ -260,7 +260,7 @@ Persistencia ausente ou incompleta:
 ### Altas
 
 - Agenda sem timezone/UTC.
-- Financeiro com metricas hardcoded em zero.
+- Validacao Mercado Pago sandbox/producao depende de credenciais oficiais.
 - Falta fluxo autenticado automatizado por perfil.
 - UI ainda nao aplica RBAC para ocultar/desabilitar acoes.
 
@@ -311,7 +311,6 @@ Motivo: ausencia de credenciais seguras de teste e ausencia de usuarios manager/
 5. CRUD completo de Clientes.
 6. CRUD completo de Produtos.
 7. Ciclo completo de Contratos.
-8. Financeiro real.
-9. Agenda com UTC/timezone.
-10. Suporte completo.
-11. Relatorios e configuracoes avancadas.
+8. Agenda com UTC/timezone.
+9. Suporte completo.
+10. Relatorios e configuracoes avancadas.

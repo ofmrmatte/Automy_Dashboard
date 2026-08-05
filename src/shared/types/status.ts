@@ -1,11 +1,22 @@
 export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 
 export function toneForStatus(status: string): StatusTone {
-  if (["Ativo", "Pago", "Resolvido"].includes(status)) return "success";
-  if (["Pendente", "Renovação", "Aguardando", "Média", "Implantação"].includes(status)) {
+  if (["Ativo", "Pago", "Resolvido", "paid"].includes(status)) return "success";
+  if (["Pendente", "Renovação", "Aguardando", "Média", "Implantação", "pending"].includes(status)) {
     return "warning";
   }
-  if (["Atrasado", "Crítica", "Descontinuando", "Suspenso", "Cancelado"].includes(status)) {
+  if (
+    [
+      "Atrasado",
+      "Crítica",
+      "Descontinuando",
+      "Suspenso",
+      "Cancelado",
+      "overdue",
+      "canceled",
+      "failed",
+    ].includes(status)
+  ) {
     return "danger";
   }
   if (["Em andamento", "Aberto", "Alta", "Beta"].includes(status)) return "info";

@@ -26,20 +26,20 @@
 ## Proxima Etapa
 
 - Validar Fase 7 autenticada em producao apos deploy da branch.
-- Seguir para Financeiro completo sem reintroduzir mocks.
+- Seguir para Agenda completa sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Financeiro, Agenda e Suporte.
+- Continuar desenvolvimento dos modulos de negocio: Agenda, Suporte, Relatorios, Busca, Notificacoes e Auditoria administrativa.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para financeiro e modulos posteriores.
+- Implementar CRUDs reais para agenda, suporte, relatorios e modulos posteriores.
 
 ## Fase 1 - Usuarios e Permissoes
 
@@ -104,6 +104,15 @@
 - Dashboard passa a refletir contratos ativos, a vencer, MRR e ARR a partir do ciclo real de contratos.
 - Pendencias: assinatura digital, anexos e renovacao com versionamento juridico dependem de decisoes posteriores.
 
+## Fase 8 - Financeiro
+
+- Implementado CRUD real de cobrancas com criar, listar, visualizar, editar, marcar como paga, cancelar, detectar atraso e excluir logicamente.
+- Persistidos status oficiais `pending`, `paid`, `overdue`, `canceled` e `failed`, com labels traduzidos apenas na interface.
+- Implementadas metricas reais: receita mensal, receita anual, inadimplencia, recebimentos previstos, valores pagos, valores em aberto e clientes inadimplentes.
+- Endpoint `/api/finance/charges` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Finalizada base Mercado Pago com assinatura de webhook, janela anti-replay, idempotencia por evento e tabela `payment_webhook_events`.
+- Pendencias: validar sandbox/producao Mercado Pago com credenciais oficiais e ativar geracao externa de pagamentos quando a decisao comercial estiver definida.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -118,7 +127,7 @@
 - Clientes: CRUD, contatos, enderecos e historico.
 - Produtos: CRUD, termos comerciais, modelo de contrato e vinculacao real com contratos.
 - Contratos: ciclo de vida, valores, renovacoes e itens de contrato.
-- Financeiro: modelagem propria antes de exibir cobrancas.
+- Financeiro: CRUD de cobrancas, baixa manual, cancelamento, metricas e conciliacao Mercado Pago preparada.
 - Suporte: modelagem propria antes de exibir tickets.
 - Relatorios: exportacao somente com dados reais.
 
