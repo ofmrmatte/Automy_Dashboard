@@ -2,7 +2,7 @@
 
 ## Current Project Status
 
-- `v1.0.0-rc2` congela a baseline oficial da Automy antes dos modulos reais.
+- `v1.0.0-rc3` congela a baseline oficial da Automy antes dos modulos reais.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - Design System, Brand Kit e Login Premium estao congelados.
@@ -11,13 +11,15 @@
 - A persistencia foi validada via TCP Proxy Railway em ambiente local e as variaveis foram configuradas no Vercel.
 - Envio de e-mail transacional para recuperacao de senha e verificacao de e-mail ainda precisa de provedor aprovado.
 
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 - Design System esta congelado.
 - Brand Kit esta congelado.
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
 
 ## Proxima Etapa

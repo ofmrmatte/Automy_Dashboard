@@ -22,13 +22,15 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
 
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 - Design System esta congelado.
 - Brand Kit esta congelado.
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
 - Alteracoes estruturais apos esta baseline exigem aprovacao explicita.
 

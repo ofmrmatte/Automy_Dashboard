@@ -6,7 +6,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 
 ## Current Project Status
 
-- Baseline oficial congelada em `v1.0.0-rc2`.
+- Baseline oficial congelada em `v1.0.0-rc3`.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
@@ -15,13 +15,15 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - A persistencia real em Railway PostgreSQL foi validada por TCP Proxy fora da rede Railway e por runtime interno Railway.
 - Cadastro publico esta desabilitado; criacao de usuarios deve ocorrer por fluxo administrativo controlado.
 
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 - Design System esta congelado.
 - Brand Kit esta congelado.
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
 - Paginas, componentes e modulos de negocio devem manter o fluxo: Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL.
 - Autenticacao deve permanecer em Better Auth salvo aprovacao explicita para mudanca estrutural.

@@ -2,13 +2,15 @@
 
 Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo temporario, mocks e dados ficticios nao devem ser adicionados.
 
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 - Design System esta congelado.
 - Brand Kit esta congelado.
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Better Auth e o provedor oficial de autenticacao.
 - Toda nova funcionalidade devera respeitar este `PROJECT_RULES.md`.
 - Nenhuma alteracao estrutural deve ser feita sem aprovacao explicita.

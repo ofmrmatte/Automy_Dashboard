@@ -1,13 +1,17 @@
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 Esta versao representa o ponto oficial de partida para o desenvolvimento dos modulos de negocio da Automy.
 
 Nenhuma nova funcionalidade foi implementada neste freeze. A finalidade desta etapa e consolidar o estado atual do projeto, registrar as decisoes tecnicas oficiais e bloquear alteracoes estruturais sem aprovacao explicita.
 
+Esta baseline substitui a `v1.0.0-rc2` como referencia operacional porque a nova foundation Railway foi ativada, validada e conectada ao Vercel.
+
 ## Escopo Congelado
 
 - Arquitetura consolidada.
 - Railway PostgreSQL definido como banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Login Premium consolidado.
 - Design System consolidado.
 - Brand Kit aplicado.
@@ -35,11 +39,11 @@ Variaveis esperadas por ambiente:
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
 
-Hosts `*.railway.internal` devem ser usados apenas dentro da rede privada Railway. Local e Vercel devem utilizar a URL publica/proxy do Railway.
+Hosts `*.railway.internal` devem ser usados apenas dentro da rede privada Railway. Local e Vercel devem utilizar a URL publica/TCP Proxy do Railway.
 
 ## Autenticacao
 
-Better Auth e a autenticacao oficial da Automy a partir da etapa posterior ao freeze `v1.0.0-rc2`. A baseline permanece registrada como ponto estrutural congelado; a autenticacao atual usa Railway PostgreSQL, cookies HttpOnly, hash padrao do Better Auth e RBAC inicial.
+Better Auth e a autenticacao oficial da Automy. A autenticacao atual usa Railway PostgreSQL, cookies HttpOnly, hash padrao do Better Auth e RBAC inicial.
 
 ## Checklist da Baseline
 

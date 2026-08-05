@@ -2,7 +2,7 @@
 
 ## Current Project Status
 
-- Baseline oficial: `v1.0.0-rc2`.
+- Baseline oficial: `v1.0.0-rc3`.
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
 - Arquitetura Feature First consolidada.
@@ -11,18 +11,21 @@
 - TCP Proxy Railway configurado para acesso local/Vercel.
 - Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
 
-# BASELINE v1.0.0-RC2
+# BASELINE v1.0.0-RC3
 
 - Design System esta congelado.
 - Brand Kit esta congelado.
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Foundation operacional ativada na nova conta Railway.
+- Vercel configurado com as variaveis da nova foundation.
 - Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
 
 ## 2026-08-05
 
 - Reconstruida a foundation de infraestrutura para nova conta Railway.
+- Promovida baseline oficial para `v1.0.0-rc3` apos ativacao operacional da nova foundation.
 - Removidas migrations Railway antigas.
 - Criada migration unica `20260805010000_automy_foundation_schema.sql`.
 - Criada migration `20260805012000_align_better_auth_column_names.sql` para alinhamento do adapter PostgreSQL do Better Auth.
@@ -39,7 +42,7 @@
 - Integrado login, logout, sessao persistente, remember me, alteracao de senha e recuperacao de senha ao Better Auth.
 - Preparada estrutura de verificacao de e-mail com envio desabilitado ate configuracao de provedor transacional.
 - Protegidos endpoints internos de dados com sessao Better Auth.
-- Congelada a baseline `v1.0.0-rc2` antes do desenvolvimento dos modulos de negocio.
+- Congelada a baseline `v1.0.0-rc3` antes do desenvolvimento dos modulos de negocio.
 - Adicionada documentacao de Baseline Freeze em `docs/BASELINE_FREEZE.md`.
 - Documentado que alteracoes estruturais futuras exigem aprovacao explicita.
 - Consolidada a migration Railway em `railway/migrations`.
