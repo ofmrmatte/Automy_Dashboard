@@ -16,13 +16,13 @@ Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo tempora
 - Sempre utilizar Service Layer.
 - Nunca acessar Prisma diretamente pelas paginas.
 - Nunca acessar API diretamente pelos componentes.
-- Nunca acessar Supabase diretamente pelas paginas ou componentes.
+- Nunca acessar Railway PostgreSQL diretamente pelas paginas ou componentes.
 - Paginas devem consumir services via React Query ou hooks de aplicacao.
-- Componentes visuais nao devem conhecer Supabase, Prisma, fetch ou contratos externos.
+- Componentes visuais nao devem conhecer Railway, Prisma, fetch ou contratos externos.
 - Repositories sao a fronteira de persistencia.
 - Services sao a fronteira de regras de aplicacao.
 - Prisma, quando adotado, deve ficar atras de repositories.
-- Supabase e a fonte oficial de dados enquanto nao houver backend dedicado.
+- Railway PostgreSQL e a fonte oficial de dados.
 - Nao criar novos mocks.
 - Nao criar dados ficticios.
 - Quando nao houver dados reais, utilizar Empty State profissional.
@@ -65,9 +65,10 @@ Todo CRUD deve possuir:
 
 ## Banco de Dados
 
-- Toda tabela exposta deve ter Row Level Security habilitado.
+- O banco oficial e Railway PostgreSQL.
+- Toda tabela exposta diretamente fora da API interna deve ter Row Level Security ou controle equivalente habilitado.
 - Nao conceder hard delete para fluxos de usuario final.
 - Toda leitura de entidade ativa deve filtrar `deleted_at is null`.
-- Migrations devem ficar em `supabase/migrations`.
+- Migrations devem ficar em `railway/migrations`.
 - Novas tabelas devem receber indices para `company_id` e filtros frequentes quando aplicavel.
 - Dados globais somente podem ser alterados por fluxos administrativos controlados.

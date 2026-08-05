@@ -24,9 +24,7 @@ function toCsv(rows: Array<Record<string, unknown>>) {
 
   const headers = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
   const lines = rows.map((row) =>
-    headers
-      .map((header) => `"${flattenValue(row[header]).replace(/"/g, '""')}"`)
-      .join(","),
+    headers.map((header) => `"${flattenValue(row[header]).replace(/"/g, '""')}"`).join(","),
   );
 
   return `${headers.join(",")}\n${lines.join("\n")}`;
@@ -63,7 +61,10 @@ export function ReportsPage() {
 
       const payload = (await response.json()) as Record<string, Array<Record<string, unknown>>>;
       const rows = payload[config.key] ?? [];
-      downloadCsv(`automy-${title.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows));
+      downloadCsv(
+        `automy-${title.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`,
+        toCsv(rows),
+      );
       setDone(title);
     } catch (error) {
       toast.danger(error instanceof Error ? error.message : "Não foi possível exportar.");
@@ -85,7 +86,11 @@ export function ReportsPage() {
           <option>Este trimestre</option>
           <option>Este ano</option>
         </Select>
-        <Select aria-label="Formato" value={format} onChange={(event) => setFormat(event.target.value)}>
+        <Select
+          aria-label="Formato"
+          value={format}
+          onChange={(event) => setFormat(event.target.value)}
+        >
           <option>CSV</option>
           <option>PDF</option>
           <option>XLSX</option>

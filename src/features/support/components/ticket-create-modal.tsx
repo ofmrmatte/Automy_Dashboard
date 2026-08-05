@@ -72,7 +72,10 @@ export function TicketCreateModal({ open, onClose }: { open: boolean; onClose: (
           </Field>
         </div>
         <Field label="Descrição">
-          <Textarea name="description" placeholder="Detalhes do problema, impacto e próximos passos." />
+          <Textarea
+            name="description"
+            placeholder="Detalhes do problema, impacto e próximos passos."
+          />
         </Field>
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>

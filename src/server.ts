@@ -4,7 +4,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api";
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
-import { handleLocalAuthRequest } from "./features/identity/server/local-auth";
+import { handleRailwayAuthRequest } from "./features/identity/server/railway-auth";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -50,7 +50,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      const authResponse = await handleLocalAuthRequest(request);
+      const authResponse = await handleRailwayAuthRequest(request);
       if (authResponse) return authResponse;
 
       const appDataResponse = await handleAppDataApiRequest(request);

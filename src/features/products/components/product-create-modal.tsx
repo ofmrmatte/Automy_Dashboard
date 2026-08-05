@@ -34,7 +34,7 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState(categories[0]);
+  const [category, setCategory] = useState(categories[0] ?? "Logística");
   const [description, setDescription] = useState("");
   const [deliverables, setDeliverables] = useState(
     "Implantação, configuração do sistema, treinamento inicial, suporte operacional e ajustes previstos na proposta.",
@@ -43,7 +43,7 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
   const [customUrl, setCustomUrl] = useState(false);
   const [hasMonthlyFee, setHasMonthlyFee] = useState(true);
   const [hasDatabaseCost, setHasDatabaseCost] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(paymentMethods[0]);
+  const [paymentMethod, setPaymentMethod] = useState(paymentMethods[0] ?? "Boleto à vista");
 
   const preview = useMemo(
     () =>
@@ -142,13 +142,21 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
       description="Cadastre o sistema e gere o contrato padrão usado nas vendas."
       size="xl"
     >
-      <form className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]" onSubmit={handleSubmit}>
+      <form
+        className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]"
+        onSubmit={handleSubmit}
+      >
         <div className="grid gap-5">
           <section className="grid gap-4">
             <h3 className="text-sm font-semibold text-foreground">Sistema</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome do produto ou sistema">
-                <Input name="name" required value={name} onChange={(event) => setName(event.target.value)} />
+                <Input
+                  name="name"
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
               </Field>
               <Field label="Versão">
                 <Input name="version" defaultValue="1.0" />
@@ -203,7 +211,13 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
                 <Input name="implementationDays" type="number" min={1} defaultValue={30} />
               </Field>
               <Field label="Valor da implantação">
-                <Input name="implementationFee" type="number" min={0} step="0.01" defaultValue={0} />
+                <Input
+                  name="implementationFee"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  defaultValue={0}
+                />
               </Field>
               <Field label="Forma de pagamento">
                 <Select
@@ -217,10 +231,22 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
                 </Select>
               </Field>
               <Field label="Parcelas">
-                <Input name="installments" type="number" min={1} defaultValue={paymentMethod === "Boleto parcelado" ? 3 : 1} />
+                <Input
+                  name="installments"
+                  type="number"
+                  min={1}
+                  defaultValue={paymentMethod === "Boleto parcelado" ? 3 : 1}
+                />
               </Field>
               <Field label="Desconto (%)">
-                <Input name="discountPercent" type="number" min={0} max={100} step="0.01" defaultValue={0} />
+                <Input
+                  name="discountPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  defaultValue={0}
+                />
               </Field>
               <Field label="Fidelidade (meses)">
                 <Input name="loyaltyMonths" type="number" min={0} defaultValue={12} />
@@ -294,4 +320,3 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
     </Modal>
   );
 }
-

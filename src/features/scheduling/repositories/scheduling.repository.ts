@@ -78,4 +78,3 @@ export const schedulingRepository = {
     return mapCall(result.call);
   },
 };
-

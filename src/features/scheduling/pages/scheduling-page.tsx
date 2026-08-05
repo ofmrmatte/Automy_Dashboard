@@ -1,5 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Link as LinkIcon, Save } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Link as LinkIcon,
+  Save,
+} from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import {
   scheduledCallsQueryOptions,
@@ -57,7 +64,8 @@ export function SchedulingPage() {
   const selectedCalls = useMemo(() => callsForDate(calls, selectedDate), [calls, selectedDate]);
   const callCountByDate = useMemo(() => {
     const count = new Map<string, number>();
-    for (const call of calls) count.set(call.scheduledDate, (count.get(call.scheduledDate) ?? 0) + 1);
+    for (const call of calls)
+      count.set(call.scheduledDate, (count.get(call.scheduledDate) ?? 0) + 1);
     return count;
   }, [calls]);
 
@@ -133,7 +141,9 @@ export function SchedulingPage() {
                       : "min-h-24 border border-border p-2 text-left text-foreground hover:bg-muted/50"
                   }
                 >
-                  <span className={inMonth ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
+                  <span
+                    className={inMonth ? "text-sm font-medium" : "text-sm text-muted-foreground"}
+                  >
                     {day.getDate()}
                   </span>
                   {count > 0 && (
@@ -183,7 +193,10 @@ export function SchedulingPage() {
                 <Input name="meetingLink" placeholder="Google Meet, Zoom ou WhatsApp" />
               </Field>
               <Field label="Detalhes">
-                <Textarea name="notes" placeholder="Objetivo, pauta, necessidades e próximos passos." />
+                <Textarea
+                  name="notes"
+                  placeholder="Objetivo, pauta, necessidades e próximos passos."
+                />
               </Field>
               <Button loading={saving}>
                 <Save className="size-4" />

@@ -1,18 +1,26 @@
 # Roadmap
 
+## Current Project Status
+
+- `v1.0.0-rc1` consolida a baseline oficial da Automy.
+- O codigo esta preparado para Railway PostgreSQL.
+- O projeto Vercel esta conectado ao GitHub.
+- As variaveis Railway precisam ser configuradas no Vercel antes de considerar persistencia de producao validada.
+- A autenticacao atual e temporaria e deve ser migrada para um fluxo definitivo em PostgreSQL.
+
 ## Proxima Etapa
 
-- Conectar o projeto ao Supabase oficial.
-- Aplicar a migration inicial.
-- Aplicar a migration do modulo de identidade.
-- Configurar URLs de redirecionamento do Supabase Auth para `/redefinir-senha`.
+- Aplicar a migration inicial em Railway PostgreSQL.
+- Validar variaveis `DATABASE_URL`, `PGSSLMODE`, `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` em producao.
+- Definir o provedor definitivo de autenticacao antes de expandir usuarios e permissoes.
+- Remover variaveis legadas do provedor anterior no Vercel apos confirmar que a aplicacao usa somente Railway.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
 - Implementar CRUDs reais para clientes, produtos e contratos.
 
 ## Dados e Permissoes
 
-- Revisar policies com usuarios reais.
+- Revisar autorizacao server-side com usuarios reais.
 - Criar matriz de permissoes por role.
 - Definir fluxo administrativo para permissions globais.
 - Adicionar auditoria automatica de `created_by` e `updated_by`.

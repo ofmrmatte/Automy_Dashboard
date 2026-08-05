@@ -5,4 +5,3 @@ export const schedulingService = {
   createCall: (payload: Parameters<typeof schedulingRepository.create>[0]) =>
     schedulingRepository.create(payload),
 };
-

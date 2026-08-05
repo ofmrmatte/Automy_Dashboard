@@ -4,6 +4,15 @@
 
 Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto nao utiliza dados ficticios nem mocks como fonte de UI.
 
+## Current Project Status
+
+- Baseline oficial preparada para `v1.0.0-rc1`.
+- A identidade visual, Design System e Brand Kit estao consolidados.
+- O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
+- O projeto Vercel `automy-dashboard` esta conectado ao GitHub e possui deployment de producao pronto.
+- As variaveis Railway ainda devem ser configuradas no Vercel antes de validar persistencia real em producao.
+- A autenticacao administrativa por env vars e temporaria e deve ser substituida por autenticacao persistida em PostgreSQL.
+
 ## Frontend
 
 - React 19
@@ -23,34 +32,36 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/features/*/repositories`: acesso a persistencia.
 - `src/features/*/types.ts`: tipos do dominio.
 - `src/shared`: componentes, tokens, constantes, utilitarios e infraestrutura compartilhada.
-- `supabase/migrations`: schema versionado do banco.
+- `railway/migrations`: schema versionado do banco oficial.
 
 ## Fluxo de Dados
 
-Pagina -> React Query -> Service -> Repository -> Supabase
+Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL
 
-Componentes visuais nao acessam APIs, Supabase ou Prisma diretamente.
+Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
 
 ## Identidade
 
 O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias do usuario.
 
-- Auth: Supabase Auth com e-mail e senha.
-- Sessao: `IdentityProvider` persiste e observa a sessao do Supabase.
+- Auth: e-mail e senha via endpoint interno em `src/features/identity/server/railway-auth.ts`.
+- Sessao: `IdentityProvider` consome o service de identidade e persiste a sessao do usuario no cliente.
 - Rotas publicas: `/login`, `/recuperar-senha`, `/redefinir-senha`.
 - Rotas privadas: todas as demais rotas sao protegidas no root route.
 - Perfil: dados pessoais, avatar, senha, preferencias e sessoes ativas.
-- Avatar: Supabase Storage no bucket privado `avatars`, com signed URLs.
+- Avatar: estrutura mantida no dominio de identidade; upload definitivo sera conectado a storage dedicado em etapa futura.
 
-## Supabase
+## Railway PostgreSQL
 
-O client fica em `src/shared/lib/supabase/client.ts` e le:
+O acesso server-side fica em `src/shared/server/postgres.ts` e le:
 
-- `VITE_SUPABASE_URL=https://hpynyyvunyyejjoqvvjw.supabase.co`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_ANON_KEY` como compatibilidade
+- `DATABASE_URL`
+- `PGSSLMODE=require` quando o ambiente exigir TLS
+- `RAILWAY_ENVIRONMENT` para identificar runtime Railway
 
-Sem variaveis configuradas, os repositories retornam colecoes vazias para manter a aplicacao navegavel com Empty States.
+Sem `DATABASE_URL`, os endpoints de leitura retornam colecoes vazias quando possivel e os fluxos de escrita retornam erro operacional claro.
+
+`DATABASE_URL` com host `*.railway.internal` deve ser usada apenas em runtimes dentro da rede privada Railway. Para desenvolvimento local e Vercel, usar a URL publica/proxy do Railway.
 
 ## Banco Inicial
 
@@ -61,22 +72,24 @@ A migration inicial cria:
 - `roles`
 - `permissions`
 - `role_permissions`
+- `user_profiles`
+- `user_preferences`
 - `clients`
 - `contacts`
 - `addresses`
 - `products`
 - `contracts`
 - `activity_logs`
+- `support_tickets`
+- `scheduled_calls`
+- `charges`
+- `app_settings`
 
-Todas as entidades usam UUID, auditoria, soft delete e RLS.
+As entidades usam UUID, auditoria e soft delete. Como o acesso ao banco ocorre por API server-side propria, controles de permissao devem ser aplicados na camada de API/service. RLS pode ser adotado posteriormente caso o banco passe a ser exposto diretamente a clientes ou gateways externos.
 
-A migration de identidade adiciona:
+## Autenticacao Temporaria
 
-- `user_profiles`
-- `user_preferences`
-- bucket Storage `avatars`
-
-Essas estruturas usam RLS por `auth.uid()`.
+A release `v1.0.0-rc1` mantem autenticacao por `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` para preservar acesso durante a migracao de infraestrutura. Essa abordagem nao deve ser expandida para multiusuario. A autenticacao definitiva deve usar tabela de usuarios, hash de senha, sessoes persistidas, recuperacao de senha, bloqueio por tentativa e auditoria.
 
 ## Prisma
 

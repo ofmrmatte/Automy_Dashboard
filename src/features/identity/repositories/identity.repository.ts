@@ -55,6 +55,10 @@ function removeStoredIdentity() {
   window.localStorage.removeItem(PREFERENCES_KEY);
 }
 
+function createRecordId() {
+  return crypto.randomUUID();
+}
+
 async function readServerSetting<T>(path: string, authUserId: string) {
   const response = await fetch(`${path}?authUserId=${encodeURIComponent(authUserId)}`);
   if (!response.ok) return null;
@@ -83,12 +87,12 @@ function createProfile(session: AuthSession): IdentityProfile {
   const metadata = session.user.user_metadata;
 
   return {
-    id: "railway-profile",
+    id: createRecordId(),
     authUserId: session.user.id,
-    firstName: typeof metadata["first_name"] === "string" ? metadata["first_name"] : "Adrian",
-    lastName: typeof metadata["last_name"] === "string" ? metadata["last_name"] : "Automy",
+    firstName: typeof metadata["first_name"] === "string" ? metadata["first_name"] : "",
+    lastName: typeof metadata["last_name"] === "string" ? metadata["last_name"] : "",
     phone: "",
-    jobTitle: "Administrador",
+    jobTitle: "",
     companyName: "Automy",
     avatarPath: null,
     createdAt: now,
@@ -103,7 +107,7 @@ function createPreferences(authUserId: string): IdentityPreferences {
   const now = new Date().toISOString();
 
   return {
-    id: "railway-preferences",
+    id: createRecordId(),
     authUserId,
     theme: "system",
     language: detectBrowserLanguage(),
@@ -140,8 +144,6 @@ export const identityRepository = {
 
     const payload = (await response.json()) as { session: AuthSession };
     writeJson(SESSION_KEY, payload.session);
-    writeJson(PROFILE_KEY, createProfile(payload.session));
-    writeJson(PREFERENCES_KEY, createPreferences(payload.session.user.id));
     return payload.session;
   },
 
@@ -150,7 +152,7 @@ export const identityRepository = {
   },
 
   updatePassword: async (_password: string, _currentPassword?: string) => {
-    throw new RepositoryError("Alteração de senha deve ser feita nas variáveis da Railway.");
+    throw new RepositoryError("Alteração de senha ainda não está disponível neste modo.");
   },
 
   signOut: async (_scope: SignOutScope = "local") => {
@@ -158,22 +160,56 @@ export const identityRepository = {
   },
 
   ensureIdentityRecords: async (session: AuthSession) => {
-    if (!readJson<IdentityProfile>(PROFILE_KEY)) {
-      writeJson(PROFILE_KEY, createProfile(session));
+    const serverProfile = await readServerSetting<IdentityProfile>(
+      "/api/settings/profile",
+      session.user.id,
+    );
+    if (serverProfile) {
+      writeJson(PROFILE_KEY, serverProfile);
+    } else {
+      const profile = readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
+      const savedProfile = await writeServerSetting(
+        "/api/settings/profile",
+        session.user.id,
+        profile,
+      );
+      writeJson(PROFILE_KEY, savedProfile);
     }
-    if (!readJson<IdentityPreferences>(PREFERENCES_KEY)) {
-      writeJson(PREFERENCES_KEY, createPreferences(session.user.id));
+
+    const serverPreferences = await readServerSetting<IdentityPreferences>(
+      "/api/settings/preferences",
+      session.user.id,
+    );
+    if (serverPreferences) {
+      writeJson(PREFERENCES_KEY, serverPreferences);
+    } else {
+      const preferences =
+        readJson<IdentityPreferences>(PREFERENCES_KEY) ?? createPreferences(session.user.id);
+      const savedPreferences = await writeServerSetting(
+        "/api/settings/preferences",
+        session.user.id,
+        preferences,
+      );
+      writeJson(PREFERENCES_KEY, savedPreferences);
     }
   },
 
   getProfile: async (authUserId: string) => {
-    const serverProfile = await readServerSetting<IdentityProfile>("/api/settings/profile", authUserId);
+    const serverProfile = await readServerSetting<IdentityProfile>(
+      "/api/settings/profile",
+      authUserId,
+    );
     if (serverProfile) {
       writeJson(PROFILE_KEY, serverProfile);
       return serverProfile;
     }
 
-    return readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(readJson<AuthSession>(SESSION_KEY)!);
+    const session = readJson<AuthSession>(SESSION_KEY);
+    if (!session) {
+      throw new RepositoryError("Sessão não encontrada para carregar o perfil.");
+    }
+
+    return readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
   },
 
   getPreferences: async (authUserId: string) => {
@@ -190,8 +226,12 @@ export const identityRepository = {
   },
 
   updateProfile: async (authUserId: string, payload: ProfileUpdatePayload) => {
-    const current =
-      readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(readJson<AuthSession>(SESSION_KEY)!);
+    const session = readJson<AuthSession>(SESSION_KEY);
+    if (!session) {
+      throw new RepositoryError("Sessão não encontrada para salvar o perfil.");
+    }
+
+    const current = readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
     const nextProfile: IdentityProfile = {
       ...current,
       ...payload,
@@ -222,7 +262,7 @@ export const identityRepository = {
     return saved;
   },
 
-  uploadAvatar: async (_authUserId: string, _file: File) => {
+  uploadAvatar: async (_authUserId: string, _file: File): Promise<IdentityProfile> => {
     throw new RepositoryError("Upload de avatar ainda não está disponível neste modo.");
   },
 

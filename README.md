@@ -8,6 +8,18 @@ Aplicação web SaaS para gestão, automação e controle operacional de empresa
 
 Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios ou placeholders de desenvolvimento.
 
+## Current Project Status
+
+- Release baseline: `v1.0.0-rc1`.
+- Design System Automy consolidado e aplicado.
+- Brand Kit Automy aplicado nos assets publicos.
+- Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
+- Railway PostgreSQL e o banco oficial definido em codigo e migrations.
+- Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e realiza deploys de `main`.
+- Ambiente local nao possui `.env.local` neste checkout.
+- Ambiente Vercel ainda precisa receber as variaveis Railway oficiais e remover variaveis antigas do provedor anterior.
+- Autenticacao atual e temporaria, baseada em `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD`, ate a implementacao da autenticacao definitiva em PostgreSQL.
+
 ## Stack
 
 - React
@@ -19,6 +31,8 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Tailwind CSS
 - Lucide React
 - Recharts
+- Railway PostgreSQL
+- Node Postgres (`pg`)
 
 ## Scripts
 
@@ -63,19 +77,34 @@ As cores, raios, sombras, tipografia e tokens semânticos estão centralizados e
 
 A aplicação segue organização feature-first em `src/features`, com componentes compartilhados em `src/shared`.
 
-## Supabase
+## Railway PostgreSQL
 
-Configure as variaveis de ambiente:
+Railway PostgreSQL e a fonte oficial de dados da Automy.
+
+Configure as variaveis de ambiente no ambiente de deploy:
 
 ```bash
-VITE_SUPABASE_URL=https://hpynyyvunyyejjoqvvjw.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=
+DATABASE_URL=
+PGSSLMODE=require
+AUTOMY_ADMIN_EMAIL=
+AUTOMY_ADMIN_PASSWORD=
+AUTOMY_ADMIN_USER_ID=
 ```
 
-As migrations ficam em:
+`AUTOMY_ADMIN_USER_ID` e opcional. Quando ausente, a aplicacao deriva um UUID estavel a partir do e-mail administrativo configurado.
+
+Use `.env.example` como referencia de nomes de variaveis. Nunca versionar `.env.local` ou valores reais.
+
+### URLs por ambiente
+
+- LOCAL: usar a URL publica/proxy do Railway, pois o host `*.railway.internal` nao e acessivel fora da rede privada Railway.
+- Vercel: usar a URL publica/proxy do Railway, com `PGSSLMODE=require` quando TLS for exigido.
+- Railway: pode usar a URL interna `*.railway.internal` somente quando a aplicacao estiver rodando dentro da propria rede Railway.
+
+As migrations oficiais ficam em:
 
 ```bash
-supabase/migrations
+railway/migrations
 ```
 
 Rotas de autenticacao:
@@ -83,5 +112,3 @@ Rotas de autenticacao:
 - `/login`
 - `/recuperar-senha`
 - `/redefinir-senha`
-
-No Supabase Auth, configure a URL de redirecionamento de recuperacao de senha para `/redefinir-senha` no dominio de producao.

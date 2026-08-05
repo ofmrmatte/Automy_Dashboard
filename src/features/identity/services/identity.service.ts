@@ -14,7 +14,8 @@ export const identityService = {
   updatePassword: (password: string, currentPassword?: string) =>
     identityRepository.updatePassword(password, currentPassword),
   signOut: (scope: "global" | "local" | "others" = "local") => identityRepository.signOut(scope),
-  ensureIdentityRecords: (session: AuthSession) => identityRepository.ensureIdentityRecords(session),
+  ensureIdentityRecords: (session: AuthSession) =>
+    identityRepository.ensureIdentityRecords(session),
   getProfile: (authUserId: string) => identityRepository.getProfile(authUserId),
   getPreferences: (authUserId: string) => identityRepository.getPreferences(authUserId),
   getAvatarUrl: (avatarPath: string | null) => identityRepository.getAvatarUrl(avatarPath),

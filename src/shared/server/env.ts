@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 let loaded = false;
 
 export function loadLocalServerEnv() {
-  if (loaded || process.env.RAILWAY_ENVIRONMENT) return;
+  if (loaded || process.env["RAILWAY_ENVIRONMENT"]) return;
   loaded = true;
 
   const envPath = resolve(process.cwd(), ".env.local");
@@ -25,4 +25,3 @@ export function loadLocalServerEnv() {
     process.env[key] = rawValue.replace(/^["']|["']$/g, "");
   }
 }
-

@@ -30,7 +30,7 @@ export function ContractCreateModal({ open, onClose }: { open: boolean; onClose:
       companyName: companyName || "Razão social da contratante",
       document: document || "CNPJ da contratante",
       signerName: signerName || "Responsável pela assinatura",
-      witnessName: hasWitness ? witnessName || "Nome da testemunha" : undefined,
+      ...(hasWitness ? { witnessName: witnessName || "Nome da testemunha" } : {}),
     });
   }, [companyName, document, hasWitness, selectedProduct, signerName, witnessName]);
 
@@ -70,7 +70,10 @@ export function ContractCreateModal({ open, onClose }: { open: boolean; onClose:
       description="Selecione o produto e complete apenas os dados da contratante."
       size="xl"
     >
-      <form className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(420px,1fr)]" onSubmit={handleSubmit}>
+      <form
+        className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(420px,1fr)]"
+        onSubmit={handleSubmit}
+      >
         <div className="grid content-start gap-5">
           <section className="grid gap-4">
             <h3 className="text-sm font-semibold text-foreground">Produto vendido</h3>
@@ -117,7 +120,10 @@ export function ContractCreateModal({ open, onClose }: { open: boolean; onClose:
               />
             </Field>
             <label className="flex items-center gap-2 text-sm text-foreground">
-              <Checkbox checked={hasWitness} onChange={(event) => setHasWitness(event.target.checked)} />
+              <Checkbox
+                checked={hasWitness}
+                onChange={(event) => setHasWitness(event.target.checked)}
+              />
               Tem testemunha
             </label>
             {hasWitness && (
@@ -191,4 +197,3 @@ export function ContractCreateModal({ open, onClose }: { open: boolean; onClose:
     </Modal>
   );
 }
-

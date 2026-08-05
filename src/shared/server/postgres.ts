@@ -7,10 +7,10 @@ let pool: Pool | undefined;
 export function isRailwayPostgresConfigured() {
   loadLocalServerEnv();
 
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env["DATABASE_URL"];
   if (!databaseUrl) return false;
 
-  if (databaseUrl.includes(".railway.internal") && !process.env.RAILWAY_ENVIRONMENT) {
+  if (databaseUrl.includes(".railway.internal") && !process.env["RAILWAY_ENVIRONMENT"]) {
     return false;
   }
 
@@ -22,7 +22,7 @@ export async function getRailwayPostgresPool() {
 
   if (pool) return pool;
 
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env["DATABASE_URL"];
   if (!databaseUrl) {
     throw new Error("DATABASE_URL não está configurado.");
   }
@@ -30,7 +30,7 @@ export async function getRailwayPostgresPool() {
   const { Pool } = await import("pg");
   pool = new Pool({
     connectionString: databaseUrl,
-    ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : undefined,
+    ssl: process.env["PGSSLMODE"] === "require" ? { rejectUnauthorized: false } : undefined,
   });
 
   return pool;

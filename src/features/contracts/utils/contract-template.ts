@@ -23,7 +23,8 @@ const DEFAULT_TERMS: ProductCommercialTerms = {
   databaseCost: 0,
   extraUserPrice: 0,
   loyaltyMonths: 12,
-  deliverables: "Implantação, configuração inicial, treinamento operacional e suporte conforme plano contratado.",
+  deliverables:
+    "Implantação, configuração inicial, treinamento operacional e suporte conforme plano contratado.",
 };
 
 function money(value: number) {
@@ -104,7 +105,7 @@ export function buildContractDraft(product: Product, party: ContractPartyInput) 
     buildProductContractTemplate({
       name: product.name,
       category: product.category,
-      description: product.description,
+      ...(product.description ? { description: product.description } : {}),
       commercialTerms: normalizeProductTerms(product),
     });
 
@@ -129,4 +130,3 @@ CONTRATADA: AUTOMY
 Assinatura: _______________________________
 ${witnessBlock}`;
 }
-

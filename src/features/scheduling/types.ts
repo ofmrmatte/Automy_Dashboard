@@ -15,4 +15,3 @@ export type ScheduledCall = AuditableEntity & {
   notes: string;
   status: ScheduledCallStatus;
 };
-

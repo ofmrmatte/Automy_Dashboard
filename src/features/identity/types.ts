@@ -6,6 +6,7 @@ export type AuthUser = {
   user_metadata: Record<string, unknown>;
   aud: string;
   created_at: string;
+  last_sign_in_at?: string | null;
   email?: string;
 };
 

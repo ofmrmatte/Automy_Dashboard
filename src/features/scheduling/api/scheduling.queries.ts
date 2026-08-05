@@ -12,4 +12,3 @@ export function scheduledCallsQueryOptions() {
     enabled: typeof window !== "undefined",
   });
 }
-

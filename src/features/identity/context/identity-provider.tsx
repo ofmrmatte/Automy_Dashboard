@@ -4,11 +4,7 @@ import {
   type IdentityContextValue,
 } from "@/features/identity/context/identity-context";
 import { identityService } from "@/features/identity/services/identity.service";
-import type {
-  AuthSession,
-  IdentityPreferences,
-  IdentityProfile,
-} from "@/features/identity/types";
+import type { AuthSession, IdentityPreferences, IdentityProfile } from "@/features/identity/types";
 import { toast } from "@/shared/components/toast";
 
 function getIdentityErrorMessage(error: unknown) {
@@ -113,6 +109,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       uploadAvatar: async (file) => {
         if (!session) return;
         const nextProfile = await identityService.uploadAvatar(session.user.id, file);
+        if (!nextProfile) return;
         setProfile(nextProfile);
         setAvatarUrl(await identityService.getAvatarUrl(nextProfile.avatarPath));
       },

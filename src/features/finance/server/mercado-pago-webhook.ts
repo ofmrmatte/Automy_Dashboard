@@ -83,10 +83,10 @@ async function createHmacSha256Hex(value: string, secret: string) {
 }
 
 async function validateMercadoPagoSignature(request: Request, dataId: string) {
-  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+  const secret = process.env["MERCADO_PAGO_WEBHOOK_SECRET"];
 
   if (!secret) {
-    return process.env.NODE_ENV !== "production";
+    return process.env["NODE_ENV"] !== "production";
   }
 
   const xSignature = parseSignatureHeader(request.headers.get("x-signature"));
@@ -132,7 +132,7 @@ function getMercadoPagoResourceUrl(topic: string, dataId: string) {
 }
 
 async function fetchMercadoPagoResource(topic: string, dataId: string) {
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  const accessToken = process.env["MERCADO_PAGO_ACCESS_TOKEN"];
   const resourceUrl = getMercadoPagoResourceUrl(topic, dataId);
 
   if (!accessToken || !resourceUrl) return null;
@@ -153,7 +153,8 @@ async function fetchMercadoPagoResource(topic: string, dataId: string) {
 
 function mapChargeStatus(status: string | undefined): Charge["status"] {
   if (status === "approved" || status === "accredited") return "Pago";
-  if (status === "rejected" || status === "cancelled" || status === "charged_back") return "Atrasado";
+  if (status === "rejected" || status === "cancelled" || status === "charged_back")
+    return "Atrasado";
   return "Pendente";
 }
 
@@ -167,7 +168,9 @@ function formatDateOnly(value: string | undefined) {
 }
 
 function getClientName(resource: MercadoPagoResource) {
-  const fullName = [resource.payer?.first_name, resource.payer?.last_name].filter(Boolean).join(" ");
+  const fullName = [resource.payer?.first_name, resource.payer?.last_name]
+    .filter(Boolean)
+    .join(" ");
   return fullName || resource.payer?.email || "Cliente não identificado";
 }
 

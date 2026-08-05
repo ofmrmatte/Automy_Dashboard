@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pause, Pencil, Plus, Save, Trash2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { productQueryKeys, productsQueryOptions } from "@/features/products/api/product.queries";
 import { ProductCreateModal } from "@/features/products/components/product-create-modal";
 import { productService } from "@/features/products/services/product.service";
@@ -24,6 +24,42 @@ export function ProductsPage() {
     () => productService.filterProducts(products, { search }),
     [products, search],
   );
+
+  const pauseProduct = useCallback(
+    async (product: Product) => {
+      try {
+        setBusyId(`${product.id}:pause`);
+        await productService.pauseProduct(product.id);
+        await queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
+        toast.success("Produto pausado.");
+      } catch (error) {
+        toast.danger(error instanceof Error ? error.message : "Não foi possível pausar.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [queryClient],
+  );
+
+  const removeProduct = useCallback(
+    async (product: Product) => {
+      const confirmed = window.confirm(`Excluir o produto "${product.name}"?`);
+      if (!confirmed) return;
+
+      try {
+        setBusyId(`${product.id}:delete`);
+        await productService.removeProduct(product.id);
+        await queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
+        toast.success("Produto excluído.");
+      } catch (error) {
+        toast.danger(error instanceof Error ? error.message : "Não foi possível excluir.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [queryClient],
+  );
+
   const productColumns = useMemo<Array<DataTableColumn<Product>>>(
     () => [
       {
@@ -88,37 +124,8 @@ export function ProductsPage() {
         cellClassName: "text-right",
       },
     ],
-    [busyId],
+    [busyId, pauseProduct, removeProduct],
   );
-
-  async function pauseProduct(product: Product) {
-    try {
-      setBusyId(`${product.id}:pause`);
-      await productService.pauseProduct(product.id);
-      await queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
-      toast.success("Produto pausado.");
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível pausar.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function removeProduct(product: Product) {
-    const confirmed = window.confirm(`Excluir o produto "${product.name}"?`);
-    if (!confirmed) return;
-
-    try {
-      setBusyId(`${product.id}:delete`);
-      await productService.removeProduct(product.id);
-      await queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
-      toast.success("Produto excluído.");
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível excluir.");
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   return (
     <div>

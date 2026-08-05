@@ -22,7 +22,9 @@ export function ClientCreateModal({ open, onClose }: { open: boolean; onClose: (
         legalName: String(formData.get("legalName") || "").trim(),
         document: String(formData.get("document") || "").trim(),
         city: String(formData.get("city") || "").trim(),
-        state: String(formData.get("state") || "").trim().toUpperCase(),
+        state: String(formData.get("state") || "")
+          .trim()
+          .toUpperCase(),
         owner: String(formData.get("owner") || "").trim(),
         plan: String(formData.get("plan") || "").trim(),
         status: String(formData.get("status") || "Pendente") as ClientStatus,
