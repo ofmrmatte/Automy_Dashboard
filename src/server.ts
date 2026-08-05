@@ -6,6 +6,7 @@ import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
 import { handleIdentityApiRequest } from "./features/identity/server/identity-api";
 import { handleBetterAuthRequest } from "./features/identity/server/better-auth";
+import { handleSettingsApiRequest } from "./features/settings/server/settings-api";
 import { handleUsersApiRequest } from "./features/users/server/users-api";
 
 type ServerEntry = {
@@ -63,6 +64,9 @@ export default {
 
       const usersResponse = await handleUsersApiRequest(request);
       if (usersResponse) return usersResponse;
+
+      const settingsResponse = await handleSettingsApiRequest(request);
+      if (settingsResponse) return settingsResponse;
 
       const apiResponse = await handleFinanceApiRequest(request);
       if (apiResponse) return apiResponse;

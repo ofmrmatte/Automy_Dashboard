@@ -74,6 +74,35 @@ export type Database = {
           phone: string | null;
           status: string;
           time_zone: string;
+          state_registration: string | null;
+          municipal_registration: string | null;
+          website: string | null;
+          description: string | null;
+          segment: string | null;
+          postal_code: string | null;
+          street: string | null;
+          number: string | null;
+          complement: string | null;
+          district: string | null;
+          city: string | null;
+          state: string | null;
+          country: string;
+          default_language: string;
+          default_currency: string;
+          date_format: string;
+          time_format: "24h" | "12h";
+          first_day_of_week: number;
+          business_hours: Json;
+          default_contract_term_days: number;
+          default_billing_term_days: number;
+          logo_url: string | null;
+          favicon_url: string | null;
+          display_name: string | null;
+          billing_legal_name: string | null;
+          billing_document: string | null;
+          billing_email: string | null;
+          billing_phone: string | null;
+          billing_address: Json;
         };
         Insert: AuditInsertColumns & {
           legal_name: string;
@@ -83,6 +112,35 @@ export type Database = {
           phone?: string | null;
           status?: string;
           time_zone?: string;
+          state_registration?: string | null;
+          municipal_registration?: string | null;
+          website?: string | null;
+          description?: string | null;
+          segment?: string | null;
+          postal_code?: string | null;
+          street?: string | null;
+          number?: string | null;
+          complement?: string | null;
+          district?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string;
+          default_language?: string;
+          default_currency?: string;
+          date_format?: string;
+          time_format?: "24h" | "12h";
+          first_day_of_week?: number;
+          business_hours?: Json;
+          default_contract_term_days?: number;
+          default_billing_term_days?: number;
+          logo_url?: string | null;
+          favicon_url?: string | null;
+          display_name?: string | null;
+          billing_legal_name?: string | null;
+          billing_document?: string | null;
+          billing_email?: string | null;
+          billing_phone?: string | null;
+          billing_address?: Json;
         };
         Update: AuditUpdateColumns & {
           legal_name?: string;
@@ -92,6 +150,35 @@ export type Database = {
           phone?: string | null;
           status?: string;
           time_zone?: string;
+          state_registration?: string | null;
+          municipal_registration?: string | null;
+          website?: string | null;
+          description?: string | null;
+          segment?: string | null;
+          postal_code?: string | null;
+          street?: string | null;
+          number?: string | null;
+          complement?: string | null;
+          district?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string;
+          default_language?: string;
+          default_currency?: string;
+          date_format?: string;
+          time_format?: "24h" | "12h";
+          first_day_of_week?: number;
+          business_hours?: Json;
+          default_contract_term_days?: number;
+          default_billing_term_days?: number;
+          logo_url?: string | null;
+          favicon_url?: string | null;
+          display_name?: string | null;
+          billing_legal_name?: string | null;
+          billing_document?: string | null;
+          billing_email?: string | null;
+          billing_phone?: string | null;
+          billing_address?: Json;
         };
         Relationships: [];
       };
@@ -252,6 +339,232 @@ export type Database = {
           first_day_of_week?: number;
           notifications?: Json;
         };
+        Relationships: [];
+      };
+      company_security_settings: {
+        Row: AuditColumns & {
+          company_id: string;
+          session_duration_days: number;
+          require_password_change_on_first_login: boolean;
+          min_password_length: number;
+          lockout_attempts: number;
+          lockout_duration_minutes: number;
+          allow_multiple_sessions: boolean;
+          require_email_verified: boolean;
+          mfa_status: string;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          session_duration_days?: number;
+          require_password_change_on_first_login?: boolean;
+          min_password_length?: number;
+          lockout_attempts?: number;
+          lockout_duration_minutes?: number;
+          allow_multiple_sessions?: boolean;
+          require_email_verified?: boolean;
+          mfa_status?: string;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<
+              Database["public"]["Tables"]["company_security_settings"]["Insert"],
+              keyof AuditInsertColumns
+            >
+          >;
+        Relationships: [];
+      };
+      login_history: {
+        Row: AuditColumns & {
+          company_id: string | null;
+          auth_user_id: string | null;
+          success: boolean;
+          ip_address: string | null;
+          user_agent: string | null;
+          origin: string | null;
+          failure_reason: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id?: string | null;
+          auth_user_id?: string | null;
+          success: boolean;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          origin?: string | null;
+          failure_reason?: string | null;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<Database["public"]["Tables"]["login_history"]["Insert"], keyof AuditInsertColumns>
+          >;
+        Relationships: [];
+      };
+      company_integrations: {
+        Row: AuditColumns & {
+          company_id: string;
+          provider: string;
+          type: string;
+          status: string;
+          environment: string;
+          public_config: Json;
+          encrypted_config_ref: string | null;
+          last_checked_at: string | null;
+          last_success_at: string | null;
+          last_error: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          provider: string;
+          type: string;
+          status?: string;
+          environment?: string;
+          public_config?: Json;
+          encrypted_config_ref?: string | null;
+          last_checked_at?: string | null;
+          last_success_at?: string | null;
+          last_error?: string | null;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<
+              Database["public"]["Tables"]["company_integrations"]["Insert"],
+              keyof AuditInsertColumns
+            >
+          >;
+        Relationships: [];
+      };
+      company_notification_settings: {
+        Row: AuditColumns & {
+          company_id: string;
+          in_app_enabled: boolean;
+          email_enabled: boolean;
+          default_sender: string | null;
+          contract_notice_days: number;
+          billing_notice_days: number;
+          agenda_reminder_minutes: number;
+          sla_warning_hours: number;
+          critical_alerts_enabled: boolean;
+          quiet_hours: Json;
+          timezone: string;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          in_app_enabled?: boolean;
+          email_enabled?: boolean;
+          default_sender?: string | null;
+          contract_notice_days?: number;
+          billing_notice_days?: number;
+          agenda_reminder_minutes?: number;
+          sla_warning_hours?: number;
+          critical_alerts_enabled?: boolean;
+          quiet_hours?: Json;
+          timezone?: string;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<
+              Database["public"]["Tables"]["company_notification_settings"]["Insert"],
+              keyof AuditInsertColumns
+            >
+          >;
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: AuditColumns & {
+          company_id: string;
+          auth_user_id: string;
+          in_app: boolean;
+          email: boolean;
+          contracts: boolean;
+          billing: boolean;
+          tickets: boolean;
+          agenda: boolean;
+          security: boolean;
+          admin_updates: boolean;
+          daily_summary: boolean;
+          weekly_summary: boolean;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          auth_user_id: string;
+          in_app?: boolean;
+          email?: boolean;
+          contracts?: boolean;
+          billing?: boolean;
+          tickets?: boolean;
+          agenda?: boolean;
+          security?: boolean;
+          admin_updates?: boolean;
+          daily_summary?: boolean;
+          weekly_summary?: boolean;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<
+              Database["public"]["Tables"]["notification_preferences"]["Insert"],
+              keyof AuditInsertColumns
+            >
+          >;
+        Relationships: [];
+      };
+      notifications: {
+        Row: AuditColumns & {
+          company_id: string;
+          auth_user_id: string | null;
+          title: string;
+          description: string | null;
+          type: string;
+          status: "unread" | "read" | "archived";
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          href: string | null;
+          read_at: string | null;
+          archived_at: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          auth_user_id?: string | null;
+          title: string;
+          description?: string | null;
+          type?: string;
+          status?: "unread" | "read" | "archived";
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          href?: string | null;
+          read_at?: string | null;
+          archived_at?: string | null;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<Database["public"]["Tables"]["notifications"]["Insert"], keyof AuditInsertColumns>
+          >;
+        Relationships: [];
+      };
+      notification_deliveries: {
+        Row: AuditColumns & {
+          notification_id: string;
+          channel: "in_app" | "email";
+          status: "pending" | "sent" | "failed" | "skipped";
+          provider: string | null;
+          provider_message_id: string | null;
+          last_error: string | null;
+          sent_at: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          notification_id: string;
+          channel: "in_app" | "email";
+          status?: "pending" | "sent" | "failed" | "skipped";
+          provider?: string | null;
+          provider_message_id?: string | null;
+          last_error?: string | null;
+          sent_at?: string | null;
+        };
+        Update: AuditUpdateColumns &
+          Partial<
+            Omit<
+              Database["public"]["Tables"]["notification_deliveries"]["Insert"],
+              keyof AuditInsertColumns
+            >
+          >;
         Relationships: [];
       };
       clients: {

@@ -140,6 +140,31 @@ function createAutomyAuth() {
             await pool.query(`update public."user" set last_login = now() where id = $1`, [
               session.userId,
             ]);
+            await pool.query(
+              `
+                insert into public.login_history (
+                  company_id,
+                  auth_user_id,
+                  success,
+                  ip_address,
+                  user_agent,
+                  origin,
+                  created_by,
+                  updated_by
+                )
+                select users.company_id, $1, true, $2, $3, $4, $1, $1
+                from public.users
+                where users.auth_user_id = $1
+                  and users.deleted_at is null
+                limit 1
+              `,
+              [
+                session.userId,
+                "ipAddress" in session ? session.ipAddress : null,
+                "userAgent" in session ? session.userAgent : null,
+                resolveBetterAuthBaseURL(),
+              ],
+            );
           },
         },
       },
