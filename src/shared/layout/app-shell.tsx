@@ -1,6 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
   ChevronLeft,
   KeyRound,
   LogOut,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useIdentity } from "@/features/identity/context/identity-context";
+import { NotificationCenter } from "@/features/settings/components/notification-center";
 import { APP_DESCRIPTION, APP_NAVIGATION, APP_NAME } from "@/shared/constants/app";
 import { Button, Input } from "@/shared/components/ui";
 import { toast } from "@/shared/components/toast";
@@ -198,9 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
               {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
-              <Bell className="size-4" />
-            </Button>
+            <NotificationCenter />
             <div className="relative ml-1 border-l border-border pl-3">
               <button
                 type="button"
