@@ -14,6 +14,12 @@
 
 ## Unreleased
 
+- Implementada Fase 3 das Configuracoes: Empresa, Seguranca, Integracoes e Notificacoes.
+- Criada migration `20260805213000_settings_foundation.sql` com colunas corporativas em `companies` e tabelas dedicadas para seguranca, integracoes, preferencias e notificacoes.
+- Adicionados endpoints protegidos `/api/settings/company`, `/api/settings/security`, `/api/settings/integrations`, `/api/settings/notifications` e `/api/notifications`.
+- Conectado o sino do header ao centro real de notificacoes in-app com contagem de nao lidas e marcacao como lida.
+- Adicionado registro de login bem-sucedido em `login_history`.
+- Ajustado o runner de migrations para checksum estavel entre CRLF e LF.
 - Implementada Fase 2 da fundacao funcional: Perfil, Preferencias, timezone e personalizacao regional.
 - Substituido o fluxo de perfil/preferencias em `app_settings` por endpoints reais em `user_profiles` e `user_preferences`.
 - Adicionados endpoints protegidos `/api/identity/profile`, `/api/identity/preferences`, `/api/identity/avatar`, `/api/identity/password` e `/api/identity/sessions`.

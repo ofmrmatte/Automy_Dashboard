@@ -58,6 +58,11 @@ async function verifyAnonymousApiProtection() {
     "/api/users",
     "/api/users/sessions?id=test",
     "/api/permissions",
+    "/api/settings/company",
+    "/api/settings/security",
+    "/api/settings/integrations",
+    "/api/settings/notifications",
+    "/api/notifications",
   ];
 
   for (const endpoint of internalEndpoints) {
@@ -119,6 +124,21 @@ async function verifyAnonymousApiProtection() {
     deleteIdentitySessionsResponse.status,
     401,
   );
+
+  const updateCompanyResponse = await request("/api/settings/company", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/settings/company sem sessao", updateCompanyResponse.status, 401);
+
+  const testIntegrationResponse = await request("/api/settings/integrations/railway/test", {
+    method: "POST",
+  });
+  assertStatus(
+    "POST /api/settings/integrations/:provider/test sem sessao",
+    testIntegrationResponse.status,
+    401,
+  );
 }
 
 async function verifyUntrustedOrigin() {
@@ -166,9 +186,19 @@ async function verifyAdminFlow() {
   const profileResponse = await request("/api/identity/profile", {
     headers: { cookie },
   });
-  record("Sessao persistente admin", profileResponse.status !== 401, {
+  record("Sessao persistente admin", profileResponse.status !== 401 ? "passed" : "failed", {
     actual: profileResponse.status,
   });
+
+  const companySettingsResponse = await request("/api/settings/company", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/settings/company", companySettingsResponse.status, 200);
+
+  const notificationSettingsResponse = await request("/api/settings/notifications", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/settings/notifications", notificationSettingsResponse.status, 200);
 }
 
 async function verifyReadOnlyWriteBlock() {

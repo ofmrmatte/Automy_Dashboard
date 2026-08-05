@@ -25,6 +25,8 @@
 
 ## Proxima Etapa
 
+- Validar Fase 3 autenticada em producao apos deploy da branch.
+- Seguir para Dashboard real e modulos de negocio sem reintroduzir mocks.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
@@ -56,6 +58,15 @@
 - Avatar aceita URL HTTPS persistida; upload binario possui adapter preparado e valida MIME/tamanho, mas depende de storage persistente oficial.
 - Geolocalizacao precisa segue desabilitada; GPS so sera adotado se houver caso funcional real.
 - Pendencias: definir storage oficial de arquivos e rodar testes autenticados por role.
+
+## Fase 3 - Configuracoes
+
+- Implementada aba Empresa com dados institucionais, endereco, preferencias organizacionais, identidade e faturamento em `companies`.
+- Implementada aba Seguranca com alteracao de senha Better Auth, sessoes reais, historico de login e politica corporativa em `company_security_settings`.
+- Implementada aba Integracoes com providers reais/preparados, status seguro por variaveis de ambiente, teste controlado e tabela `company_integrations`.
+- Implementada aba Notificacoes com preferencias individuais em `notification_preferences`, regras da empresa em `company_notification_settings` e centro in-app em `notifications`.
+- Implementado RBAC server-side: admin edita tudo; manager/read_only visualizam conforme `settings.read`; acoes sensiveis exigem `settings.manage`.
+- Pendencias: provider transacional de e-mail, storage binario oficial, MFA real e eventos de notificacao gerados pelos modulos de negocio.
 
 ## Dados e Permissoes
 

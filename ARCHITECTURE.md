@@ -92,6 +92,37 @@ O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias 
 - Perfil: dados de usuario Better Auth, dados complementares de perfil, avatar, senha, preferencias e sessoes ativas.
 - Avatar: estrutura mantida no dominio de identidade; upload definitivo sera conectado a storage dedicado em etapa futura.
 
+## Configuracoes
+
+O modulo `src/features/settings` centraliza configuracoes reais de empresa, seguranca, integracoes e notificacoes.
+
+- UI: `src/features/settings/components`.
+- Queries: `src/features/settings/api/settings.queries.ts`.
+- Repository: `src/features/settings/repositories/settings.repository.ts`.
+- Service: `src/features/settings/services/settings.service.ts`.
+- API interna: `src/features/settings/server/settings-api.ts`.
+- Validacao: `src/features/settings/validation.ts`.
+
+Endpoints protegidos:
+
+- `GET/PATCH /api/settings/company`
+- `GET/PATCH /api/settings/security`
+- `GET /api/settings/integrations`
+- `PATCH /api/settings/integrations/:provider`
+- `POST /api/settings/integrations/:provider/test`
+- `GET/PATCH /api/settings/notifications`
+- `GET /api/notifications`
+- `PATCH /api/notifications/:id/read`
+- `POST /api/notifications/read-all`
+
+Regras:
+
+- `company_id` sempre e derivado da sessao.
+- `settings.manage` e obrigatorio para edicao de Empresa, Seguranca corporativa e Integracoes.
+- Preferencias pessoais de notificacao sao gravadas apenas para o usuario autenticado.
+- Secrets de integracoes nao sao retornados ao frontend; o status usa metadados seguros e presenca de variaveis de ambiente.
+- Alteracoes relevantes geram `audit_logs`.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
@@ -112,6 +143,9 @@ As migrations ativas da foundation sao:
 - `20260805010000_automy_foundation_schema.sql`
 - `20260805012000_align_better_auth_column_names.sql`
 - `20260805140000_align_rate_limit_primary_key.sql`
+- `20260805190000_align_user_statuses.sql`
+- `20260805200000_identity_preferences_foundation.sql`
+- `20260805213000_settings_foundation.sql`
 
 A migration foundation cria:
 

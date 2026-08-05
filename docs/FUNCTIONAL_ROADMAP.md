@@ -69,6 +69,28 @@ Critério de pronto:
 - Alterar timezone muda exibicao de datas/horarios.
 - Preferencias persistem apos refresh.
 
+## Sprint 2.1 - Configuracoes corporativas
+
+Objetivo: remover empty states de Configuracoes e persistir dados administrativos reais.
+
+Status nesta branch: implementado para Empresa, Seguranca, Integracoes e Notificacoes.
+
+Escopo entregue:
+
+- Empresa em `companies`: dados institucionais, endereco, preferencias organizacionais, identidade e faturamento.
+- Seguranca em `company_security_settings` e `login_history`: senha/sessoes Better Auth, politica corporativa e historico.
+- Integracoes em `company_integrations`: status seguro, metadados publicos e teste controlado sem exposicao de secrets.
+- Notificacoes em `notification_preferences`, `company_notification_settings`, `notifications` e `notification_deliveries`.
+- Centro de notificacoes no header com contagem real de nao lidas e marcacao como lida.
+- RBAC server-side com `settings.read` e `settings.manage`.
+
+Pendencias:
+
+- Provider de e-mail transacional para convites, recuperacao e verificacao.
+- Storage binario oficial para avatar/logo.
+- MFA real no Better Auth.
+- Eventos reais de notificacao gerados pelos modulos de negocio.
+
 ## Sprint 3 - Clientes
 
 Objetivo: completar o cadastro e relacionamento de clientes.
