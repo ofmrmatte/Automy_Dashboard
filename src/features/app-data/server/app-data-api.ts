@@ -70,6 +70,7 @@ const APP_DATA_PATHS = new Set([
   "/api/dashboard/recent-clients",
   "/api/dashboard/activity",
   "/api/reports",
+  "/api/search",
 ]);
 
 function isMissingTableError(error: unknown) {
@@ -2051,6 +2052,232 @@ async function reportRows(
   );
 }
 
+type SearchResultRow = {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  url: string;
+  meta: string;
+  created_at: string;
+};
+
+async function handleGlobalSearch(url: URL, context: AuthenticatedUserContext) {
+  await ensureBusinessSchema();
+
+  const query = (url.searchParams.get("q") ?? "").trim();
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "6"), 3), 10);
+
+  if (query.length < 2) {
+    return jsonResponse({ query, results: [] });
+  }
+
+  const term = `%${query.toLowerCase()}%`;
+  const searches: Array<Promise<SearchResultRow[]>> = [];
+
+  if (hasPermission(context, "clients.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'clients' as type,
+          coalesce(trade_name, legal_name, 'Cliente') as title,
+          coalesce(document, email, phone, '') as description,
+          '/clientes/' || id::text as url,
+          coalesce(status, '') as meta,
+          created_at
+        from public.clients
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', trade_name, legal_name, document, email, phone, city, state)) like $2
+        order by updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "products.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'products' as type,
+          name as title,
+          coalesce(category, version, '') as description,
+          '/produtos' as url,
+          coalesce(status, '') as meta,
+          created_at
+        from public.products
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', name, category, version, status, description)) like $2
+        order by updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "contracts.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          contracts.id,
+          'contracts' as type,
+          contracts.name as title,
+          coalesce(clients.trade_name, clients.legal_name, products.name, '') as description,
+          '/contratos' as url,
+          coalesce(contracts.status, '') as meta,
+          contracts.created_at
+        from public.contracts
+        left join public.clients on clients.id = contracts.client_id
+        left join public.products on products.id = contracts.product_id
+        where contracts.company_id = $1
+          and contracts.deleted_at is null
+          and lower(concat_ws(' ', contracts.name, contracts.status, clients.trade_name, clients.legal_name, products.name)) like $2
+        order by contracts.updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "finance.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'finance' as type,
+          invoice as title,
+          coalesce(client_name, reference, description, '') as description,
+          '/financeiro' as url,
+          coalesce(status, '') as meta,
+          created_at
+        from public.charges
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', invoice, client_name, reference, description, status, provider)) like $2
+        order by updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "schedule.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'scheduling' as type,
+          title,
+          coalesce(client_name, contact_name, contact_email, '') as description,
+          '/call-de-agendamento' as url,
+          coalesce(status, '') as meta,
+          created_at
+        from public.scheduled_calls
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', title, client_name, contact_name, contact_email, status, description)) like $2
+        order by start_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "support.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'support' as type,
+          coalesce(ticket_number, title) as title,
+          concat_ws(' ', title, client_name, category, priority) as description,
+          '/suporte' as url,
+          coalesce(status, '') as meta,
+          created_at
+        from public.support_tickets
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', ticket_number, title, client_name, category, priority, owner, status)) like $2
+        order by updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "users.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          users.id,
+          'users' as type,
+          users.name as title,
+          users.email as description,
+          '/usuarios' as url,
+          coalesce(roles.name, users.status, '') as meta,
+          users.created_at
+        from public.users
+        left join public.roles on roles.id = users.role_id
+        where users.company_id = $1
+          and users.deleted_at is null
+          and lower(concat_ws(' ', users.name, users.email, users.status, roles.name, roles.key)) like $2
+        order by users.updated_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  if (hasPermission(context, "audit.read")) {
+    searches.push(
+      queryRows<SearchResultRow>(
+        `
+        select
+          id,
+          'audit' as type,
+          action as title,
+          coalesce(resource_type, resource_id::text, metadata::text, '') as description,
+          '/relatorios' as url,
+          coalesce(resource_type, '') as meta,
+          created_at
+        from public.audit_logs
+        where company_id = $1
+          and deleted_at is null
+          and lower(concat_ws(' ', action, resource_type, resource_id::text, metadata::text)) like $2
+        order by created_at desc
+        limit $3
+        `,
+        [context.companyId, term, limit],
+      ),
+    );
+  }
+
+  const rows = (await Promise.all(searches))
+    .flat()
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit * 4);
+
+  return jsonResponse({ query, results: rows });
+}
+
 async function handleTickets(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
@@ -3168,6 +3395,7 @@ export async function handleAppDataApiRequest(request: Request) {
   if (url.pathname === "/api/support/tickets") return handleTickets(auth.context);
   if (url.pathname === "/api/scheduled-calls") return handleScheduledCalls(auth.context);
   if (url.pathname === "/api/reports") return handleReports(url, auth.context);
+  if (url.pathname === "/api/search") return handleGlobalSearch(url, auth.context);
   if (url.pathname === "/api/settings/profile") {
     return handleSetting(request, url, "profile", auth.context.authUserId);
   }

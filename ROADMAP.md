@@ -25,7 +25,7 @@
 
 ## Proxima Etapa
 
-- Seguir para Busca Global sem reintroduzir mocks.
+- Seguir para Notificacoes sem reintroduzir mocks.
 - Validar Fase 7 autenticada em producao apos deploy da branch.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
@@ -138,6 +138,14 @@
 - Arquivos vazios sao gerados com estrutura valida e mensagem de ausencia de registros.
 - Filtros por periodo sao aplicados server-side com `company_id` derivado da sessao.
 - Pendencias: validacao por usuarios reais de cada role e evolucao futura para agendamento/envio automatico de relatorios.
+
+## Fase 12 - Busca Global
+
+- Implementado endpoint protegido `/api/search` com consultas parametrizadas e `company_id` derivado da sessao.
+- Busca disponivel no header via command palette e atalho `Ctrl/Cmd+K`.
+- Fontes pesquisadas: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- Resultados respeitam RBAC de leitura por dominio e nao exibem dados de modulos sem permissao.
+- Pendencias: validacao por usuarios reais de cada role e refinamento futuro de relevancia/ranking com volume real.
 
 ## Dados e Permissoes
 

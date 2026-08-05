@@ -309,6 +309,26 @@ Critério de pronto:
 - Relatorios usam dados reais, filtros server-side e respeitam permissoes.
 - Configuracoes deixam de ser empty states.
 
+## Sprint 10 - Busca Global
+
+Objetivo: permitir localizacao rapida de registros reais sem duplicar logica de cada modulo.
+
+Status nesta branch: implementado como Fase 12 funcional inicial. Falta validar comportamento por manager/operator/read_only com usuarios reais.
+
+Escopo entregue:
+
+- Command palette no header.
+- Atalho `Ctrl/Cmd+K`.
+- Endpoint protegido `/api/search`.
+- Busca por Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- RBAC por dominio antes de consultar cada fonte.
+- Estados de carregamento, vazio e erro na interface.
+
+Pendencias:
+
+- Ranking avancado por relevancia com volume real.
+- Testes autenticados por todos os perfis.
+
 ## Dependencias transversais
 
 - Massa de teste controlada por ambiente.

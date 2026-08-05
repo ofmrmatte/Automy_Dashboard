@@ -22,8 +22,8 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
 - Branch funcional em andamento: `feature/complete-functional-foundation`.
-- Fases funcionais ja implementadas nesta branch: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte e Relatorios.
-- Proximo modulo operacional: Busca Global.
+- Fases funcionais ja implementadas nesta branch: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios e Busca Global.
+- Proximo modulo operacional: Notificacoes.
 
 # BASELINE v1.0.0-RC3
 

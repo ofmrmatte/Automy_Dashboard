@@ -54,6 +54,7 @@ async function verifyAnonymousApiProtection() {
     "/api/dashboard/recent-clients",
     "/api/dashboard/activity",
     "/api/reports?kind=clients&period=all",
+    "/api/search?q=matheus",
     "/api/finance/charges",
     "/api/identity/profile",
     "/api/identity/preferences",
@@ -258,6 +259,11 @@ async function verifyAdminFlow() {
     headers: { cookie },
   });
   assertStatus("Admin lendo /api/reports", reportResponse.status, 200);
+
+  const searchResponse = await request("/api/search?q=matheus", {
+    headers: { cookie },
+  });
+  assertStatus("Admin pesquisando /api/search", searchResponse.status, 200);
 }
 
 async function verifyReadOnlyWriteBlock() {

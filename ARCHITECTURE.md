@@ -202,6 +202,16 @@ O modulo `src/features/reports` usa repository/service e consome o endpoint prot
 - A API deriva `company_id` da sessao Better Auth e nunca aceita empresa enviada pelo cliente.
 - Exportacoes CSV, XLSX e PDF sao geradas no cliente a partir do payload real; arquivos vazios continuam validos e nao usam dados ficticios.
 
+## Busca Global
+
+O modulo `src/features/search` usa repository/service, React Query e um command palette no header.
+
+- `GET /api/search?q=` executa busca real no Railway PostgreSQL.
+- A API exige sessao Better Auth, deriva `company_id` do usuario autenticado e nunca aceita empresa enviada pelo cliente.
+- A busca cobre Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- Cada fonte so e consultada quando o usuario possui a permissao de leitura correspondente.
+- Consultas usam parametros SQL e retornam resultados normalizados para a UI.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:

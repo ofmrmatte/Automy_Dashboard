@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+- Implementada Busca Global real no header com command palette, atalho `Ctrl/Cmd+K`, endpoint protegido `/api/search`, RBAC por dominio e consultas parametrizadas no Railway PostgreSQL.
+- Busca Global agora cobre Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria conforme permissoes do usuario autenticado.
 - Implementado modulo Relatorios com endpoint protegido `/api/reports`, filtros reais por periodo, RBAC por dominio e exportacao CSV, XLSX e PDF a partir de dados reais do Railway PostgreSQL.
 - Relatorios agora cobrem Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria, sempre com `company_id` derivado da sessao.
 - Criado exportador client-side reutilizavel para gerar arquivos vazios validos quando nao houver registros, sem mocks ou placeholders.
