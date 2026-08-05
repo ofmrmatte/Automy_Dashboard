@@ -6,12 +6,23 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 
 ## Current Project Status
 
-- Baseline oficial preparada para `v1.0.0-rc1`.
+- Baseline oficial congelada em `v1.0.0-rc2`.
 - A identidade visual, Design System e Brand Kit estao consolidados.
+- O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
 - O projeto Vercel `automy-dashboard` esta conectado ao GitHub e possui deployment de producao pronto.
 - As variaveis Railway ainda devem ser configuradas no Vercel antes de validar persistencia real em producao.
 - A autenticacao administrativa por env vars e temporaria e deve ser substituida por autenticacao persistida em PostgreSQL.
+
+# BASELINE v1.0.0-RC2
+
+- Design System esta congelado.
+- Brand Kit esta congelado.
+- Login Premium esta congelado.
+- Arquitetura Feature First esta consolidada.
+- Railway PostgreSQL e o banco oficial.
+- Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
+- Paginas, componentes e modulos de negocio devem manter o fluxo: Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL.
 
 ## Frontend
 

@@ -10,15 +10,26 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 
 ## Current Project Status
 
-- Release baseline: `v1.0.0-rc1`.
+- Release baseline: `v1.0.0-rc2`.
 - Design System Automy consolidado e aplicado.
 - Brand Kit Automy aplicado nos assets publicos.
+- Login Premium Automy consolidado e congelado.
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
 - Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e realiza deploys de `main`.
 - Ambiente local nao possui `.env.local` neste checkout.
 - Ambiente Vercel ainda precisa receber as variaveis Railway oficiais e remover variaveis antigas do provedor anterior.
 - Autenticacao atual e temporaria, baseada em `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD`, ate a implementacao da autenticacao definitiva em PostgreSQL.
+
+# BASELINE v1.0.0-RC2
+
+- Design System esta congelado.
+- Brand Kit esta congelado.
+- Login Premium esta congelado.
+- Arquitetura Feature First esta consolidada.
+- Railway PostgreSQL e o banco oficial.
+- Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
+- Alteracoes estruturais apos esta baseline exigem aprovacao explicita.
 
 ## Stack
 
