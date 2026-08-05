@@ -144,20 +144,20 @@ Baixa:
 
 ## 10. Pendencias dos modulos
 
-| Modulo | Estado real | Observacoes |
-| --- | --- | --- |
-| Dashboard | Parcial | Dados reais para resumo basico; graficos de crescimento vazios; sem analytics real. |
-| Clientes | Parcial | Listagem, detalhe e criacao conectados; sem update/delete, contatos, enderecos e historico. |
-| Produtos | Parcial | Listagem, criacao, update, pause e soft delete; confirmacao ainda via `window.confirm`. |
-| Contratos | Parcial | Listagem e criacao com produto/cliente; sem ciclo completo, renovacao ou assinatura. |
-| Financeiro | Parcial | Cobrancas via Mercado Pago e leitura protegida por sessao/RBAC; sem CRUD financeiro. |
-| Agenda | Parcial | Listagem e criacao de calls; sem update/delete/integracao calendario. |
-| Suporte | Parcial | Listagem e criacao de tickets; sem update, SLA, comentarios ou atribuicao real. |
-| Relatorios | Somente parcial | Exporta CSV de dados reais; PDF/XLSX avisados como futuro. |
-| Configuracoes | Parcial | Perfil, preferencias e senha; storage de perfil/preferencias ainda em `app_settings`. |
-| Perfil | Parcial | Dados reais de auth; upload de avatar nao disponivel. |
-| Usuarios | Nao iniciado | So existe bootstrap admin e tabelas foundation. |
-| Permissoes | Nao iniciado | Roles/permissoes existem no banco; sem UI e sem enforcement completo. |
+| Modulo        | Estado real     | Observacoes                                                                                 |
+| ------------- | --------------- | ------------------------------------------------------------------------------------------- |
+| Dashboard     | Parcial         | Dados reais para resumo basico; graficos de crescimento vazios; sem analytics real.         |
+| Clientes      | Parcial         | Listagem, detalhe e criacao conectados; sem update/delete, contatos, enderecos e historico. |
+| Produtos      | Parcial         | Listagem, criacao, update, pause e soft delete; confirmacao ainda via `window.confirm`.     |
+| Contratos     | Parcial         | Listagem e criacao com produto/cliente; sem ciclo completo, renovacao ou assinatura.        |
+| Financeiro    | Parcial         | Cobrancas via Mercado Pago e leitura protegida por sessao/RBAC; sem CRUD financeiro.        |
+| Agenda        | Parcial         | Listagem e criacao de calls; sem update/delete/integracao calendario.                       |
+| Suporte       | Parcial         | Listagem e criacao de tickets; sem update, SLA, comentarios ou atribuicao real.             |
+| Relatorios    | Somente parcial | Exporta CSV de dados reais; PDF/XLSX avisados como futuro.                                  |
+| Configuracoes | Parcial         | Perfil, preferencias e senha; storage de perfil/preferencias ainda em `app_settings`.       |
+| Perfil        | Parcial         | Dados reais de auth; upload de avatar nao disponivel.                                       |
+| Usuarios      | Nao iniciado    | So existe bootstrap admin e tabelas foundation.                                             |
+| Permissoes    | Nao iniciado    | Roles/permissoes existem no banco; sem UI e sem enforcement completo.                       |
 
 ## 11. Melhorias opcionais
 
@@ -184,23 +184,23 @@ Baixa:
 
 ## Tabela de pendencias
 
-| Item | Categoria | Severidade | Status | Dependencia | Responsavel sugerido | Acao recomendada |
-| --- | --- | --- | --- | --- | --- | --- |
-| `/api/finance/charges` sem auth | Seguranca | Alta | Resolvido nesta branch | Better Auth session helper | Backend | Exige sessao e RBAC antes de listar cobrancas. |
-| Railway login `INVALID_ORIGIN` | Deploy/Auth | Alta | Parcialmente resolvido | Dominio canonico e env vars | DevOps/Backend | `BETTER_AUTH_URL` Railway aplicado; validar login real apos deploy. |
-| Tag `v1.0.0-rc3` anterior ao fix auth | Git/Release | Alta | Pendente | Decisao de versionamento | Tech lead | Criar nova tag ou release note corretiva. |
-| RBAC sem enforcement | Seguranca | Media | Parcialmente resolvido | Matriz de permissoes | Backend | Helper minimo criado; expandir para Usuarios/Permissoes. |
-| Sem escopo por `company_id` | Banco/Seguranca | Media | Parcialmente resolvido | Modelo multiempresa | Backend | Endpoints atuais derivam empresa do usuario; criar testes multiempresa. |
-| Perfil em `app_settings` | Banco/Auth | Media | Pendente | Decisao de migracao | Backend | Usar `user_profiles` e `user_preferences`. |
-| E-mail reset/verificacao desabilitado | Auth | Media | Estruturado incompleto | Provedor transacional | Backend/DevOps | Integrar provedor de e-mail aprovado. |
-| `created_by`/`updated_by` incompletos | Banco/Auditoria | Media | Pendente | Auth context nas APIs | Backend | Preencher campos pelo usuario autenticado. |
-| `activity_logs` sem escrita automatica | Auditoria | Media | Pendente | Eventos de dominio | Backend | Registrar eventos em CRUDs. |
-| Healthcheck Railway ausente | Deploy | Media | Pendente | Config Railway | DevOps | Criar endpoint/healthcheck. |
-| Dominio `automy.dev.br` sem alias ativo | DNS | Media | Pendente | DNS/Vercel/Railway | DevOps | Configurar registros e SSL no destino escolhido. |
-| Forms sem RHF+Zod | Codigo | Baixa | Pendente | Refino de formularios | Frontend | Padronizar modais de criacao. |
-| Fast Refresh warnings | Codigo | Baixa | Pendente | Refactor leve UI exports | Frontend | Separar exports nao-componentes. |
-| `vite-tsconfig-paths` warning | Build | Baixa | Pendente | Vite config | Frontend | Migrar para `resolve.tsconfigPaths`. |
-| Dependencias com updates disponiveis | Dependencias | Baixa | Pendente | Janela de manutencao | Frontend/DevOps | Atualizar em PR proprio com testes. |
+| Item                                    | Categoria       | Severidade | Status                 | Dependencia                 | Responsavel sugerido | Acao recomendada                                                        |
+| --------------------------------------- | --------------- | ---------- | ---------------------- | --------------------------- | -------------------- | ----------------------------------------------------------------------- |
+| `/api/finance/charges` sem auth         | Seguranca       | Alta       | Resolvido nesta branch | Better Auth session helper  | Backend              | Exige sessao e RBAC antes de listar cobrancas.                          |
+| Railway login `INVALID_ORIGIN`          | Deploy/Auth     | Alta       | Parcialmente resolvido | Dominio canonico e env vars | DevOps/Backend       | `BETTER_AUTH_URL` Railway aplicado; validar login real apos deploy.     |
+| Tag `v1.0.0-rc3` anterior ao fix auth   | Git/Release     | Alta       | Pendente               | Decisao de versionamento    | Tech lead            | Criar nova tag ou release note corretiva.                               |
+| RBAC sem enforcement                    | Seguranca       | Media      | Parcialmente resolvido | Matriz de permissoes        | Backend              | Helper minimo criado; expandir para Usuarios/Permissoes.                |
+| Sem escopo por `company_id`             | Banco/Seguranca | Media      | Parcialmente resolvido | Modelo multiempresa         | Backend              | Endpoints atuais derivam empresa do usuario; criar testes multiempresa. |
+| Perfil em `app_settings`                | Banco/Auth      | Media      | Pendente               | Decisao de migracao         | Backend              | Usar `user_profiles` e `user_preferences`.                              |
+| E-mail reset/verificacao desabilitado   | Auth            | Media      | Estruturado incompleto | Provedor transacional       | Backend/DevOps       | Integrar provedor de e-mail aprovado.                                   |
+| `created_by`/`updated_by` incompletos   | Banco/Auditoria | Media      | Pendente               | Auth context nas APIs       | Backend              | Preencher campos pelo usuario autenticado.                              |
+| `activity_logs` sem escrita automatica  | Auditoria       | Media      | Pendente               | Eventos de dominio          | Backend              | Registrar eventos em CRUDs.                                             |
+| Healthcheck Railway ausente             | Deploy          | Media      | Pendente               | Config Railway              | DevOps               | Criar endpoint/healthcheck.                                             |
+| Dominio `automy.dev.br` sem alias ativo | DNS             | Media      | Pendente               | DNS/Vercel/Railway          | DevOps               | Configurar registros e SSL no destino escolhido.                        |
+| Forms sem RHF+Zod                       | Codigo          | Baixa      | Pendente               | Refino de formularios       | Frontend             | Padronizar modais de criacao.                                           |
+| Fast Refresh warnings                   | Codigo          | Baixa      | Pendente               | Refactor leve UI exports    | Frontend             | Separar exports nao-componentes.                                        |
+| `vite-tsconfig-paths` warning           | Build           | Baixa      | Pendente               | Vite config                 | Frontend             | Migrar para `resolve.tsconfigPaths`.                                    |
+| Dependencias com updates disponiveis    | Dependencias    | Baixa      | Pendente               | Janela de manutencao        | Frontend/DevOps      | Atualizar em PR proprio com testes.                                     |
 
 ## Evidencias de validacao
 
@@ -229,3 +229,7 @@ Baixa:
 - `security:verify` local: `POST /api/finance/charges` sem sessao retorna `401`.
 - `security:verify` local: origem nao confiavel retorna `403`.
 - `security:verify` local: validacoes admin/read_only ficaram `skipped` por ausencia de credenciais de teste em env.
+- PR `#1`: mergeado em `c9ccfd5`.
+- Deployment Railway `0e7a518c-ea9f-4437-84b4-325d898d4e42`: `SUCCESS`.
+- `security:verify` em Railway: protecoes anonimas e origem nao confiavel passaram.
+- Login real, sessao autenticada e logout autenticado em Railway: nao executados por ausencia de credenciais seguras em env.

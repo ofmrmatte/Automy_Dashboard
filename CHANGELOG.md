@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+## v1.0.0-rc4
+
 - Protegida a rota `/api/finance/charges` com sessao Better Auth antes de qualquer consulta financeira.
 - Aplicado RBAC server-side minimo nas APIs internas existentes.
 - Derivado `company_id` pelo usuario autenticado, sem aceitar empresa enviada pelo cliente.
@@ -21,6 +23,8 @@
 - Ajustado Railway para ser runtime canonico via `BETTER_AUTH_URL`.
 - Adicionado script `npm run security:verify` para validar protecoes criticas sem credenciais hardcoded.
 - Documentado que `v1.0.0-rc3` nao foi movida e que `v1.0.0-rc4` devera representar a correcao critica.
+- Validado deployment Railway `0e7a518c-ea9f-4437-84b4-325d898d4e42` com status `SUCCESS`.
+- Adicionadas release notes em `docs/RELEASE_NOTES_v1.0.0-rc4.md`.
 
 # BASELINE v1.0.0-RC3
 
