@@ -50,6 +50,9 @@ async function verifyAnonymousApiProtection() {
     "/api/dashboard/summary",
     "/api/dashboard/activity",
     "/api/finance/charges",
+    "/api/users",
+    "/api/users/sessions?id=test",
+    "/api/permissions",
   ];
 
   for (const endpoint of internalEndpoints) {
@@ -59,6 +62,17 @@ async function verifyAnonymousApiProtection() {
 
   const writeResponse = await request("/api/finance/charges", { method: "POST", body: "{}" });
   assertStatus("POST /api/finance/charges sem sessao", writeResponse.status, 401);
+
+  const createUserResponse = await request("/api/users", { method: "POST", body: "{}" });
+  assertStatus("POST /api/users sem sessao", createUserResponse.status, 401);
+
+  const passwordResponse = await request("/api/users/password", { method: "POST", body: "{}" });
+  assertStatus("POST /api/users/password sem sessao", passwordResponse.status, 401);
+
+  const revokeSessionsResponse = await request("/api/users/sessions?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/users/sessions sem sessao", revokeSessionsResponse.status, 401);
 }
 
 async function verifyUntrustedOrigin() {

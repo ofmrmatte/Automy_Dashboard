@@ -13,7 +13,7 @@ export type AuthUser = {
   name?: string;
   image?: string | null;
   role?: "admin" | "manager" | "operator" | "read_only";
-  status?: "active" | "inactive" | "pending" | "blocked";
+  status?: "active" | "inactive" | "invited" | "suspended";
 };
 
 export type AuthSession = {

@@ -23,6 +23,48 @@ type AuditUpdateColumns = Partial<AuditInsertColumns>;
 export type Database = {
   public: {
     Tables: {
+      user: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          emailVerified: boolean;
+          image: string | null;
+          role: "admin" | "manager" | "operator" | "read_only";
+          status: "active" | "inactive" | "invited" | "suspended";
+          last_login: string | null;
+          createdAt: string;
+          updatedAt: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email: string;
+          emailVerified?: boolean;
+          image?: string | null;
+          role?: "admin" | "manager" | "operator" | "read_only";
+          status?: "active" | "inactive" | "invited" | "suspended";
+          last_login?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          email?: string;
+          emailVerified?: boolean;
+          image?: string | null;
+          role?: "admin" | "manager" | "operator" | "read_only";
+          status?: "active" | "inactive" | "invited" | "suspended";
+          last_login?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
       companies: {
         Row: AuditColumns & {
           legal_name: string;
@@ -80,18 +122,21 @@ export type Database = {
       roles: {
         Row: AuditColumns & {
           company_id: string | null;
+          key: string;
           name: string;
           description: string | null;
           is_system: boolean;
         };
         Insert: AuditInsertColumns & {
           company_id?: string | null;
+          key: string;
           name: string;
           description?: string | null;
           is_system?: boolean;
         };
         Update: AuditUpdateColumns & {
           company_id?: string | null;
+          key?: string;
           name?: string;
           description?: string | null;
           is_system?: boolean;
@@ -453,6 +498,33 @@ export type Database = {
           entity_type?: string;
           entity_id?: string | null;
           action?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
+      audit_logs: {
+        Row: AuditColumns & {
+          company_id: string | null;
+          actor_auth_user_id: string | null;
+          action: string;
+          resource_type: string;
+          resource_id: string | null;
+          metadata: Json;
+        };
+        Insert: AuditInsertColumns & {
+          company_id?: string | null;
+          actor_auth_user_id?: string | null;
+          action: string;
+          resource_type: string;
+          resource_id?: string | null;
+          metadata?: Json;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string | null;
+          actor_auth_user_id?: string | null;
+          action?: string;
+          resource_type?: string;
+          resource_id?: string | null;
           metadata?: Json;
         };
         Relationships: [];

@@ -14,6 +14,15 @@
 
 ## Unreleased
 
+- Implementada Fase 1 da fundacao funcional: Usuarios e Permissoes.
+- Criado modulo feature-first `src/features/users` com types, validations, repository, service, React Query, componentes e paginas.
+- Criada API interna protegida para usuarios, senha, sessoes e matriz de permissoes.
+- Criada migration `20260805190000_align_user_statuses.sql` para status oficiais `active`, `inactive`, `invited`, `suspended`.
+- Adicionada regra server-side para preservar ao menos um administrador ativo.
+- Adicionada auditoria em `audit_logs` para criacao, atualizacao, senha, revogacao de sessoes e soft delete de usuarios.
+- Conectadas as secoes `Usuarios` e `Permissoes` em Configuracoes.
+- Preparadas rotas diretas `/usuarios` e `/permissoes`.
+
 ## v1.0.0-rc4
 
 - Protegida a rota `/api/finance/charges` com sessao Better Auth antes de qualquer consulta financeira.

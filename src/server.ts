@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api";
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
 import { handleBetterAuthRequest } from "./features/identity/server/better-auth";
+import { handleUsersApiRequest } from "./features/users/server/users-api";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -55,6 +56,9 @@ export default {
 
       const appDataResponse = await handleAppDataApiRequest(request);
       if (appDataResponse) return appDataResponse;
+
+      const usersResponse = await handleUsersApiRequest(request);
+      if (usersResponse) return usersResponse;
 
       const apiResponse = await handleFinanceApiRequest(request);
       if (apiResponse) return apiResponse;

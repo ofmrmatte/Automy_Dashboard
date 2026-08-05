@@ -21,6 +21,8 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
+- Branch funcional em andamento: `feature/complete-functional-foundation`.
+- Fase 1 implementa gestão real de usuarios e consulta de permissoes usando Better Auth + Railway PostgreSQL.
 
 # BASELINE v1.0.0-RC3
 
@@ -169,3 +171,21 @@ Better Auth e a autenticacao oficial da Automy.
 - Verificacao de e-mail: estrutura configurada; envio permanece desabilitado ate ativacao do provedor de e-mail.
 - RBAC inicial: `admin`, `manager`, `operator`, `read_only`.
 - Better Auth Infra: `dash()` habilitado quando `BETTER_AUTH_API_KEY` estiver configurada.
+
+## Usuarios e Permissoes
+
+- Tela: `Configuracoes > Usuarios`.
+- Rotas diretas preparadas: `/usuarios` e `/permissoes`.
+- Endpoints internos:
+  - `GET /api/users`
+  - `POST /api/users`
+  - `PATCH /api/users`
+  - `DELETE /api/users`
+  - `POST /api/users/password`
+  - `GET /api/users/sessions`
+  - `DELETE /api/users/sessions`
+  - `GET /api/permissions`
+- Criacao administrativa grava Better Auth, usuario de dominio, perfil, preferencias e audit log em transacao.
+- Status oficiais de usuario: `active`, `inactive`, `invited`, `suspended`.
+- Roles oficiais: `admin`, `manager`, `operator`, `read_only`.
+- A API impede remover, suspender ou rebaixar o ultimo administrador ativo.

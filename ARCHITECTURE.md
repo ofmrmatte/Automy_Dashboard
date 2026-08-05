@@ -152,7 +152,7 @@ Better Auth substitui a autenticacao temporaria por env vars.
 - Recuperacao de senha e verificacao de e-mail estao preparadas, com envio transacional pendente de provedor aprovado.
 - `last_login` e atualizado quando uma sessao e criada.
 - RBAC inicial fica no campo `role` da tabela `user`: `admin`, `manager`, `operator`, `read_only`.
-- `status` controla o ciclo de vida do usuario: `active`, `inactive`, `pending`, `blocked`.
+- `status` controla o ciclo de vida do usuario: `active`, `inactive`, `invited`, `suspended`.
 - Better Auth Infra usa `@better-auth/infra` e habilita `dash()` apenas quando `BETTER_AUTH_API_KEY` estiver configurada.
 
 ## Prisma

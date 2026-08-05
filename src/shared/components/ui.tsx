@@ -97,7 +97,16 @@ export function SearchInput({
 }
 
 export type BadgeVariant =
-  StatusTone | "active" | "inactive" | "pending" | "success" | "warning" | "danger" | "info";
+  | StatusTone
+  | "active"
+  | "inactive"
+  | "pending"
+  | "invited"
+  | "suspended"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info";
 
 export function Badge({
   children,
@@ -115,9 +124,10 @@ export function Badge({
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium",
         (badgeVariant === "success" || badgeVariant === "active") && "bg-success/10 text-success",
-        (badgeVariant === "warning" || badgeVariant === "pending") &&
+        (badgeVariant === "warning" || badgeVariant === "pending" || badgeVariant === "invited") &&
           "bg-warning/12 text-warning-foreground",
-        badgeVariant === "danger" && "bg-destructive/10 text-destructive",
+        (badgeVariant === "danger" || badgeVariant === "suspended") &&
+          "bg-destructive/10 text-destructive",
         badgeVariant === "info" && "bg-info/10 text-info",
         (badgeVariant === "neutral" || badgeVariant === "inactive") &&
           "bg-muted text-muted-foreground",

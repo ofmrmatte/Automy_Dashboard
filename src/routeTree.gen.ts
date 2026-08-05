@@ -16,11 +16,13 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PermissoesRouteImport } from './routes/permissoes'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as SuporteRouteImport } from './routes/suporte'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ClientesClienteIdRouteImport } from './routes/clientes.$clienteId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -58,6 +60,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PermissoesRoute = PermissoesRouteImport.update({
+  id: '/permissoes',
+  path: '/permissoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
@@ -83,6 +90,11 @@ const SuporteRoute = SuporteRouteImport.update({
   path: '/suporte',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesClienteIdRoute = ClientesClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -97,11 +109,13 @@ export interface FileRoutesByFullPath {
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
+  '/usuarios': typeof UsuariosRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
 }
 export interface FileRoutesByTo {
@@ -112,11 +126,13 @@ export interface FileRoutesByTo {
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
+  '/usuarios': typeof UsuariosRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
 }
 export interface FileRoutesById {
@@ -128,11 +144,13 @@ export interface FileRoutesById {
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/suporte': typeof SuporteRoute
+  '/usuarios': typeof UsuariosRoute
   '/clientes/$clienteId': typeof ClientesClienteIdRoute
 }
 export interface FileRouteTypes {
@@ -145,11 +163,13 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/financeiro'
     | '/login'
+    | '/permissoes'
     | '/produtos'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
+    | '/usuarios'
     | '/clientes/$clienteId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -160,11 +180,13 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/financeiro'
     | '/login'
+    | '/permissoes'
     | '/produtos'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
+    | '/usuarios'
     | '/clientes/$clienteId'
   id:
     | '__root__'
@@ -175,11 +197,13 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/financeiro'
     | '/login'
+    | '/permissoes'
     | '/produtos'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/relatorios'
     | '/suporte'
+    | '/usuarios'
     | '/clientes/$clienteId'
   fileRoutesById: FileRoutesById
 }
@@ -191,11 +215,13 @@ export interface RootRouteChildren {
   ContratosRoute: typeof ContratosRoute
   FinanceiroRoute: typeof FinanceiroRoute
   LoginRoute: typeof LoginRoute
+  PermissoesRoute: typeof PermissoesRoute
   ProdutosRoute: typeof ProdutosRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   RelatoriosRoute: typeof RelatoriosRoute
   SuporteRoute: typeof SuporteRoute
+  UsuariosRoute: typeof UsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -249,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/permissoes': {
+      id: '/permissoes'
+      path: '/permissoes'
+      fullPath: '/permissoes'
+      preLoaderRoute: typeof PermissoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produtos': {
       id: '/produtos'
       path: '/produtos'
@@ -284,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuporteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/$clienteId': {
       id: '/clientes/$clienteId'
       path: '/$clienteId'
@@ -314,11 +354,13 @@ const rootRouteChildren: RootRouteChildren = {
   ContratosRoute: ContratosRoute,
   FinanceiroRoute: FinanceiroRoute,
   LoginRoute: LoginRoute,
+  PermissoesRoute: PermissoesRoute,
   ProdutosRoute: ProdutosRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   RelatoriosRoute: RelatoriosRoute,
   SuporteRoute: SuporteRoute,
+  UsuariosRoute: UsuariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
