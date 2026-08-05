@@ -152,7 +152,18 @@ Better Auth substitui a autenticacao temporaria por env vars.
 - Recuperacao de senha e verificacao de e-mail estao preparadas, com envio transacional pendente de provedor aprovado.
 - `last_login` e atualizado quando uma sessao e criada.
 - RBAC inicial fica no campo `role` da tabela `user`: `admin`, `manager`, `operator`, `read_only`.
-- `status` controla o ciclo de vida do usuario: `active`, `inactive`, `pending`, `blocked`.
+- `status` controla o ciclo de vida do usuario: `active`, `inactive`, `invited`, `suspended`.
+
+### Perfil e preferencias
+
+- Perfil pessoal deve usar `user_profiles`.
+- Preferencias pessoais devem usar `user_preferences`.
+- Identidade, e-mail, sessoes e senha usam Better Auth.
+- Vínculo empresarial e RBAC usam `users`, `roles`, `permissions` e `companies`.
+- `app_settings` nao deve ser usado para dados pessoais novos.
+- Timezone segue a ordem: preferencia do usuario, timezone do navegador, timezone da empresa, `America/Sao_Paulo`.
+- Geolocalizacao precisa permanece desabilitada; nao solicitar GPS sem caso funcional aprovado.
+- Avatar por arquivo depende de adapter de storage persistente; enquanto isso, usar URL HTTPS persistida em `user_profiles.avatar_path`.
 - Better Auth Infra usa `@better-auth/infra` e habilita `dash()` apenas quando `BETTER_AUTH_API_KEY` estiver configurada.
 
 ## Prisma

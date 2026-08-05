@@ -11,7 +11,7 @@ import { Button, Field, Input } from "@/shared/components/ui";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
-  const { updatePassword } = useIdentity();
+  const { resetPassword } = useIdentity();
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
@@ -19,7 +19,7 @@ export function ResetPasswordPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await updatePassword(values.password);
+      await resetPassword(values.password);
       toast.success("Senha redefinida.");
       navigate({ to: "/" });
     } catch (error) {

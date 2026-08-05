@@ -4,11 +4,11 @@ import type {
   AuthUser,
   IdentityPreferences,
   IdentityProfile,
-  NotificationPreferences,
+  IdentitySessionRecord,
+  PasswordUpdatePayload,
   PreferencesUpdatePayload,
   ProfileUpdatePayload,
 } from "@/features/identity/types";
-import { detectBrowserLanguage, detectTimeZone } from "@/features/identity/utils/environment";
 import { RepositoryError } from "@/shared/api/errors";
 
 type AuthChangeEvent = "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "USER_UPDATED";
@@ -38,14 +38,6 @@ type BetterAuthSessionPayload = {
   };
 };
 
-function defaultNotifications(): NotificationPreferences {
-  return {
-    productUpdates: true,
-    securityAlerts: true,
-    operationalReports: false,
-  };
-}
-
 function toIsoDate(value: Date | string | number | null | undefined) {
   if (!value) return new Date().toISOString();
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -54,26 +46,6 @@ function toIsoDate(value: Date | string | number | null | undefined) {
 function optionalIsoDate(value: Date | string | number | null | undefined) {
   if (!value) return null;
   return toIsoDate(value);
-}
-
-function splitName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const firstName = parts.shift() ?? "";
-  return {
-    firstName,
-    lastName: parts.join(" "),
-  };
-}
-
-function fullName(payload: ProfileUpdatePayload) {
-  return [payload.firstName, payload.lastName]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
-function createRecordId() {
-  return crypto.randomUUID();
 }
 
 function mapAuthSession(payload: BetterAuthSessionPayload | null): AuthSession | null {
@@ -97,6 +69,7 @@ function mapAuthSession(payload: BetterAuthSessionPayload | null): AuthSession |
   };
 
   return {
+    id: payload.session.id,
     access_token: payload.session.token,
     refresh_token: "",
     expires_in: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
@@ -106,72 +79,22 @@ function mapAuthSession(payload: BetterAuthSessionPayload | null): AuthSession |
   };
 }
 
-function createProfile(session: AuthSession): IdentityProfile {
-  const now = new Date().toISOString();
-  const names = splitName(session.user.name ?? "");
-
-  return {
-    id: createRecordId(),
-    authUserId: session.user.id,
-    firstName: names.firstName,
-    lastName: names.lastName,
-    phone: "",
-    jobTitle: "",
-    companyName: "Automy",
-    avatarPath: session.user.image ?? null,
-    createdAt: session.user.created_at,
-    updatedAt: session.user.updated_at ?? now,
-    deletedAt: null,
-    createdBy: session.user.id,
-    updatedBy: session.user.id,
-  };
-}
-
-function createPreferences(authUserId: string): IdentityPreferences {
-  const now = new Date().toISOString();
-
-  return {
-    id: createRecordId(),
-    authUserId,
-    theme: "system",
-    language: detectBrowserLanguage(),
-    timeZone: detectTimeZone(),
-    dateFormat: "dd/MM/yyyy",
-    timeFormat: "24h",
-    currency: "BRL",
-    notifications: defaultNotifications(),
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    createdBy: authUserId,
-    updatedBy: authUserId,
-  };
-}
-
-async function readServerSetting<T>(path: string, authUserId: string) {
-  const response = await fetch(`${path}?authUserId=${encodeURIComponent(authUserId)}`, {
-    credentials: "include",
-  });
-  if (!response.ok) return null;
-
-  const payload = (await response.json()) as { value?: T | null };
-  return payload.value ?? null;
-}
-
-async function writeServerSetting<T>(path: string, authUserId: string, value: T) {
+async function apiRequest<T>(path: string, init?: RequestInit) {
   const response = await fetch(path, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ authUserId, value }),
+    ...init,
+    headers: {
+      ...(init?.body instanceof FormData ? {} : { "content-type": "application/json" }),
+      ...init?.headers,
+    },
   });
 
   if (!response.ok) {
-    throw new RepositoryError("Não foi possível salvar no banco da Railway.");
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new RepositoryError(payload?.error ?? "Não foi possível acessar o banco da Railway.");
   }
 
-  const payload = (await response.json()) as { value?: T | null };
-  return payload.value ?? value;
+  return (await response.json()) as T;
 }
 
 function getBetterAuthErrorMessage(error: unknown, fallback: string) {
@@ -234,17 +157,37 @@ export const identityRepository = {
     }
   },
 
-  updatePassword: async (password: string, currentPassword?: string) => {
+  updatePassword: async (payload: PasswordUpdatePayload) => {
     const token = new URLSearchParams(window.location.search).get("token");
-    const response = currentPassword
-      ? await authClient.changePassword({
-          currentPassword,
+    if (!payload.currentPassword && token) {
+      const response = await authClient.resetPassword({
+        newPassword: payload.password,
+        token,
+      });
+
+      if (response.error) {
+        throw new RepositoryError(
+          getBetterAuthErrorMessage(response.error, "Não foi possível alterar a senha."),
+        );
+      }
+      return;
+    }
+
+    await apiRequest<{ ok: boolean }>("/api/identity/password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  resetPassword: async (password: string) => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    const response = token
+      ? await authClient.resetPassword({
           newPassword: password,
-          revokeOtherSessions: true,
+          token,
         })
       : await authClient.resetPassword({
           newPassword: password,
-          token: token ?? undefined,
         });
 
     if (response.error) {
@@ -282,96 +225,75 @@ export const identityRepository = {
     }
   },
 
-  ensureIdentityRecords: async (session: AuthSession) => {
-    const serverProfile = await readServerSetting<IdentityProfile>(
-      "/api/settings/profile",
-      session.user.id,
-    );
-    if (!serverProfile) {
-      await writeServerSetting("/api/settings/profile", session.user.id, createProfile(session));
-    }
-
-    const serverPreferences = await readServerSetting<IdentityPreferences>(
-      "/api/settings/preferences",
-      session.user.id,
-    );
-    if (!serverPreferences) {
-      await writeServerSetting(
-        "/api/settings/preferences",
-        session.user.id,
-        createPreferences(session.user.id),
-      );
-    }
+  ensureIdentityRecords: async (_session: AuthSession) => {
+    await Promise.all([
+      apiRequest<{ profile: IdentityProfile }>("/api/identity/profile"),
+      apiRequest<{ preferences: IdentityPreferences }>("/api/identity/preferences"),
+    ]);
   },
 
   getProfile: async (authUserId: string) => {
-    const serverProfile = await readServerSetting<IdentityProfile>(
-      "/api/settings/profile",
-      authUserId,
-    );
-    if (serverProfile) return serverProfile;
-
-    const session = await currentSession();
-    if (!session) {
-      throw new RepositoryError("Sessão não encontrada para carregar o perfil.");
-    }
-
-    return createProfile(session);
+    void authUserId;
+    const payload = await apiRequest<{ profile: IdentityProfile }>("/api/identity/profile");
+    return payload.profile;
   },
 
   getPreferences: async (authUserId: string) => {
-    const serverPreferences = await readServerSetting<IdentityPreferences>(
-      "/api/settings/preferences",
-      authUserId,
+    void authUserId;
+    const payload = await apiRequest<{ preferences: IdentityPreferences }>(
+      "/api/identity/preferences",
     );
-    return serverPreferences ?? createPreferences(authUserId);
+    return payload.preferences;
   },
 
   updateProfile: async (authUserId: string, payload: ProfileUpdatePayload) => {
-    const session = await currentSession();
-    if (!session) {
-      throw new RepositoryError("Sessão não encontrada para salvar o perfil.");
-    }
-
-    const current = await identityRepository.getProfile(authUserId);
-    const nextProfile: IdentityProfile = {
-      ...current,
-      ...payload,
-      authUserId,
-      updatedAt: new Date().toISOString(),
-      updatedBy: authUserId,
-    };
-
-    const authResponse = await authClient.updateUser({
-      name: fullName(payload) || session.user.email || "Automy",
-      image: nextProfile.avatarPath,
+    void authUserId;
+    const result = await apiRequest<{ profile: IdentityProfile }>("/api/identity/profile", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
-
-    if (authResponse.error) {
-      throw new RepositoryError(
-        getBetterAuthErrorMessage(authResponse.error, "Não foi possível atualizar o usuário."),
-      );
-    }
-
-    return writeServerSetting("/api/settings/profile", authUserId, nextProfile);
+    return result.profile;
   },
 
   updatePreferences: async (authUserId: string, payload: PreferencesUpdatePayload) => {
-    const current = await identityRepository.getPreferences(authUserId);
-    const nextPreferences: IdentityPreferences = {
-      ...current,
-      ...payload,
-      authUserId,
-      updatedAt: new Date().toISOString(),
-      updatedBy: authUserId,
-    };
-
-    return writeServerSetting("/api/settings/preferences", authUserId, nextPreferences);
+    void authUserId;
+    const result = await apiRequest<{ preferences: IdentityPreferences }>(
+      "/api/identity/preferences",
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    );
+    return result.preferences;
   },
 
   uploadAvatar: async (_authUserId: string, _file: File): Promise<IdentityProfile> => {
-    throw new RepositoryError("Upload de avatar ainda não está disponível neste modo.");
+    const body = new FormData();
+    body.append("avatar", _file);
+    await apiRequest<{ avatarUrl: string }>("/api/identity/avatar", {
+      method: "POST",
+      body,
+    });
+    return identityRepository.getProfile(_authUserId);
   },
 
   getAvatarUrl: async (avatarPath: string | null) => avatarPath,
+  listSessions: async (): Promise<IdentitySessionRecord[]> => {
+    const result = await apiRequest<{ sessions: IdentitySessionRecord[] }>(
+      "/api/identity/sessions",
+    );
+    return result.sessions;
+  },
+  revokeSession: async (sessionId: string) => {
+    await apiRequest<{ ok: boolean }>(
+      `/api/identity/sessions?id=${encodeURIComponent(sessionId)}`,
+      { method: "DELETE" },
+    );
+  },
+  revokeOtherSessions: async () => {
+    await apiRequest<{ ok: boolean }>("/api/identity/sessions?scope=others", { method: "DELETE" });
+  },
+  revokeAllSessions: async () => {
+    await apiRequest<{ ok: boolean }>("/api/identity/sessions?scope=global", { method: "DELETE" });
+  },
 };

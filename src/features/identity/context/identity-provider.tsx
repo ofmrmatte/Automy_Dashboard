@@ -4,8 +4,14 @@ import {
   type IdentityContextValue,
 } from "@/features/identity/context/identity-context";
 import { identityService } from "@/features/identity/services/identity.service";
-import type { AuthSession, IdentityPreferences, IdentityProfile } from "@/features/identity/types";
+import type {
+  AuthSession,
+  IdentityPreferences,
+  IdentityProfile,
+  IdentitySessionRecord,
+} from "@/features/identity/types";
 import { toast } from "@/shared/components/toast";
+import { detectBrowserTimeZone, FALLBACK_TIME_ZONE } from "@/shared/utils/regional-formatters";
 
 function getIdentityErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
@@ -15,6 +21,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<IdentityProfile | null>(null);
   const [preferences, setPreferences] = useState<IdentityPreferences | null>(null);
+  const [identitySessions, setIdentitySessions] = useState<IdentitySessionRecord[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -24,19 +31,40 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     if (!nextSession) {
       setProfile(null);
       setPreferences(null);
+      setIdentitySessions([]);
       setAvatarUrl(null);
       return;
     }
 
     await identityService.ensureIdentityRecords(nextSession);
 
-    const [nextProfile, nextPreferences] = await Promise.all([
+    const [nextProfile, nextPreferences, nextSessions] = await Promise.all([
       identityService.getProfile(nextSession.user.id),
       identityService.getPreferences(nextSession.user.id),
+      identityService.listSessions(),
     ]);
 
     setProfile(nextProfile);
-    setPreferences(nextPreferences);
+    let resolvedPreferences = nextPreferences;
+    if (typeof window !== "undefined") {
+      const storageKey = `automy-timezone-detected:${nextSession.user.id}`;
+      const browserTimeZone = detectBrowserTimeZone();
+      const shouldPersistDetectedTimeZone =
+        nextPreferences.timeZone === FALLBACK_TIME_ZONE &&
+        browserTimeZone !== FALLBACK_TIME_ZONE &&
+        !localStorage.getItem(storageKey);
+
+      if (shouldPersistDetectedTimeZone) {
+        resolvedPreferences = await identityService.updatePreferences(nextSession.user.id, {
+          ...nextPreferences,
+          timeZone: browserTimeZone,
+        });
+        localStorage.setItem(storageKey, "true");
+      }
+    }
+
+    setPreferences(resolvedPreferences);
+    setIdentitySessions(nextSessions);
     setAvatarUrl(await identityService.getAvatarUrl(nextProfile?.avatarPath ?? null));
   }, []);
 
@@ -44,6 +72,11 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     if (!session) return;
     await loadIdentity(session);
   }, [loadIdentity, session]);
+
+  const refreshSessions = useCallback(async () => {
+    if (!session) return;
+    setIdentitySessions(await identityService.listSessions());
+  }, [session]);
 
   useEffect(() => {
     let mounted = true;
@@ -79,6 +112,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       preferences,
+      identitySessions,
       avatarUrl,
       isLoading,
       refreshIdentity,
@@ -87,13 +121,14 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         await loadIdentity(nextSession);
       },
       sendPasswordRecovery: (email) => identityService.sendPasswordRecovery(email),
-      updatePassword: (password, currentPassword) =>
-        identityService.updatePassword(password, currentPassword),
+      updatePassword: (payload) => identityService.updatePassword(payload),
+      resetPassword: (password) => identityService.resetPassword(password),
       signOut: async (scope = "local") => {
         await identityService.signOut(scope);
         setSession(null);
         setProfile(null);
         setPreferences(null);
+        setIdentitySessions([]);
         setAvatarUrl(null);
       },
       updateProfile: async (payload) => {
@@ -113,8 +148,35 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
         setAvatarUrl(await identityService.getAvatarUrl(nextProfile.avatarPath));
       },
+      refreshSessions,
+      revokeSession: async (sessionId) => {
+        await identityService.revokeSession(sessionId);
+        await refreshSessions();
+      },
+      revokeOtherSessions: async () => {
+        await identityService.revokeOtherSessions();
+        await refreshSessions();
+      },
+      revokeAllSessions: async () => {
+        await identityService.revokeAllSessions();
+        setSession(null);
+        setProfile(null);
+        setPreferences(null);
+        setIdentitySessions([]);
+        setAvatarUrl(null);
+      },
     }),
-    [avatarUrl, isLoading, loadIdentity, preferences, profile, refreshIdentity, session],
+    [
+      avatarUrl,
+      identitySessions,
+      isLoading,
+      loadIdentity,
+      preferences,
+      profile,
+      refreshIdentity,
+      refreshSessions,
+      session,
+    ],
   );
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;

@@ -14,6 +14,24 @@
 
 ## Unreleased
 
+- Implementada Fase 2 da fundacao funcional: Perfil, Preferencias, timezone e personalizacao regional.
+- Substituido o fluxo de perfil/preferencias em `app_settings` por endpoints reais em `user_profiles` e `user_preferences`.
+- Adicionados endpoints protegidos `/api/identity/profile`, `/api/identity/preferences`, `/api/identity/avatar`, `/api/identity/password` e `/api/identity/sessions`.
+- Adicionada migration `20260805200000_identity_preferences_foundation.sql` para `first_day_of_week`, timezone de empresa e metadados de avatar.
+- Implementada saudacao dinamica por primeiro nome e timezone.
+- Atualizado header para usar nome, avatar, role, empresa e menu de usuario reais.
+- Implementada listagem e revogacao de sessoes do usuario autenticado.
+- Alteracao de senha passou a auditar e permitir revogar outras sessoes.
+- Geolocalizacao precisa permanece desabilitada por decisao arquitetural; a aplicacao usa apenas locale/timezone do navegador.
+- Implementada Fase 1 da fundacao funcional: Usuarios e Permissoes.
+- Criado modulo feature-first `src/features/users` com types, validations, repository, service, React Query, componentes e paginas.
+- Criada API interna protegida para usuarios, senha, sessoes e matriz de permissoes.
+- Criada migration `20260805190000_align_user_statuses.sql` para status oficiais `active`, `inactive`, `invited`, `suspended`.
+- Adicionada regra server-side para preservar ao menos um administrador ativo.
+- Adicionada auditoria em `audit_logs` para criacao, atualizacao, senha, revogacao de sessoes e soft delete de usuarios.
+- Conectadas as secoes `Usuarios` e `Permissoes` em Configuracoes.
+- Preparadas rotas diretas `/usuarios` e `/permissoes`.
+
 ## v1.0.0-rc4
 
 - Protegida a rota `/api/finance/charges` com sessao Better Auth antes de qualquer consulta financeira.

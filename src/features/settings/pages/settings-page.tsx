@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ProfileSettingsPanel } from "@/features/identity/components/profile-settings-panel";
 import { SETTINGS_SECTIONS } from "@/features/settings/constants/settings";
 import type { SettingsSectionId } from "@/features/settings/types";
+import { PermissionsPage } from "@/features/users/pages/permissions-page";
+import { UsersPage } from "@/features/users/pages/users-page";
 import { EmptyState } from "@/shared/components/empty-state";
 import { PageHeader } from "@/shared/components/page-header";
 import { Card } from "@/shared/components/ui";
@@ -37,6 +39,10 @@ export function SettingsPage() {
         </nav>
         {active === "Perfil" ? (
           <ProfileSettingsPanel />
+        ) : active === "Usuários" ? (
+          <UsersPage />
+        ) : active === "Permissões" ? (
+          <PermissionsPage />
         ) : (
           <Card>
             <EmptyState

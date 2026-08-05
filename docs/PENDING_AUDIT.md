@@ -71,12 +71,17 @@ Estruturado mas incompleto:
 - Perfil: dados sao carregados, mas perfil/preferencias persistem em `app_settings`, apesar de existirem tabelas `user_profiles` e `user_preferences`.
 - Avatar: interface existe, mas upload retorna erro controlado.
 
-Nao implementado ou nao aplicado:
+Implementado nesta branch funcional:
 
-- Expandir RBAC server-side para matriz completa de Usuarios/Permissoes.
-- Bloqueio por `status` do usuario foi aplicado no helper central de APIs internas.
 - Fluxo administrativo de criacao/edicao de usuarios.
 - UI de Usuarios e Permissoes.
+- Endpoints `/api/users`, `/api/users/password`, `/api/users/sessions` e `/api/permissions`.
+- Regra para impedir remocao, suspensao ou rebaixamento do ultimo administrador ativo.
+
+Nao implementado ou nao aplicado:
+
+- Aplicar e validar a migration de status `active`, `inactive`, `invited`, `suspended` no ambiente Railway.
+- Bloqueio por `status` do usuario foi aplicado no helper central de APIs internas.
 
 ## 6. Pendencias de banco
 
@@ -144,20 +149,20 @@ Baixa:
 
 ## 10. Pendencias dos modulos
 
-| Modulo        | Estado real     | Observacoes                                                                                 |
-| ------------- | --------------- | ------------------------------------------------------------------------------------------- |
-| Dashboard     | Parcial         | Dados reais para resumo basico; graficos de crescimento vazios; sem analytics real.         |
-| Clientes      | Parcial         | Listagem, detalhe e criacao conectados; sem update/delete, contatos, enderecos e historico. |
-| Produtos      | Parcial         | Listagem, criacao, update, pause e soft delete; confirmacao ainda via `window.confirm`.     |
-| Contratos     | Parcial         | Listagem e criacao com produto/cliente; sem ciclo completo, renovacao ou assinatura.        |
-| Financeiro    | Parcial         | Cobrancas via Mercado Pago e leitura protegida por sessao/RBAC; sem CRUD financeiro.        |
-| Agenda        | Parcial         | Listagem e criacao de calls; sem update/delete/integracao calendario.                       |
-| Suporte       | Parcial         | Listagem e criacao de tickets; sem update, SLA, comentarios ou atribuicao real.             |
-| Relatorios    | Somente parcial | Exporta CSV de dados reais; PDF/XLSX avisados como futuro.                                  |
-| Configuracoes | Parcial         | Perfil, preferencias e senha; storage de perfil/preferencias ainda em `app_settings`.       |
-| Perfil        | Parcial         | Dados reais de auth; upload de avatar nao disponivel.                                       |
-| Usuarios      | Nao iniciado    | So existe bootstrap admin e tabelas foundation.                                             |
-| Permissoes    | Nao iniciado    | Roles/permissoes existem no banco; sem UI e sem enforcement completo.                       |
+| Modulo        | Estado real               | Observacoes                                                                                 |
+| ------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| Dashboard     | Parcial                   | Dados reais para resumo basico; graficos de crescimento vazios; sem analytics real.         |
+| Clientes      | Parcial                   | Listagem, detalhe e criacao conectados; sem update/delete, contatos, enderecos e historico. |
+| Produtos      | Parcial                   | Listagem, criacao, update, pause e soft delete; confirmacao ainda via `window.confirm`.     |
+| Contratos     | Parcial                   | Listagem e criacao com produto/cliente; sem ciclo completo, renovacao ou assinatura.        |
+| Financeiro    | Parcial                   | Cobrancas via Mercado Pago e leitura protegida por sessao/RBAC; sem CRUD financeiro.        |
+| Agenda        | Parcial                   | Listagem e criacao de calls; sem update/delete/integracao calendario.                       |
+| Suporte       | Parcial                   | Listagem e criacao de tickets; sem update, SLA, comentarios ou atribuicao real.             |
+| Relatorios    | Somente parcial           | Exporta CSV de dados reais; PDF/XLSX avisados como futuro.                                  |
+| Configuracoes | Parcial                   | Perfil, preferencias e senha; storage de perfil/preferencias ainda em `app_settings`.       |
+| Perfil        | Parcial                   | Dados reais de auth; upload de avatar nao disponivel.                                       |
+| Usuarios      | Implementado nesta branch | CRUD administrativo inicial, senha, sessoes, soft delete e auditoria.                       |
+| Permissoes    | Implementado nesta branch | Matriz real de roles/permissoes em modo leitura; edicao fica para ciclo posterior.          |
 
 ## 11. Melhorias opcionais
 

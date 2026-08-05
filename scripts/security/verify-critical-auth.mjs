@@ -1,4 +1,5 @@
 const baseUrl = process.env.SECURITY_BASE_URL || "http://127.0.0.1:4173";
+const requestOrigin = process.env.SECURITY_ORIGIN || new URL(baseUrl).origin;
 
 const checks = [];
 
@@ -21,6 +22,7 @@ async function request(path, init = {}) {
     ...init,
     headers: {
       accept: "application/json",
+      origin: requestOrigin,
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
@@ -50,6 +52,12 @@ async function verifyAnonymousApiProtection() {
     "/api/dashboard/summary",
     "/api/dashboard/activity",
     "/api/finance/charges",
+    "/api/identity/profile",
+    "/api/identity/preferences",
+    "/api/identity/sessions",
+    "/api/users",
+    "/api/users/sessions?id=test",
+    "/api/permissions",
   ];
 
   for (const endpoint of internalEndpoints) {
@@ -59,6 +67,58 @@ async function verifyAnonymousApiProtection() {
 
   const writeResponse = await request("/api/finance/charges", { method: "POST", body: "{}" });
   assertStatus("POST /api/finance/charges sem sessao", writeResponse.status, 401);
+
+  const createUserResponse = await request("/api/users", { method: "POST", body: "{}" });
+  assertStatus("POST /api/users sem sessao", createUserResponse.status, 401);
+
+  const passwordResponse = await request("/api/users/password", { method: "POST", body: "{}" });
+  assertStatus("POST /api/users/password sem sessao", passwordResponse.status, 401);
+
+  const revokeSessionsResponse = await request("/api/users/sessions?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/users/sessions sem sessao", revokeSessionsResponse.status, 401);
+
+  const updateIdentityProfileResponse = await request("/api/identity/profile", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/identity/profile sem sessao", updateIdentityProfileResponse.status, 401);
+
+  const updateIdentityPreferencesResponse = await request("/api/identity/preferences", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus(
+    "PATCH /api/identity/preferences sem sessao",
+    updateIdentityPreferencesResponse.status,
+    401,
+  );
+
+  const updateIdentityPasswordResponse = await request("/api/identity/password", {
+    method: "POST",
+    body: "{}",
+  });
+  assertStatus(
+    "POST /api/identity/password sem sessao",
+    updateIdentityPasswordResponse.status,
+    401,
+  );
+
+  const uploadIdentityAvatarResponse = await request("/api/identity/avatar", {
+    method: "POST",
+    body: "{}",
+  });
+  assertStatus("POST /api/identity/avatar sem sessao", uploadIdentityAvatarResponse.status, 401);
+
+  const deleteIdentitySessionsResponse = await request("/api/identity/sessions?id=test", {
+    method: "DELETE",
+  });
+  assertStatus(
+    "DELETE /api/identity/sessions sem sessao",
+    deleteIdentitySessionsResponse.status,
+    401,
+  );
 }
 
 async function verifyUntrustedOrigin() {
@@ -103,7 +163,7 @@ async function verifyAdminFlow() {
   });
   assertStatus("Admin autorizado antes do metodo nao implementado", writeResponse.status, 405);
 
-  const profileResponse = await request("/api/settings/profile?authUserId=self", {
+  const profileResponse = await request("/api/identity/profile", {
     headers: { cookie },
   });
   record("Sessao persistente admin", profileResponse.status !== 401, {

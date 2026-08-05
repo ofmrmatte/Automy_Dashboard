@@ -77,6 +77,16 @@ Todo CRUD deve possuir:
 - Toast
 - Confirmacao de exclusao
 
+## Usuarios
+
+- Cadastro publico deve permanecer desabilitado.
+- Usuarios devem ser criados por fluxo administrativo protegido.
+- Todo usuario deve estar vinculado a uma empresa via `company_id`.
+- Status oficiais: `active`, `inactive`, `invited`, `suspended`.
+- Roles oficiais: `admin`, `manager`, `operator`, `read_only`.
+- Nunca permitir que o ultimo administrador ativo seja removido, suspenso ou rebaixado.
+- Troca administrativa de senha deve revogar sessoes ativas.
+
 ## Banco de Dados
 
 - O banco oficial e Railway PostgreSQL.
