@@ -87,9 +87,9 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Produtos      | Visualizacao/edicao                   | FUNCIONAL         | baixa      | admin/manager                 | modal de detalhe e PATCH com campos operacionais                                     | `products.manage`            | manter                                        |
 | Produtos      | Ativacao/inativacao/soft delete       | FUNCIONAL         | baixa      | admin/manager                 | PATCH status e DELETE soft delete com modal do Design System                         | `products.manage`            | validar por role                              |
 | Produtos      | Vinculo com clientes                  | FUNCIONAL         | baixa      | todos                         | clientes e contratos sao contados por vinculos reais em `contracts`                  | contratos reais              | aprofundar no modulo Contratos                |
-| Contratos     | Listagem                              | PARCIAL           | media      | roles com `contracts.read`    | endpoint real, base vazia                                                            | produtos/clientes            | manter                                        |
-| Contratos     | Criacao                               | PARCIAL           | alta       | admin/manager                 | cria cliente se necessario e contrato pendente                                       | produto existente            | validar constraints e auditoria               |
-| Contratos     | Edicao/renovacao/cancelamento         | NAO IMPLEMENTADA  | alta       | admin/manager                 | sem endpoints e sem UI                                                               | ciclo de vida de contrato    | implementar no sprint de Contratos            |
+| Contratos     | Listagem/busca/filtro/paginacao       | FUNCIONAL         | baixa      | roles com `contracts.read`    | endpoint real com cliente/produto, filtro por termo/status e paginacao               | produtos/clientes            | evoluir para server-side em alto volume       |
+| Contratos     | Criacao                               | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, cliente/produto reais, item de contrato, audit/activity log                 | `contracts.manage`           | validar por role                              |
+| Contratos     | Edicao/ciclo de vida                  | FUNCIONAL         | baixa      | admin/manager                 | PATCH cobre ativar, suspender, renovar, cancelar, encerrar e edicao comercial        | ciclo de vida de contrato    | validar por role                              |
 | Financeiro    | Listagem de cobrancas                 | PARCIAL           | alta       | roles com `finance.read`      | endpoint protegido e company_id aplicado                                             | charges reais                | manter                                        |
 | Financeiro    | Metricas no Dashboard                 | FUNCIONAL         | baixa      | roles com `finance.read`      | Dashboard agrega `charges` e contratos reais quando permitido                        | charges/contratos reais      | completar CRUD financeiro                     |
 | Financeiro    | Criacao/edicao/baixa/cancelamento     | NAO IMPLEMENTADA  | alta       | admin                         | endpoint rejeita metodos nao GET                                                     | CRUD financeiro              | implementar depois da modelagem               |
@@ -233,7 +233,7 @@ Persistencia real implementada:
 
 - clientes: criar/listar/detalhar basico;
 - produtos: criar/listar/visualizar/editar/ativar/inativar/soft delete;
-- contratos: criar/listar basico;
+- contratos: criar/listar/visualizar/editar/ciclo de vida/soft delete;
 - suporte: criar/listar tickets basicos;
 - agenda: criar/listar calls basicas;
 - financeiro: listar charges e receber webhook Mercado Pago;

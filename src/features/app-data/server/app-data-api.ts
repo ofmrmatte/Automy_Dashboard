@@ -1,6 +1,11 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
+  contractFormSchema,
+  contractPatchSchema,
+  type ContractFormData,
+} from "@/features/contracts/validation";
+import {
   productFormSchema,
   productPatchSchema,
   type ProductFormData,
@@ -947,125 +952,413 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    productId?: unknown;
-    companyName?: unknown;
-    document?: unknown;
-    signerName?: unknown;
-    hasWitness?: unknown;
-    witnessName?: unknown;
-    contractText?: unknown;
-  };
-  const productId = typeof payload.productId === "string" ? payload.productId : "";
-  const companyName = typeof payload.companyName === "string" ? payload.companyName.trim() : "";
-  const document = typeof payload.document === "string" ? payload.document.trim() : "";
-  const signerName = typeof payload.signerName === "string" ? payload.signerName.trim() : "";
-  const witnessName =
-    payload.hasWitness && typeof payload.witnessName === "string" ? payload.witnessName.trim() : "";
-  const contractText = typeof payload.contractText === "string" ? payload.contractText : "";
-
-  if (!productId || !companyName || !document || !signerName) {
+  const parsed = contractFormSchema.safeParse(await request.json());
+  if (!parsed.success) {
     return jsonResponse(
-      { error: "Dados obrigatórios do contrato não informados." },
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
       { status: 400 },
     );
   }
 
   const db = await getRailwayPostgresPool();
+  const client = await db.connect();
 
-  const clientResult = await db.query<{ id: string }>(
-    `
-      insert into public.clients (
-        company_id,
-        legal_name,
-        trade_name,
-        document,
-        status,
-        created_by,
-        updated_by
-      )
-      values ($1, $2, $2, $3, 'active', $4, $4)
-      on conflict do nothing;
-    `,
-    [context.companyId, companyName, document, context.domainUserId],
-  );
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `
+        insert into public.contracts (
+          company_id,
+          client_id,
+          product_id,
+          name,
+          monthly_value,
+          implementation_value,
+          starts_at,
+          ends_at,
+          renewal_at,
+          billing_period,
+          status,
+          signer_name,
+          witness_name,
+          contract_text,
+          notes,
+          created_by,
+          updated_by
+        )
+        select
+          $1,
+          clients.id,
+          products.id,
+          $4,
+          $5,
+          $6,
+          $7::date,
+          $8::date,
+          nullif($9, '')::date,
+          $10,
+          $11,
+          $12,
+          nullif($13, ''),
+          nullif($14, ''),
+          nullif($15, ''),
+          $16,
+          $16
+        from public.clients
+        cross join public.products
+        where clients.id = $2
+          and clients.company_id = $1
+          and clients.deleted_at is null
+          and products.id = $3
+          and products.company_id = $1
+          and products.deleted_at is null
+        returning *
+      `,
+      contractQueryValues(parsed.data, context),
+    );
 
-  const client = await db.query<{ id: string }>(
-    `
-      select id
-      from public.clients
-      where company_id = $1
-        and document = $2
-        and deleted_at is null
-      order by created_at desc
-      limit 1
-    `,
-    [context.companyId, document],
-  );
+    const created = result.rows[0];
+    if (!created) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Cliente ou produto não encontrado." }, { status: 404 });
+    }
 
-  const clientId = client.rows[0]?.id ?? clientResult.rows[0]?.id;
-  if (!clientId) {
-    return jsonResponse({ error: "Não foi possível cadastrar a contratante." }, { status: 500 });
+    await upsertContractItem(client, context, created.id, parsed.data);
+    await recordContractAudit(client, context, "contract.create", created.id, {
+      clientId: parsed.data.clientId,
+      productId: parsed.data.productId,
+      status: parsed.data.status,
+    });
+    await client.query("commit");
+
+    return handleContractById(created.id, context, 201);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleUpdateContract(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
+  const parsed = contractPatchSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Contrato não informado." },
+      { status: 400 },
+    );
+  }
+
+  const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const status = mapContractStatusToDatabase(parsed.data.status ?? "");
+    const result = await client.query(
+      `
+        update public.contracts
+        set
+          client_id = coalesce($3, client_id),
+          product_id = coalesce($4, product_id),
+          name = coalesce(nullif($5, ''), name),
+          monthly_value = coalesce($6, monthly_value),
+          implementation_value = coalesce($7, implementation_value),
+          starts_at = coalesce($8::date, starts_at),
+          ends_at = coalesce($9::date, ends_at),
+          renewal_at = coalesce(nullif($10, '')::date, renewal_at),
+          billing_period = coalesce(nullif($11, ''), billing_period),
+          status = coalesce(nullif($12, ''), status),
+          signer_name = coalesce(nullif($13, ''), signer_name),
+          witness_name = $14,
+          contract_text = coalesce($15, contract_text),
+          notes = coalesce($16, notes),
+          cancelled_at = case when $12 = 'cancelled' then now() else cancelled_at end,
+          ended_at = case when $12 = 'ended' then now() else ended_at end,
+          updated_by = $17,
+          updated_at = now()
+        where id = $1
+          and company_id = $2
+          and deleted_at is null
+        returning *
+      `,
+      [
+        parsed.data.id,
+        context.companyId,
+        parsed.data.clientId ?? null,
+        parsed.data.productId ?? null,
+        parsed.data.name ?? "",
+        parsed.data.monthlyValue ?? null,
+        parsed.data.implementationValue ?? null,
+        parsed.data.startsAt ?? null,
+        parsed.data.endsAt ?? null,
+        parsed.data.renewalAt ?? "",
+        parsed.data.billingPeriod ?? "",
+        status,
+        parsed.data.signerName ?? "",
+        parsed.data.witnessName ?? null,
+        parsed.data.contractText ?? null,
+        parsed.data.notes ?? null,
+        context.authUserId,
+      ],
+    );
+
+    const updated = result.rows[0];
+    if (!updated) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
+    }
+
+    if (parsed.data.productId || parsed.data.monthlyValue !== undefined) {
+      await upsertContractItem(client, context, updated.id, {
+        ...parsed.data,
+        clientId: updated.client_id,
+        productId: updated.product_id,
+        name: updated.name ?? "",
+        monthlyValue: Number(updated.monthly_value ?? 0),
+        implementationValue: Number(updated.implementation_value ?? 0),
+        startsAt: updated.starts_at ?? "",
+        endsAt: updated.ends_at ?? "",
+        billingPeriod: updated.billing_period ?? "Mensal",
+        status: parsed.data.status ?? "Pendente",
+        signerName: updated.signer_name ?? "",
+        renewalAt: updated.renewal_at ?? "",
+        witnessName: updated.witness_name ?? "",
+        notes: updated.notes ?? "",
+        contractText: updated.contract_text ?? "",
+      });
+    }
+
+    await recordContractAudit(client, context, "contract.update", updated.id, {
+      status: updated.status,
+    });
+    await client.query("commit");
+
+    return handleContractById(updated.id, context);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDeleteContract(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  if (!id) return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
-      insert into public.contracts (
-        company_id,
-        client_id,
-        product_id,
-        name,
-        monthly_value,
-        starts_at,
-        ends_at,
-        status,
-        signer_name,
-        witness_name,
-        contract_text,
-        created_by,
-        updated_by
-      )
-      select
-        $1,
-        $2,
-        products.id,
-        products.name,
-        nullif(products.commercial_terms ->> 'monthlyFee', '')::numeric,
-        current_date,
-        current_date + interval '12 months',
-        'pending',
-        $4,
-        nullif($5, ''),
-        $6,
-        $8,
-        $8
-      from public.products
-      where products.id = $3
-        and products.company_id = $1
-        and products.deleted_at is null
-      returning
-        contracts.*,
-        $7::text as client_trade_name,
-        $7::text as client_legal_name,
-        (select name from public.products where id = $3) as product_name
+      update public.contracts
+      set deleted_at = now(), updated_at = now(), updated_by = $3
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+      returning id
     `,
-    [
-      context.companyId,
-      clientId,
-      productId,
-      signerName,
-      witnessName,
-      contractText,
-      companyName,
-      context.domainUserId,
-    ],
+    [id, context.companyId, context.authUserId],
   );
 
   if (!result.rows[0]) {
-    return jsonResponse({ error: "Produto não encontrado." }, { status: 404 });
+    return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
   }
 
-  return jsonResponse({ contract: result.rows[0] }, { status: 201 });
+  await recordContractAudit(db, context, "contract.delete", id);
+  return jsonResponse({ ok: true });
+}
+
+function contractQueryValues(payload: ContractFormData, context: AuthenticatedUserContext) {
+  return [
+    context.companyId,
+    payload.clientId,
+    payload.productId,
+    payload.name,
+    payload.monthlyValue,
+    payload.implementationValue,
+    payload.startsAt,
+    payload.endsAt,
+    payload.renewalAt,
+    payload.billingPeriod,
+    mapContractStatusToDatabase(payload.status),
+    payload.signerName,
+    payload.witnessName,
+    payload.contractText,
+    payload.notes,
+    context.authUserId,
+  ];
+}
+
+function mapContractStatusToDatabase(status: string) {
+  if (status === "Ativo" || status === "active") return "active";
+  if (status === "Implantação" || status === "onboarding") return "onboarding";
+  if (status === "Renovação" || status === "renewal") return "renewal";
+  if (status === "Suspenso" || status === "suspended") return "suspended";
+  if (status === "Cancelado" || status === "cancelled") return "cancelled";
+  if (status === "Encerrado" || status === "ended") return "ended";
+  return "pending";
+}
+
+async function handleContractById(
+  contractId: string,
+  context: AuthenticatedUserContext,
+  status = 200,
+) {
+  const rows = await queryRows(
+    `
+      select
+        contracts.*,
+        clients.trade_name as client_trade_name,
+        clients.legal_name as client_legal_name,
+        products.name as product_name
+      from public.contracts
+      left join public.clients on clients.id = contracts.client_id
+      left join public.products on products.id = contracts.product_id
+      where contracts.id = $2
+        and contracts.deleted_at is null
+        and contracts.company_id = $1
+      limit 1
+    `,
+    [context.companyId, contractId],
+  );
+
+  return jsonResponse({ contract: rows[0] ?? null }, { status });
+}
+
+async function upsertContractItem(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  contractId: string,
+  payload: ContractFormData,
+) {
+  await db.query(
+    `
+      update public.contract_items
+      set
+        product_id = $3,
+        name = $4,
+        quantity = 1,
+        unit_price = $5,
+        monthly_value = $5,
+        updated_at = now(),
+        updated_by = $6
+      where id = (
+        select id
+        from public.contract_items
+        where company_id = $1
+          and contract_id = $2
+          and deleted_at is null
+        order by created_at asc
+        limit 1
+      )
+    `,
+    [
+      context.companyId,
+      contractId,
+      payload.productId,
+      payload.name,
+      payload.monthlyValue,
+      context.authUserId,
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.contract_items (
+        company_id,
+        contract_id,
+        product_id,
+        name,
+        quantity,
+        unit_price,
+        monthly_value,
+        created_by,
+        updated_by
+      )
+      select $1, $2, $3, $4, 1, $5, $5, $6, $6
+      where not exists (
+        select 1
+        from public.contract_items
+        where company_id = $1
+          and contract_id = $2
+          and deleted_at is null
+      )
+    `,
+    [
+      context.companyId,
+      contractId,
+      payload.productId,
+      payload.name,
+      payload.monthlyValue,
+      context.authUserId,
+    ],
+  );
+}
+
+async function recordContractAudit(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  action: string,
+  contractId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await db.query(
+    `
+      insert into public.audit_logs (
+        company_id,
+        actor_auth_user_id,
+        actor_user_id,
+        action,
+        resource_type,
+        resource_id,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $3, $4, 'contract', $5, $6, $2, $2)
+    `,
+    [
+      context.companyId,
+      context.authUserId,
+      context.domainUserId,
+      action,
+      contractId,
+      JSON.stringify(metadata),
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.activity_logs (
+        company_id,
+        actor_user_id,
+        entity_type,
+        entity_id,
+        action,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, 'contract', $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      context.domainUserId,
+      contractId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
+    ],
+  );
 }
 
 async function handleDashboardSummary(context: AuthenticatedUserContext) {
@@ -1694,6 +1987,14 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "POST" && url.pathname === "/api/contracts") {
     return handleCreateContract(request, auth.context);
+  }
+
+  if (request.method === "PATCH" && url.pathname === "/api/contracts") {
+    return handleUpdateContract(request, auth.context);
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/contracts") {
+    return handleDeleteContract(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/support/tickets") {

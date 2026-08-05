@@ -155,6 +155,17 @@ O modulo `src/features/products` usa formulario React Hook Form + Zod e persiste
 - Todas as escritas exigem `products.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Vinculos com clientes sao calculados por contratos reais; nao ha simulacao de uso.
 
+## Contratos
+
+O modulo `src/features/contracts` usa formulario React Hook Form + Zod e persiste o ciclo de vida comercial via `/api/contracts`.
+
+- `GET /api/contracts`: lista contratos da empresa autenticada com cliente e produto relacionados.
+- `POST /api/contracts`: cria contrato e item inicial em `contract_items`.
+- `PATCH /api/contracts`: atualiza dados comerciais e status; suporta ativar, suspender, renovar, cancelar e encerrar.
+- `DELETE /api/contracts?id=`: aplica soft delete.
+- Todas as escritas exigem `contracts.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Datas de contrato sao persistidas como `date`; fluxos de Agenda continuarao responsaveis por UTC/timezone.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
@@ -180,6 +191,7 @@ As migrations ativas da foundation sao:
 - `20260805213000_settings_foundation.sql`
 - `20260805223000_clients_operational_fields.sql`
 - `20260805233000_products_operational_fields.sql`
+- `20260806000000_contracts_lifecycle_fields.sql`
 
 A migration foundation cria:
 
@@ -193,6 +205,7 @@ A migration foundation cria:
 - `addresses`
 - `products`
 - `contracts`
+- `contract_items`
 - `activities`
 - `activity_logs`
 - `audit_logs`

@@ -25,21 +25,21 @@
 
 ## Proxima Etapa
 
-- Validar Fase 6 autenticada em producao apos deploy da branch.
-- Seguir para Contratos completo sem reintroduzir mocks.
+- Validar Fase 7 autenticada em producao apos deploy da branch.
+- Seguir para Financeiro completo sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Contratos, Financeiro, Agenda e Suporte.
+- Continuar desenvolvimento dos modulos de negocio: Financeiro, Agenda e Suporte.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para contratos e modulos posteriores.
+- Implementar CRUDs reais para financeiro e modulos posteriores.
 
 ## Fase 1 - Usuarios e Permissoes
 
@@ -95,6 +95,15 @@
 - Quantidade de clientes e contratos por produto e calculada por vinculos reais em `contracts`.
 - Pendencias: versionamento historico e relacoes operacionais serao aprofundados no ciclo de Contratos.
 
+## Fase 7 - Contratos
+
+- Implementado ciclo real de contratos com criar, listar, visualizar, editar, ativar, suspender, renovar, cancelar, encerrar e excluir logicamente.
+- Persistidos campos oficiais: cliente, produto, plano, valor mensal, valor de implantacao, inicio, vencimento, renovacao, periodicidade, status, observacoes e minuta.
+- Criada tabela `contract_items` para itens do contrato vinculados ao produto.
+- Endpoints `/api/contracts` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Dashboard passa a refletir contratos ativos, a vencer, MRR e ARR a partir do ciclo real de contratos.
+- Pendencias: assinatura digital, anexos e renovacao com versionamento juridico dependem de decisoes posteriores.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -108,7 +117,7 @@
 
 - Clientes: CRUD, contatos, enderecos e historico.
 - Produtos: CRUD, termos comerciais, modelo de contrato e vinculacao real com contratos.
-- Contratos: vigencia, valores e renovacoes.
+- Contratos: ciclo de vida, valores, renovacoes e itens de contrato.
 - Financeiro: modelagem propria antes de exibir cobrancas.
 - Suporte: modelagem propria antes de exibir tickets.
 - Relatorios: exportacao somente com dados reais.

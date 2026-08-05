@@ -745,11 +745,20 @@ export type Database = {
           product_id: string | null;
           name: string | null;
           monthly_value: number | null;
+          implementation_value: number | null;
           starts_at: string | null;
           ends_at: string | null;
+          renewal_at: string | null;
+          billing_period: string | null;
           status: string;
           client: { trade_name: string | null; legal_name: string } | null;
           product: { name: string } | null;
+          signer_name: string | null;
+          witness_name: string | null;
+          contract_text: string | null;
+          notes: string | null;
+          cancelled_at: string | null;
+          ended_at: string | null;
         };
         Insert: AuditInsertColumns & {
           company_id: string;
@@ -757,9 +766,18 @@ export type Database = {
           product_id?: string | null;
           name?: string | null;
           monthly_value?: number | null;
+          implementation_value?: number | null;
           starts_at?: string | null;
           ends_at?: string | null;
+          renewal_at?: string | null;
+          billing_period?: string | null;
           status?: string;
+          signer_name?: string | null;
+          witness_name?: string | null;
+          contract_text?: string | null;
+          notes?: string | null;
+          cancelled_at?: string | null;
+          ended_at?: string | null;
         };
         Update: AuditUpdateColumns & {
           company_id?: string;
@@ -767,9 +785,48 @@ export type Database = {
           product_id?: string | null;
           name?: string | null;
           monthly_value?: number | null;
+          implementation_value?: number | null;
           starts_at?: string | null;
           ends_at?: string | null;
+          renewal_at?: string | null;
+          billing_period?: string | null;
           status?: string;
+          signer_name?: string | null;
+          witness_name?: string | null;
+          contract_text?: string | null;
+          notes?: string | null;
+          cancelled_at?: string | null;
+          ended_at?: string | null;
+        };
+        Relationships: [];
+      };
+      contract_items: {
+        Row: AuditColumns & {
+          company_id: string;
+          contract_id: string;
+          product_id: string | null;
+          name: string;
+          quantity: number;
+          unit_price: number;
+          monthly_value: number;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          contract_id: string;
+          product_id?: string | null;
+          name: string;
+          quantity?: number;
+          unit_price?: number;
+          monthly_value?: number;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          contract_id?: string;
+          product_id?: string | null;
+          name?: string;
+          quantity?: number;
+          unit_price?: number;
+          monthly_value?: number;
         };
         Relationships: [];
       };

@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+- Implementado modulo Contratos completo com CRUD real, visualizar, editar, ativar, suspender, renovar, cancelar, encerrar, soft delete, filtros, paginacao, validação RHF+Zod, itens de contrato, auditoria e activity log.
+- Criada migration `20260806000000_contracts_lifecycle_fields.sql` para ciclo de vida, campos comerciais e `contract_items`.
 - Implementado modulo Produtos completo com CRUD real, visualizar, editar, ativar/inativar, soft delete, busca, filtros, paginacao, validação RHF+Zod, termos comerciais, modelo de contrato, auditoria e activity log.
 - Criada migration `20260805233000_products_operational_fields.sql` para campos operacionais e indices de produtos.
 - Implementado módulo Clientes completo com CRUD real, edição, inativação/reativação, soft delete, busca, filtro, paginação client-side, validação RHF+Zod, contato/endereço principal, auditoria e activity log.

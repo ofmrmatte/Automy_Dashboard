@@ -169,24 +169,26 @@ Critério de pronto:
 
 Objetivo: criar ciclo de vida real de contratos.
 
+Status nesta branch: implementado como Fase 7 funcional inicial. Falta validar com usuarios reais por role e definir assinatura/anexos/versionamento juridico.
+
 Escopo:
 
-- Editar contrato.
-- Alterar status.
+- Edicao de contrato.
+- Alteracao de status.
 - Vigencia real.
-- Valor mensal e anual.
-- Renovacao.
-- Cancelamento.
+- Valor mensal, implantacao e ARR derivado pelo Dashboard.
+- Renovacao, suspensao, cancelamento e encerramento.
 - Vinculo obrigatorio com cliente/produto.
-- Historico.
-- Contratos a vencer.
-- Auditoria.
-- Exportacao/visualizacao da minuta.
+- Item de contrato em `contract_items`.
+- Contratos a vencer refletidos pelo Dashboard.
+- Auditoria e activity logs.
+- Visualizacao da minuta.
 
 Critério de pronto:
 
 - Dashboard reflete contratos e receita.
 - Contratos a vencer batem com banco.
+- Pendencias: validacao por role, assinatura digital, anexos e versionamento juridico.
 
 ## Sprint 6 - Financeiro
 

@@ -1,150 +1,215 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { BadgeCheck, Building2, FileSignature, Save, ShieldCheck, Users } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
-import { contractsQueryOptions } from "@/features/contracts/api/contract.queries";
-import { contractService } from "@/features/contracts/services/contract.service";
+import { useEffect, useMemo } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import type { Contract } from "@/features/contracts/types";
 import { buildContractDraft } from "@/features/contracts/utils/contract-template";
+import {
+  contractBillingPeriods,
+  contractFormSchema,
+  contractStatuses,
+  type ContractFormValues,
+} from "@/features/contracts/validation";
+import { clientsQueryOptions } from "@/features/clients/api/client.queries";
 import { productsQueryOptions } from "@/features/products/api/product.queries";
-import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
-import { toast } from "@/shared/components/toast";
+import { useQuery } from "@tanstack/react-query";
+import { Button, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
 
-export function ContractCreateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
+const defaultValues: ContractFormValues = {
+  id: "",
+  clientId: "",
+  productId: "",
+  name: "",
+  monthlyValue: 0,
+  implementationValue: 0,
+  startsAt: new Date().toISOString().slice(0, 10),
+  endsAt: "",
+  renewalAt: "",
+  billingPeriod: "Mensal",
+  status: "Pendente",
+  signerName: "",
+  witnessName: "",
+  notes: "",
+  contractText: "",
+};
+
+function contractToFormValues(contract: Contract | null | undefined): ContractFormValues {
+  if (!contract) return defaultValues;
+  const billingPeriod = contractBillingPeriods.find((period) => period === contract.billingPeriod);
+
+  return {
+    id: contract.id,
+    clientId: contract.clientId,
+    productId: contract.productId,
+    name: contract.plan,
+    monthlyValue: contract.monthlyValue,
+    implementationValue: contract.implementationValue,
+    startsAt: contract.startsAt,
+    endsAt: contract.endsAt,
+    renewalAt: contract.renewalAt,
+    billingPeriod: billingPeriod ?? "Mensal",
+    status: contract.status,
+    signerName: contract.signerName ?? "",
+    witnessName: contract.witnessName ?? "",
+    notes: contract.notes ?? "",
+    contractText: contract.contractText ?? "",
+  };
+}
+
+export function ContractCreateModal({
+  open,
+  contract,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  contract?: Contract | null;
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (values: ContractFormValues) => Promise<unknown>;
+}) {
+  const isEditing = Boolean(contract);
+  const { data: clients = [] } = useQuery(clientsQueryOptions());
   const { data: products = [] } = useQuery(productsQueryOptions());
-  const [saving, setSaving] = useState(false);
-  const [productId, setProductId] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [document, setDocument] = useState("");
-  const [signerName, setSignerName] = useState("");
-  const [hasWitness, setHasWitness] = useState(false);
-  const [witnessName, setWitnessName] = useState("");
+  const form = useForm<ContractFormValues>({
+    resolver: zodResolver(contractFormSchema),
+    defaultValues: contractToFormValues(contract),
+  });
+  const values = useWatch({ control: form.control });
 
-  const selectedProduct = products.find((product) => product.id === productId) ?? products[0];
-  const selectedProductId = productId || selectedProduct?.id || "";
+  useEffect(() => {
+    form.reset(contractToFormValues(contract));
+  }, [contract, form, open]);
+
+  const selectedClient = clients.find((client) => client.id === values.clientId);
+  const selectedProduct = products.find((product) => product.id === values.productId);
   const draft = useMemo(() => {
-    if (!selectedProduct) {
-      return "Cadastre um produto primeiro para gerar o contrato pré-preenchido.";
-    }
+    if (!selectedProduct) return "Selecione um produto para gerar a minuta.";
 
     return buildContractDraft(selectedProduct, {
-      companyName: companyName || "Razão social da contratante",
-      document: document || "CNPJ da contratante",
-      signerName: signerName || "Responsável pela assinatura",
-      ...(hasWitness ? { witnessName: witnessName || "Nome da testemunha" } : {}),
+      companyName: selectedClient?.legal || selectedClient?.name || "Cliente",
+      document: selectedClient?.cnpj || "Documento",
+      signerName: values.signerName || "Responsável pela assinatura",
+      ...(values.witnessName ? { witnessName: values.witnessName } : {}),
     });
-  }, [companyName, document, hasWitness, selectedProduct, signerName, witnessName]);
+  }, [selectedClient, selectedProduct, values.signerName, values.witnessName]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedProductId) {
-      toast.warning("Cadastre um produto antes de gerar o contrato.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await contractService.createContract({
-        productId: selectedProductId,
-        companyName,
-        document,
-        signerName,
-        hasWitness,
-        witnessName,
-        contractText: draft,
-      });
-      await queryClient.invalidateQueries({ queryKey: contractsQueryOptions().queryKey });
-      toast.success("Contrato gerado e salvo.");
-      onClose();
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível salvar o contrato.");
-    } finally {
-      setSaving(false);
-    }
+  async function handleSubmit(values: ContractFormValues) {
+    await onSubmit({ ...values, contractText: draft });
+    if (!isEditing) form.reset(defaultValues);
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Novo contrato"
-      description="Selecione o produto e complete apenas os dados da contratante."
+      title={isEditing ? "Editar contrato" : "Novo contrato"}
+      description="Selecione cliente, produto e defina condições comerciais reais."
       size="xl"
     >
       <form
         className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(420px,1fr)]"
-        onSubmit={handleSubmit}
+        onSubmit={form.handleSubmit(handleSubmit)}
       >
+        <input type="hidden" {...form.register("id")} />
         <div className="grid content-start gap-5">
           <section className="grid gap-4">
-            <h3 className="text-sm font-semibold text-foreground">Produto vendido</h3>
-            <Field label="Sistema/produto">
-              <Select
-                value={selectedProductId}
-                onChange={(event) => setProductId(event.target.value)}
-                required
-              >
-                {products.length === 0 && <option value="">Cadastre um produto primeiro</option>}
+            <h3 className="text-sm font-semibold text-foreground">Contrato</h3>
+            <Field label="Cliente">
+              <Select {...form.register("clientId")}>
+                <option value="">Selecione</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
+              <FormError message={form.formState.errors.clientId?.message} />
+            </Field>
+            <Field label="Produto">
+              <Select {...form.register("productId")}>
+                <option value="">Selecione</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
                   </option>
                 ))}
               </Select>
+              <FormError message={form.formState.errors.productId?.message} />
             </Field>
-          </section>
-
-          <section className="grid gap-4">
-            <h3 className="text-sm font-semibold text-foreground">Contratante</h3>
-            <Field label="Nome da empresa vendida">
-              <Input
-                required
-                value={companyName}
-                onChange={(event) => setCompanyName(event.target.value)}
-                placeholder="Razão social"
-              />
+            <Field label="Plano / nome do contrato">
+              <Input placeholder="Plano contratado" {...form.register("name")} />
+              <FormError message={form.formState.errors.name?.message} />
             </Field>
-            <Field label="CNPJ">
-              <Input
-                required
-                value={document}
-                onChange={(event) => setDocument(event.target.value)}
-                placeholder="00.000.000/0000-00"
-              />
-            </Field>
-            <Field label="Responsável pela assinatura">
-              <Input
-                required
-                value={signerName}
-                onChange={(event) => setSignerName(event.target.value)}
-                placeholder="Nome completo"
-              />
-            </Field>
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <Checkbox
-                checked={hasWitness}
-                onChange={(event) => setHasWitness(event.target.checked)}
-              />
-              Tem testemunha
-            </label>
-            {hasWitness && (
-              <Field label="Nome da testemunha">
-                <Input
-                  required
-                  value={witnessName}
-                  onChange={(event) => setWitnessName(event.target.value)}
-                  placeholder="Nome completo da testemunha"
-                />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Valor mensal">
+                <Input type="number" min={0} step="0.01" {...form.register("monthlyValue")} />
+                <FormError message={form.formState.errors.monthlyValue?.message} />
               </Field>
-            )}
+              <Field label="Valor de implantação">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  {...form.register("implementationValue")}
+                />
+                <FormError message={form.formState.errors.implementationValue?.message} />
+              </Field>
+              <Field label="Início">
+                <Input type="date" {...form.register("startsAt")} />
+                <FormError message={form.formState.errors.startsAt?.message} />
+              </Field>
+              <Field label="Vencimento">
+                <Input type="date" {...form.register("endsAt")} />
+                <FormError message={form.formState.errors.endsAt?.message} />
+              </Field>
+              <Field label="Renovação">
+                <Input type="date" {...form.register("renewalAt")} />
+                <FormError message={form.formState.errors.renewalAt?.message} />
+              </Field>
+              <Field label="Periodicidade">
+                <Select {...form.register("billingPeriod")}>
+                  {contractBillingPeriods.map((period) => (
+                    <option key={period}>{period}</option>
+                  ))}
+                </Select>
+                <FormError message={form.formState.errors.billingPeriod?.message} />
+              </Field>
+              <Field label="Status">
+                <Select {...form.register("status")}>
+                  {contractStatuses.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </Select>
+                <FormError message={form.formState.errors.status?.message} />
+              </Field>
+              <Field label="Responsável pela assinatura">
+                <Input placeholder="Nome completo" {...form.register("signerName")} />
+                <FormError message={form.formState.errors.signerName?.message} />
+              </Field>
+              <Field label="Testemunha">
+                <Input placeholder="Opcional" {...form.register("witnessName")} />
+                <FormError message={form.formState.errors.witnessName?.message} />
+              </Field>
+            </div>
+            <Field label="Observações">
+              <Textarea placeholder="Notas internas sobre o contrato" {...form.register("notes")} />
+              <FormError message={form.formState.errors.notes?.message} />
+            </Field>
           </section>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button loading={saving} disabled={!selectedProductId}>
+            <Button
+              type="submit"
+              loading={saving}
+              disabled={clients.length === 0 || products.length === 0}
+            >
               <Save className="size-4" />
-              Salvar contrato
+              {isEditing ? "Salvar alterações" : "Salvar contrato"}
             </Button>
           </div>
         </div>
@@ -196,4 +261,9 @@ export function ContractCreateModal({ open, onClose }: { open: boolean; onClose:
       </form>
     </Modal>
   );
+}
+
+function FormError({ message }: { message: string | undefined }) {
+  if (!message) return null;
+  return <span className="text-xs font-normal text-destructive">{message}</span>;
 }
