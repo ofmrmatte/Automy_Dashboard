@@ -24,6 +24,7 @@ Migration ativa:
 
 - `railway/migrations/20260805010000_automy_foundation_schema.sql`
 - `railway/migrations/20260805012000_align_better_auth_column_names.sql`
+- `railway/migrations/20260805140000_align_rate_limit_primary_key.sql`
 
 Ela cria:
 
@@ -35,6 +36,8 @@ Ela cria:
 Todas as entidades de domínio usam UUID, timestamps, soft delete, índices, constraints e foreign keys.
 
 A segunda migration alinha os nomes físicos das colunas base do Better Auth ao contrato observado pelo adapter PostgreSQL oficial, preservando os campos adicionais Automy em snake_case.
+
+A terceira migration adiciona a coluna `id` na tabela `rate_limit`, exigida pelo adapter de banco do Better Auth durante o controle de tentativas de autenticação.
 
 ## Seeds
 

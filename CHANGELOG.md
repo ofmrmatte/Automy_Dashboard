@@ -26,6 +26,7 @@
 
 - Reconstruida a foundation de infraestrutura para nova conta Railway.
 - Promovida baseline oficial para `v1.0.0-rc3` apos ativacao operacional da nova foundation.
+- Corrigido alinhamento da tabela `rate_limit` do Better Auth para permitir login em producao.
 - Removidas migrations Railway antigas.
 - Criada migration unica `20260805010000_automy_foundation_schema.sql`.
 - Criada migration `20260805012000_align_better_auth_column_names.sql` para alinhamento do adapter PostgreSQL do Better Auth.
