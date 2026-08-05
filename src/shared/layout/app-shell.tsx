@@ -1,11 +1,25 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronLeft, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  KeyRound,
+  LogOut,
+  Menu,
+  Monitor,
+  Moon,
+  Search,
+  Settings,
+  Sun,
+  User,
+  X,
+} from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useIdentity } from "@/features/identity/context/identity-context";
 import { APP_DESCRIPTION, APP_NAVIGATION, APP_NAME } from "@/shared/constants/app";
 import { Button, Input } from "@/shared/components/ui";
 import { toast } from "@/shared/components/toast";
 import { cn } from "@/shared/utils/cn";
+import { getLocalizedGreeting } from "@/shared/utils/regional-formatters";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -13,9 +27,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [dark, setDark] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ");
   const displayName = fullName || user?.email || "Conta";
-  const displayRole = profile?.jobTitle || user?.email || "";
+  const displayRole = profile?.roleName || "";
+  const greeting = getLocalizedGreeting(
+    profile?.firstName ?? "",
+    {
+      locale: preferences?.language,
+      timeZone: preferences?.timeZone,
+      currency: preferences?.currency,
+      timeFormat: preferences?.timeFormat,
+    },
+    profile?.companyTimeZone,
+    now,
+  );
   const initials = (fullName || user?.email || "A")
     .split(/\s|@/)
     .filter(Boolean)
@@ -34,6 +61,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     setDark(useDark);
     document.documentElement.classList.toggle("dark", useDark);
   }, [preferences?.theme]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const toggleTheme = () => {
     const next = !dark;
@@ -169,24 +201,78 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
               <Bell className="size-4" />
             </Button>
-            <div className="ml-1 flex items-center gap-2 border-l border-border pl-3">
-              <div className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
-              <div className="hidden min-w-0 xl:block">
-                <div className="max-w-32 truncate text-xs font-medium">{displayName}</div>
-                <div className="max-w-32 truncate text-[10px] text-muted-foreground">
-                  {displayRole}
+            <div className="relative ml-1 border-l border-border pl-3">
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-lg p-1 text-left hover:bg-accent"
+                onClick={() => setMenuOpen((value) => !value)}
+                aria-label="Abrir menu do usuário"
+              >
+                <div className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
-              </div>
+                <div className="hidden min-w-0 xl:block">
+                  <div className="max-w-40 truncate text-xs font-medium">{displayName}</div>
+                  <div className="max-w-40 truncate text-[10px] text-muted-foreground">
+                    {displayRole || profile?.companyName}
+                  </div>
+                </div>
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-11 z-50 w-72 rounded-card border border-border bg-card p-2 text-sm shadow-modal">
+                  <div className="border-b border-border px-3 py-2">
+                    <div className="font-medium text-foreground">{greeting}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {profile?.companyName ?? "Automy"} · {displayRole}
+                    </div>
+                  </div>
+                  <Link
+                    to="/configuracoes"
+                    className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <User className="size-4" />
+                    Perfil
+                  </Link>
+                  <Link
+                    to="/configuracoes"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="size-4" />
+                    Configurações
+                  </Link>
+                  <Link
+                    to="/configuracoes"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <KeyRound className="size-4" />
+                    Alterar senha
+                  </Link>
+                  <Link
+                    to="/configuracoes"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Monitor className="size-4" />
+                    Sessões
+                  </Link>
+                  <button
+                    type="button"
+                    className="mt-2 flex w-full items-center gap-2 rounded-lg border-t border-border px-3 py-2 text-destructive hover:bg-destructive/10"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="size-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Sair">
-              <LogOut className="size-4" />
-            </Button>
           </div>
         </header>
         <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</main>

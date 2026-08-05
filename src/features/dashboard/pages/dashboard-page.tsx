@@ -15,14 +15,27 @@ import {
 } from "@/features/dashboard/api/dashboard.queries";
 import { ClientChart, RevenueChart } from "@/features/dashboard/components/dashboard-charts";
 import { clientsQueryOptions } from "@/features/clients/api/client.queries";
+import { useIdentity } from "@/features/identity/context/identity-context";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Badge, Card } from "@/shared/components/ui";
 import { MetricCard } from "@/shared/components/metric-card";
 import { PageHeader } from "@/shared/components/page-header";
 import { toneForStatus } from "@/shared/types/status";
-import { formatCurrency, formatLongDate } from "@/shared/utils/formatters";
+import {
+  formatCurrency,
+  formatShortDate,
+  formatLongDate,
+  getLocalizedGreeting,
+} from "@/shared/utils/regional-formatters";
 
 export function DashboardPage() {
+  const { preferences, profile } = useIdentity();
+  const regionalPreferences = {
+    locale: preferences?.language,
+    timeZone: preferences?.timeZone,
+    currency: preferences?.currency,
+    timeFormat: preferences?.timeFormat,
+  };
   const { data: summary, isLoading: summaryLoading } = useQuery(dashboardSummaryQueryOptions());
   const { data: clients = [], isLoading: clientsLoading } = useQuery(clientsQueryOptions());
   const { data: clientGrowth = [], isLoading: clientGrowthLoading } = useQuery(
@@ -38,8 +51,12 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader
-        eyebrow={formatLongDate(new Date())}
-        title="Bom dia"
+        eyebrow={formatLongDate(new Date(), regionalPreferences, profile?.companyTimeZone)}
+        title={getLocalizedGreeting(
+          profile?.firstName ?? "",
+          regionalPreferences,
+          profile?.companyTimeZone,
+        )}
         description="Acompanhe os principais indicadores e movimentos da operação."
       />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
@@ -59,14 +76,14 @@ export function DashboardPage() {
         />
         <MetricCard
           label="Receita mensal"
-          value={formatCurrency(summary?.monthlyRevenue ?? 0)}
+          value={formatCurrency(summary?.monthlyRevenue ?? 0, regionalPreferences)}
           helper="contratos ativos"
           icon={CircleDollarSign}
           loading={summaryLoading}
         />
         <MetricCard
           label="Receita anual"
-          value={formatCurrency(summary?.annualRevenue ?? 0)}
+          value={formatCurrency(summary?.annualRevenue ?? 0, regionalPreferences)}
           helper="receita anualizada"
           icon={CircleDollarSign}
           loading={summaryLoading}
@@ -140,6 +157,9 @@ export function DashboardPage() {
                     <div className="text-xs text-muted-foreground">
                       {[client.city, client.state].filter(Boolean).join(", ")}
                     </div>
+                    <div className="text-xs text-muted-foreground">
+                      Cadastro: {formatShortDate(client.createdAt, regionalPreferences)}
+                    </div>
                   </div>
                   <Badge tone={toneForStatus(client.status)}>{client.status}</Badge>
                 </div>
@@ -166,7 +186,9 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium">{activity.title}</div>
-                    <div className="text-xs text-muted-foreground">{activity.meta}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {activity.meta} · {formatShortDate(activity.createdAt, regionalPreferences)}
+                    </div>
                   </div>
                 </div>
               ))

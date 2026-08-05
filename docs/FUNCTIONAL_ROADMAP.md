@@ -42,6 +42,8 @@ Critério de pronto:
 
 Objetivo: tornar a experiencia personalizada por usuario.
 
+Status nesta branch: implementado como Fase 2 funcional inicial. Falta validar fluxo autenticado real e definir storage persistente oficial para upload binario de avatar.
+
 Escopo:
 
 - Migrar perfil de `app_settings` para `user_profiles`.

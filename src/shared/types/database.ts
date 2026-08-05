@@ -73,6 +73,7 @@ export type Database = {
           email: string | null;
           phone: string | null;
           status: string;
+          time_zone: string;
         };
         Insert: AuditInsertColumns & {
           legal_name: string;
@@ -81,6 +82,7 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           status?: string;
+          time_zone?: string;
         };
         Update: AuditUpdateColumns & {
           legal_name?: string;
@@ -89,6 +91,7 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           status?: string;
+          time_zone?: string;
         };
         Relationships: [];
       };
@@ -185,6 +188,9 @@ export type Database = {
           job_title: string | null;
           company_name: string | null;
           avatar_path: string | null;
+          avatar_mime_type: string | null;
+          avatar_size: number | null;
+          avatar_updated_at: string | null;
         };
         Insert: AuditInsertColumns & {
           auth_user_id: string;
@@ -194,6 +200,9 @@ export type Database = {
           job_title?: string | null;
           company_name?: string | null;
           avatar_path?: string | null;
+          avatar_mime_type?: string | null;
+          avatar_size?: number | null;
+          avatar_updated_at?: string | null;
         };
         Update: AuditUpdateColumns & {
           auth_user_id?: string;
@@ -203,6 +212,9 @@ export type Database = {
           job_title?: string | null;
           company_name?: string | null;
           avatar_path?: string | null;
+          avatar_mime_type?: string | null;
+          avatar_size?: number | null;
+          avatar_updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -215,6 +227,7 @@ export type Database = {
           date_format: string;
           time_format: "24h" | "12h";
           currency: string;
+          first_day_of_week: number;
           notifications: Json;
         };
         Insert: AuditInsertColumns & {
@@ -225,6 +238,7 @@ export type Database = {
           date_format?: string;
           time_format?: "24h" | "12h";
           currency?: string;
+          first_day_of_week?: number;
           notifications?: Json;
         };
         Update: AuditUpdateColumns & {
@@ -235,6 +249,7 @@ export type Database = {
           date_format?: string;
           time_format?: "24h" | "12h";
           currency?: string;
+          first_day_of_week?: number;
           notifications?: Json;
         };
         Relationships: [];

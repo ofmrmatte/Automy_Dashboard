@@ -4,6 +4,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api";
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
+import { handleIdentityApiRequest } from "./features/identity/server/identity-api";
 import { handleBetterAuthRequest } from "./features/identity/server/better-auth";
 import { handleUsersApiRequest } from "./features/users/server/users-api";
 
@@ -56,6 +57,9 @@ export default {
 
       const appDataResponse = await handleAppDataApiRequest(request);
       if (appDataResponse) return appDataResponse;
+
+      const identityResponse = await handleIdentityApiRequest(request);
+      if (identityResponse) return identityResponse;
 
       const usersResponse = await handleUsersApiRequest(request);
       if (usersResponse) return usersResponse;

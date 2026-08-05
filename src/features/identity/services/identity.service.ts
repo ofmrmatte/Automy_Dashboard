@@ -1,6 +1,7 @@
 import { identityRepository } from "@/features/identity/repositories/identity.repository";
 import type {
   AuthSession,
+  PasswordUpdatePayload,
   PreferencesUpdatePayload,
   ProfileUpdatePayload,
 } from "@/features/identity/types";
@@ -11,8 +12,8 @@ export const identityService = {
   signIn: (email: string, password: string, rememberMe?: boolean) =>
     identityRepository.signInWithPassword(email, password, rememberMe),
   sendPasswordRecovery: (email: string) => identityRepository.sendPasswordRecovery(email),
-  updatePassword: (password: string, currentPassword?: string) =>
-    identityRepository.updatePassword(password, currentPassword),
+  updatePassword: (payload: PasswordUpdatePayload) => identityRepository.updatePassword(payload),
+  resetPassword: (password: string) => identityRepository.resetPassword(password),
   signOut: (scope: "global" | "local" | "others" = "local") => identityRepository.signOut(scope),
   ensureIdentityRecords: (session: AuthSession) =>
     identityRepository.ensureIdentityRecords(session),
@@ -25,4 +26,8 @@ export const identityService = {
     identityRepository.updatePreferences(authUserId, payload),
   uploadAvatar: (authUserId: string, file: File) =>
     identityRepository.uploadAvatar(authUserId, file),
+  listSessions: () => identityRepository.listSessions(),
+  revokeSession: (sessionId: string) => identityRepository.revokeSession(sessionId),
+  revokeOtherSessions: () => identityRepository.revokeOtherSessions(),
+  revokeAllSessions: () => identityRepository.revokeAllSessions(),
 };

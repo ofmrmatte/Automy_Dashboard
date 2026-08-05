@@ -189,3 +189,18 @@ Better Auth e a autenticacao oficial da Automy.
 - Status oficiais de usuario: `active`, `inactive`, `invited`, `suspended`.
 - Roles oficiais: `admin`, `manager`, `operator`, `read_only`.
 - A API impede remover, suspender ou rebaixar o ultimo administrador ativo.
+
+## Perfil e Personalizacao
+
+- Perfil real: `user_profiles`.
+- Preferencias reais: `user_preferences`.
+- Identidade e sessoes: Better Auth.
+- Empresa/role/status: `users`, `roles` e `companies`.
+- Endpoints internos:
+  - `GET/PATCH /api/identity/profile`
+  - `GET/PATCH /api/identity/preferences`
+  - `POST /api/identity/avatar`
+  - `POST /api/identity/password`
+  - `GET/DELETE /api/identity/sessions`
+- Saudacao dinamica usa primeiro nome e timezone do usuario.
+- Geolocalizacao precisa nao e usada nesta fase.

@@ -17,6 +17,7 @@ export type AuthUser = {
 };
 
 export type AuthSession = {
+  id: string;
   access_token: string;
   refresh_token: string;
   expires_in: number;
@@ -37,12 +38,25 @@ export type NotificationPreferences = {
 export type IdentityProfile = AuditableEntity & {
   id: string;
   authUserId: string;
+  domainUserId: string;
+  companyId: string;
   firstName: string;
   lastName: string;
   phone: string;
   jobTitle: string;
   companyName: string;
   avatarPath: string | null;
+  avatarMimeType: string | null;
+  avatarSize: number | null;
+  avatarUpdatedAt: string | null;
+  email: string;
+  role: "admin" | "manager" | "operator" | "read_only";
+  roleName: string;
+  status: "active" | "inactive" | "invited" | "suspended";
+  companyTimeZone: string;
+  authCreatedAt: string;
+  lastLogin: string | null;
+  emailVerified: boolean;
 };
 
 export type IdentityPreferences = AuditableEntity & {
@@ -54,7 +68,23 @@ export type IdentityPreferences = AuditableEntity & {
   dateFormat: string;
   timeFormat: TimeFormatPreference;
   currency: string;
+  firstDayOfWeek: number;
   notifications: NotificationPreferences;
+};
+
+export type IdentitySessionRecord = {
+  id: string;
+  token: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  maskedIpAddress: string | null;
+  userAgent: string | null;
+  device: string;
+  browser: string;
+  operatingSystem: string;
+  current: boolean;
 };
 
 export type IdentitySession = {
@@ -67,7 +97,7 @@ export type ProfileUpdatePayload = {
   lastName: string;
   phone: string;
   jobTitle: string;
-  companyName: string;
+  avatarUrl: string;
 };
 
 export type PreferencesUpdatePayload = {
@@ -77,5 +107,12 @@ export type PreferencesUpdatePayload = {
   dateFormat: string;
   timeFormat: TimeFormatPreference;
   currency: string;
+  firstDayOfWeek: number;
   notifications: NotificationPreferences;
+};
+
+export type PasswordUpdatePayload = {
+  currentPassword: string;
+  password: string;
+  revokeOtherSessions: boolean;
 };

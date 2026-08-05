@@ -1,6 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, KeyRound, Monitor, Save, ShieldCheck, Smartphone, UserCircle } from "lucide-react";
-import { useEffect } from "react";
+import {
+  Camera,
+  KeyRound,
+  Monitor,
+  Save,
+  ShieldCheck,
+  Smartphone,
+  Trash2,
+  UserCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormError } from "@/features/identity/components/form-error";
 import { useIdentity } from "@/features/identity/context/identity-context";
@@ -25,13 +34,32 @@ import {
   Input,
   Select,
 } from "@/shared/components/ui";
-import { formatDateTime } from "@/shared/utils/formatters";
+import { formatDateTime as formatRegionalDateTime } from "@/shared/utils/regional-formatters";
+
+const roleLabels = {
+  admin: "Administrador",
+  manager: "Gestor",
+  operator: "Operador",
+  read_only: "Leitura",
+} as const;
+
+const statusLabels = {
+  active: "Ativo",
+  inactive: "Inativo",
+  invited: "Convidado",
+  suspended: "Suspenso",
+} as const;
 
 export function ProfileSettingsPanel() {
   const {
     avatarUrl,
+    identitySessions,
     preferences,
     profile,
+    refreshSessions,
+    revokeAllSessions,
+    revokeOtherSessions,
+    revokeSession,
     session,
     signOut,
     updatePassword,
@@ -40,6 +68,13 @@ export function ProfileSettingsPanel() {
     uploadAvatar,
     user,
   } = useIdentity();
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const regionalPreferences = {
+    currency: preferences?.currency,
+    locale: preferences?.language,
+    timeFormat: preferences?.timeFormat,
+    timeZone: preferences?.timeZone,
+  };
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -48,12 +83,12 @@ export function ProfileSettingsPanel() {
       lastName: "",
       phone: "",
       jobTitle: "",
-      companyName: "",
+      avatarUrl: "",
     },
   });
 
   const preferencesForm = useForm<PreferencesFormValues>({
-    resolver: zodResolver(preferencesSchema),
+    resolver: zodResolver(preferencesSchema) as never,
     defaultValues: {
       theme: "system",
       language: "pt-BR",
@@ -61,6 +96,7 @@ export function ProfileSettingsPanel() {
       dateFormat: "dd/MM/yyyy",
       timeFormat: "24h",
       currency: "BRL",
+      firstDayOfWeek: 1,
       notifications: {
         productUpdates: true,
         securityAlerts: true,
@@ -75,6 +111,7 @@ export function ProfileSettingsPanel() {
       currentPassword: "",
       password: "",
       confirmPassword: "",
+      revokeOtherSessions: true,
     },
   });
 
@@ -85,8 +122,9 @@ export function ProfileSettingsPanel() {
       lastName: profile.lastName,
       phone: profile.phone,
       jobTitle: profile.jobTitle,
-      companyName: profile.companyName,
+      avatarUrl: profile.avatarPath ?? "",
     });
+    setAvatarPreview(profile.avatarPath);
   }, [profile, profileForm]);
 
   useEffect(() => {
@@ -98,6 +136,7 @@ export function ProfileSettingsPanel() {
       dateFormat: preferences.dateFormat,
       timeFormat: preferences.timeFormat,
       currency: preferences.currency,
+      firstDayOfWeek: preferences.firstDayOfWeek,
       notifications: preferences.notifications,
     });
   }, [preferences, preferencesForm]);
@@ -113,7 +152,10 @@ export function ProfileSettingsPanel() {
 
   const onPreferencesSubmit = preferencesForm.handleSubmit(async (values) => {
     try {
-      await updatePreferences(values);
+      await updatePreferences({
+        ...values,
+        firstDayOfWeek: Number(values.firstDayOfWeek),
+      });
       toast.success("Preferências salvas.");
     } catch (error) {
       toast.danger(
@@ -124,7 +166,11 @@ export function ProfileSettingsPanel() {
 
   const onPasswordSubmit = passwordForm.handleSubmit(async (values) => {
     try {
-      await updatePassword(values.password, values.currentPassword);
+      await updatePassword({
+        currentPassword: values.currentPassword,
+        password: values.password,
+        revokeOtherSessions: values.revokeOtherSessions,
+      });
       passwordForm.reset();
       toast.success("Senha alterada.");
     } catch (error) {
@@ -132,16 +178,32 @@ export function ProfileSettingsPanel() {
     }
   });
 
-  const onAvatarChange = async (file: File | undefined) => {
+  const onAvatarChange = (file: File | undefined) => {
     if (!file) return;
 
-    try {
-      await uploadAvatar(file);
-      toast.success("Foto atualizada.");
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível alterar a foto.");
-    }
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+    uploadAvatar(file).catch((error) => {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível enviar o avatar.");
+    });
   };
+
+  const removeAvatar = () => {
+    profileForm.setValue("avatarUrl", "");
+    setAvatarPreview(null);
+  };
+
+  const saveAvatarUrl = (value: string) => {
+    setAvatarPreview(value || null);
+  };
+
+  async function handleRevokeSession(sessionId: string, current: boolean) {
+    if (current && !window.confirm("Revogar a sessão atual vai encerrar seu acesso. Continuar?")) {
+      return;
+    }
+    await revokeSession(sessionId);
+    toast.success("Sessão revogada.");
+  }
 
   return (
     <div className="grid gap-6">
@@ -153,8 +215,12 @@ export function ProfileSettingsPanel() {
         <CardBody>
           <div className="mb-6 flex flex-wrap items-center gap-4">
             <div className="grid size-16 place-items-center overflow-hidden rounded-card bg-accent text-lg font-semibold">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="size-16 object-cover" />
+              {avatarPreview || avatarUrl ? (
+                <img
+                  src={avatarPreview ?? avatarUrl ?? ""}
+                  alt=""
+                  className="size-16 object-cover"
+                />
               ) : (
                 <UserCircle className="size-8" />
               )}
@@ -169,6 +235,10 @@ export function ProfileSettingsPanel() {
                 onChange={(event) => onAvatarChange(event.target.files?.[0])}
               />
             </label>
+            <Button type="button" variant="ghost" onClick={removeAvatar}>
+              <Trash2 className="size-4" />
+              Remover foto
+            </Button>
           </div>
           <form className="grid max-w-3xl gap-5" onSubmit={onProfileSubmit}>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -188,18 +258,50 @@ export function ProfileSettingsPanel() {
                 <Input autoComplete="organization-title" {...profileForm.register("jobTitle")} />
                 <FormError message={profileForm.formState.errors.jobTitle?.message} />
               </Field>
-              <Field label="Empresa">
-                <Input autoComplete="organization" {...profileForm.register("companyName")} />
-                <FormError message={profileForm.formState.errors.companyName?.message} />
+              <Field label="Avatar por URL">
+                <Input
+                  placeholder="https://..."
+                  {...profileForm.register("avatarUrl", {
+                    onChange: (event) => saveAvatarUrl(event.target.value),
+                  })}
+                />
+                <FormError message={profileForm.formState.errors.avatarUrl?.message} />
               </Field>
               <Field label="E-mail">
                 <Input value={user?.email ?? ""} readOnly />
               </Field>
+              <Field label="Empresa">
+                <Input value={profile?.companyName ?? ""} readOnly />
+              </Field>
+              <Field label="Perfil de acesso">
+                <Input value={profile ? roleLabels[profile.role] : ""} readOnly />
+              </Field>
+              <Field label="Status">
+                <Input value={profile ? statusLabels[profile.status] : ""} readOnly />
+              </Field>
             </div>
             <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-              <div>Criada em: {user?.created_at ? formatDateTime(user.created_at) : ""}</div>
               <div>
-                Último acesso: {user?.last_sign_in_at ? formatDateTime(user.last_sign_in_at) : ""}
+                Criada em:{" "}
+                {profile?.authCreatedAt
+                  ? formatRegionalDateTime(profile.authCreatedAt, {
+                      locale: preferences?.language,
+                      timeZone: preferences?.timeZone,
+                      currency: preferences?.currency,
+                      timeFormat: preferences?.timeFormat,
+                    })
+                  : ""}
+              </div>
+              <div>
+                Último acesso:{" "}
+                {profile?.lastLogin
+                  ? formatRegionalDateTime(profile.lastLogin, {
+                      locale: preferences?.language,
+                      timeZone: preferences?.timeZone,
+                      currency: preferences?.currency,
+                      timeFormat: preferences?.timeFormat,
+                    })
+                  : "Nunca acessou"}
               </div>
             </div>
             <div>
@@ -253,6 +355,13 @@ export function ProfileSettingsPanel() {
                   <option value="BRL">BRL</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
+                </Select>
+              </Field>
+              <Field label="Primeiro dia da semana">
+                <Select {...preferencesForm.register("firstDayOfWeek")}>
+                  <option value={1}>Segunda-feira</option>
+                  <option value={0}>Domingo</option>
+                  <option value={6}>Sábado</option>
                 </Select>
               </Field>
             </div>
@@ -313,6 +422,10 @@ export function ProfileSettingsPanel() {
                 <FormError message={passwordForm.formState.errors.confirmPassword?.message} />
               </Field>
             </div>
+            <label className="flex items-center gap-3 text-sm">
+              <Checkbox {...passwordForm.register("revokeOtherSessions")} />
+              Encerrar outras sessões após alterar a senha
+            </label>
             <div>
               <Button type="submit" loading={passwordForm.formState.isSubmitting}>
                 <KeyRound className="size-4" />
@@ -330,32 +443,73 @@ export function ProfileSettingsPanel() {
         </CardHeader>
         <CardBody>
           <div className="grid gap-4">
-            <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-[auto_minmax(0,1fr)]">
-              <div className="grid size-10 place-items-center rounded-lg bg-accent">
-                <Monitor className="size-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">Sessão atual</span>
-                  <span className="inline-flex items-center gap-1 text-xs text-success">
-                    <ShieldCheck className="size-3.5" />
-                    Ativa
-                  </span>
+            {identitySessions.map((identitySession) => (
+              <div
+                key={identitySession.id}
+                className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+              >
+                <div className="grid size-10 place-items-center rounded-lg bg-accent">
+                  <Monitor className="size-5" />
                 </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Expira em: {session?.expires_at ? formatDateTime(session.expires_at * 1000) : ""}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">
+                      {identitySession.browser} em {identitySession.operatingSystem}
+                    </span>
+                    {identitySession.current && (
+                      <span className="inline-flex items-center gap-1 text-xs text-success">
+                        <ShieldCheck className="size-3.5" />
+                        Sessão atual
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {identitySession.device} · IP{" "}
+                    {identitySession.maskedIpAddress ?? "não informado"}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Criada em{" "}
+                    {formatRegionalDateTime(identitySession.createdAt, regionalPreferences)} ·
+                    Última atividade{" "}
+                    {formatRegionalDateTime(identitySession.updatedAt, regionalPreferences)}
+                  </div>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRevokeSession(identitySession.id, identitySession.current)}
+                >
+                  Revogar
+                </Button>
               </div>
-            </div>
+            ))}
             <div className="flex flex-wrap gap-2">
+              <Button variant="ghost" onClick={() => refreshSessions()}>
+                Atualizar sessões
+              </Button>
               <Button variant="secondary" onClick={() => signOut("local")}>
                 <Smartphone className="size-4" />
                 Sair desta sessão
               </Button>
-              <Button variant="outline" onClick={() => signOut("others")}>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  revokeOtherSessions().then(() => toast.success("Outras sessões encerradas."))
+                }
+              >
                 Encerrar outras sessões
               </Button>
-              <Button variant="danger" onClick={() => signOut("global")}>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (
+                    window.confirm("Encerrar todas as sessões vai exigir novo login. Continuar?")
+                  ) {
+                    revokeAllSessions().then(() => toast.success("Sessões encerradas."));
+                  }
+                }}
+              >
                 Sair de todos os dispositivos
               </Button>
             </div>

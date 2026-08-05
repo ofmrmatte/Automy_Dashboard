@@ -25,6 +25,7 @@
 
 ## Proxima Etapa
 
+- Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
@@ -44,6 +45,17 @@
 - Implementada matriz de permissoes somente leitura baseada nas tabelas `roles`, `permissions` e `role_permissions`.
 - Mantida protecao server-side por `users.read`, `users.manage` e `settings.read`.
 - Pendencias: validar fluxo autenticado com usuarios reais por role e expandir testes automatizados de RBAC.
+
+## Fase 2 - Perfil, Preferencias e Timezone
+
+- Implementado perfil real com Better Auth, `users`, `user_profiles`, `user_preferences` e `companies`.
+- Implementada persistencia real de preferencias: tema, idioma, timezone, formatos, moeda, primeiro dia da semana e notificacoes.
+- Implementada saudacao dinamica por timezone e primeiro nome.
+- Implementado header com dados reais, avatar, role, empresa e menu do usuario.
+- Implementada listagem/revogacao de sessoes e alteracao de senha auditada.
+- Avatar aceita URL HTTPS persistida; upload binario possui adapter preparado e valida MIME/tamanho, mas depende de storage persistente oficial.
+- Geolocalizacao precisa segue desabilitada; GPS so sera adotado se houver caso funcional real.
+- Pendencias: definir storage oficial de arquivos e rodar testes autenticados por role.
 
 ## Dados e Permissoes
 

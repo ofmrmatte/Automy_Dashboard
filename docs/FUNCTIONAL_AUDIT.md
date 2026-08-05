@@ -6,7 +6,7 @@ Data: 2026-08-05.
 
 A Automy v1.0.0-rc4 esta publicada, sincronizada com `origin/main` e rodando no Railway em producao. O deploy atual verificado esta online em `https://automydashboard-production.up.railway.app`.
 
-O estado funcional ainda e de foundation: autenticacao oficial, banco Railway PostgreSQL, RBAC inicial, Design System, Brand Kit, Login Premium e arquitetura feature-first estao consolidados. Os modulos de negocio, porem, estao majoritariamente parciais. Existem telas reais e algumas operacoes persistidas no banco, mas ainda faltam fluxos completos de usuarios, permissoes, edicao/exclusao em varios modulos, auditoria automatica, timezone aplicado em toda a UI e personalizacao real do Dashboard.
+O estado funcional ainda e de foundation: autenticacao oficial, banco Railway PostgreSQL, RBAC inicial, Design System, Brand Kit, Login Premium e arquitetura feature-first estao consolidados. Os modulos de negocio, porem, estao majoritariamente parciais. Existem telas reais e algumas operacoes persistidas no banco. Nesta branch, a Fase 2 conecta perfil, preferencias, saudacao, timezone, header e sessoes aos dados reais do usuario autenticado. Ainda faltam fluxos completos de edicao/exclusao em varios modulos, auditoria automatica ampla e testes autenticados por todos os perfis.
 
 Ponto critico originalmente confirmado: o administrador nao conseguia criar outros usuarios porque nao existia implementacao funcional do modulo de Usuarios. Nesta branch, a Fase 1 implementa tela, formulario, endpoint, criacao Better Auth com senha temporaria, vinculo de dominio, sessoes, soft delete e matriz de permissoes.
 
@@ -65,54 +65,54 @@ Contagens funcionais observadas, sem expor dados sensiveis:
 | app_settings     | 2 entradas, sendo 1 `profile:*` e 1 `preferences:*` |
 | session          |                                                   6 |
 
-Observacao: `user_profiles` e `user_preferences` existem, mas a aplicacao ainda le e grava perfil/preferencias em `app_settings`.
+Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e `user_preferences`. As entradas antigas de `app_settings` permanecem como legado de banco ate uma limpeza planejada.
 
 ## 5. Matriz funcional por modulo
 
-| Modulo        | Funcionalidade                          | Status           | Severidade | Perfil afetado                | Causa provavel                                                                 | Dependencia                      | Acao recomendada                                    |
-| ------------- | --------------------------------------- | ---------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------- |
-| Dashboard     | Rota abre                               | FUNCIONAL        | baixa      | todos autenticados            | rota existe                                                                    | sessao Better Auth               | manter                                              |
-| Dashboard     | Metricas principais                     | PARCIAL          | media      | todos                         | calcula clientes/contratos reais, mas chamados abertos e graficos ficam vazios | dados reais por modulo           | implementar agregacoes reais por dominio            |
-| Dashboard     | Saudacao dinamica                       | QUEBRADA         | alta       | todos                         | `title=\"Bom dia\"` hardcoded                                                  | perfil/preferencias/timezone     | criar util de saudacao com primeiro nome e timezone |
-| Dashboard     | Fuso horario no header                  | PARCIAL          | media      | todos                         | data usa `new Date()` e formatador pt-BR sem timezone do usuario               | user_preferences                 | aplicar preference timeZone                         |
-| Dashboard     | Graficos                                | SOMENTE VISUAL   | media      | todos                         | repositorios retornam arrays vazios                                            | historico real                   | criar queries agregadas                             |
-| Dashboard     | Atividades recentes                     | PARCIAL          | media      | todos                         | le `activity_logs`, mas a tabela esta vazia e CRUDs nao geram logs             | eventos de dominio               | registrar activity_logs em operacoes reais          |
-| Clientes      | Listagem                                | PARCIAL          | media      | roles com `clients.read`      | endpoint real, base vazia                                                      | sessao e company_id              | manter e testar com massa controlada                |
-| Clientes      | Busca/filtro                            | FUNCIONAL        | baixa      | frontend                      | filtro client-side sobre dados carregados                                      | dados carregados                 | manter                                              |
-| Clientes      | Criacao                                 | PARCIAL          | media      | admin/manager                 | endpoint POST existe e persiste cliente basico                                 | `clients.manage`                 | adicionar validacao RHF/Zod e testes                |
-| Clientes      | Edicao/exclusao                         | NAO IMPLEMENTADA | alta       | admin/manager                 | nao ha endpoint PATCH/DELETE nem UI                                            | CRUD completo                    | implementar no sprint de Clientes                   |
-| Clientes      | Contatos/enderecos/documentos/historico | SOMENTE VISUAL   | media      | todos                         | detalhe exibe abas e empty state; botao `Adicionar registro` sem acao          | submodulos                       | implementar entidades vinculadas                    |
-| Produtos      | Listagem                                | PARCIAL          | media      | roles com `products.read`     | endpoint real, base vazia                                                      | sessao e company_id              | manter                                              |
-| Produtos      | Criacao                                 | PARCIAL          | media      | admin/manager                 | endpoint POST existe e persiste produto/modelo                                 | `products.manage`                | adicionar validacao e testes                        |
-| Produtos      | Edicao                                  | PARCIAL          | media      | admin/manager                 | endpoint PATCH existe                                                          | `products.manage`                | testar com usuario real                             |
-| Produtos      | Inativacao/soft delete                  | PARCIAL          | media      | admin/manager                 | pause PATCH e DELETE soft delete existem                                       | `products.manage`                | trocar `window.confirm` por modal DS                |
-| Produtos      | Vinculo com clientes                    | PARCIAL          | media      | todos                         | conta contratos por produto                                                    | contratos reais                  | completar fluxo cliente-produto                     |
-| Contratos     | Listagem                                | PARCIAL          | media      | roles com `contracts.read`    | endpoint real, base vazia                                                      | produtos/clientes                | manter                                              |
-| Contratos     | Criacao                                 | PARCIAL          | alta       | admin/manager                 | cria cliente se necessario e contrato pendente                                 | produto existente                | validar constraints e auditoria                     |
-| Contratos     | Edicao/renovacao/cancelamento           | NAO IMPLEMENTADA | alta       | admin/manager                 | sem endpoints e sem UI                                                         | ciclo de vida de contrato        | implementar no sprint de Contratos                  |
-| Financeiro    | Listagem de cobrancas                   | PARCIAL          | alta       | roles com `finance.read`      | endpoint protegido e company_id aplicado                                       | charges reais                    | manter                                              |
-| Financeiro    | Metricas da tela                        | SOMENTE VISUAL   | alta       | todos                         | `formatCurrency(0)` hardcoded                                                  | agregacao financeira             | conectar a `charges`/contratos                      |
-| Financeiro    | Criacao/edicao/baixa/cancelamento       | NAO IMPLEMENTADA | alta       | admin                         | endpoint rejeita metodos nao GET                                               | CRUD financeiro                  | implementar depois da modelagem                     |
-| Financeiro    | Mercado Pago webhook                    | PARCIAL          | media      | sistema                       | webhook existe e valida assinatura quando secret configurado                   | env Mercado Pago                 | validar end-to-end com sandbox                      |
-| Agenda        | Calendario e criacao                    | PARCIAL          | media      | admin/manager/operator        | endpoint POST e listagem existem                                               | `schedule.manage`                | manter e testar                                     |
-| Agenda        | Timezone/UTC                            | QUEBRADA         | alta       | todos                         | armazena `scheduled_date` e `scheduled_time` separados, sem timezone/UTC       | user_preferences                 | remodelar agendamentos com timezone                 |
-| Agenda        | Edicao/cancelamento/lembretes           | NAO IMPLEMENTADA | media      | operadores                    | sem endpoints                                                                  | workflow agenda                  | implementar sprint 7                                |
-| Suporte       | Listagem/criacao                        | PARCIAL          | media      | admin/manager/operator        | endpoint real e form basico                                                    | `support.manage`                 | manter e testar                                     |
-| Suporte       | Mensagens/SLA/anexos/encerramento       | NAO IMPLEMENTADA | alta       | suporte                       | sem UI/endpoint                                                                | modelo ticket completo           | implementar sprint 8                                |
-| Relatorios    | CSV                                     | PARCIAL          | media      | usuarios autorizados pela API | exporta endpoints reais em CSV                                                 | sessao e APIs                    | manter                                              |
-| Relatorios    | PDF/XLSX                                | SOMENTE VISUAL   | media      | todos                         | toast informa futuro                                                           | exportador                       | implementar depois                                  |
-| Relatorios    | Filtros por periodo                     | SOMENTE VISUAL   | media      | todos                         | select nao altera query                                                        | parametros API                   | implementar filtros reais                           |
-| Configuracoes | Perfil                                  | PARCIAL          | media      | usuario autenticado           | form real com RHF/Zod, mas grava em `app_settings`                             | migracao para tabelas dedicadas  | migrar para `user_profiles`                         |
-| Configuracoes | Preferencias                            | PARCIAL          | media      | usuario autenticado           | form real, mas preferencias nao afetam dashboard/formatadores                  | aplicacao global de preferencias | aplicar em layout e formatadores                    |
-| Configuracoes | Empresa                                 | SOMENTE VISUAL   | alta       | admin                         | empty state                                                                    | modulo empresa                   | implementar                                         |
-| Configuracoes | Usuarios                                | NAO IMPLEMENTADA | critica    | admin                         | empty state, sem endpoint `/api/users`                                         | Better Auth admin flow           | implementar sprint 1                                |
-| Configuracoes | Permissoes                              | NAO IMPLEMENTADA | critica    | admin                         | empty state, sem endpoint `/api/permissions`                                   | RBAC completo                    | implementar sprint 1                                |
-| Perfil        | Dados reais de auth                     | PARCIAL          | media      | usuario autenticado           | usa sessao Better Auth e app_settings                                          | perfil oficial                   | migrar armazenamento                                |
-| Perfil        | Avatar upload                           | NAO IMPLEMENTADA | media      | usuario autenticado           | repository lanca erro                                                          | storage                          | implementar storage                                 |
-| Perfil        | Alteracao de senha                      | PARCIAL          | media      | usuario autenticado           | Better Auth client integrado                                                   | sessao valida                    | testar autenticado                                  |
-| Perfil        | Sessoes                                 | PARCIAL          | media      | usuario autenticado           | mostra sessao atual e chama revoke, sem listagem real                          | Better Auth session API          | adicionar listagem real                             |
-| Usuarios      | Criar usuarios                          | NAO IMPLEMENTADA | critica    | admin                         | nao ha UI ativa, formulario, endpoint, convite ou senha temporaria             | Better Auth + domain users       | implementar primeiro                                |
-| Permissoes    | RBAC server-side                        | PARCIAL          | alta       | todos                         | helper estatico e tabela populada, sem UI/edicao                               | permissions UI                   | expandir enforcement                                |
+| Modulo        | Funcionalidade                          | Status           | Severidade | Perfil afetado                | Causa provavel                                                                       | Dependencia                  | Acao recomendada                              |
+| ------------- | --------------------------------------- | ---------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------------------ | ---------------------------- | --------------------------------------------- |
+| Dashboard     | Rota abre                               | FUNCIONAL        | baixa      | todos autenticados            | rota existe                                                                          | sessao Better Auth           | manter                                        |
+| Dashboard     | Metricas principais                     | PARCIAL          | media      | todos                         | calcula clientes/contratos reais, mas chamados abertos e graficos ficam vazios       | dados reais por modulo       | implementar agregacoes reais por dominio      |
+| Dashboard     | Saudacao dinamica                       | FUNCIONAL        | baixa      | todos                         | usa primeiro nome, idioma e timezone resolvido                                       | perfil/preferencias/timezone | validar autenticado em ambiente real          |
+| Dashboard     | Fuso horario no header                  | FUNCIONAL        | baixa      | todos                         | datas principais usam helpers regionais com timezone do usuario                      | user_preferences             | expandir para Agenda em sprint dedicado       |
+| Dashboard     | Graficos                                | SOMENTE VISUAL   | media      | todos                         | repositorios retornam arrays vazios                                                  | historico real               | criar queries agregadas                       |
+| Dashboard     | Atividades recentes                     | PARCIAL          | media      | todos                         | le `activity_logs`, mas a tabela esta vazia e CRUDs nao geram logs                   | eventos de dominio           | registrar activity_logs em operacoes reais    |
+| Clientes      | Listagem                                | PARCIAL          | media      | roles com `clients.read`      | endpoint real, base vazia                                                            | sessao e company_id          | manter e testar com massa controlada          |
+| Clientes      | Busca/filtro                            | FUNCIONAL        | baixa      | frontend                      | filtro client-side sobre dados carregados                                            | dados carregados             | manter                                        |
+| Clientes      | Criacao                                 | PARCIAL          | media      | admin/manager                 | endpoint POST existe e persiste cliente basico                                       | `clients.manage`             | adicionar validacao RHF/Zod e testes          |
+| Clientes      | Edicao/exclusao                         | NAO IMPLEMENTADA | alta       | admin/manager                 | nao ha endpoint PATCH/DELETE nem UI                                                  | CRUD completo                | implementar no sprint de Clientes             |
+| Clientes      | Contatos/enderecos/documentos/historico | SOMENTE VISUAL   | media      | todos                         | detalhe exibe abas e empty state; botao `Adicionar registro` sem acao                | submodulos                   | implementar entidades vinculadas              |
+| Produtos      | Listagem                                | PARCIAL          | media      | roles com `products.read`     | endpoint real, base vazia                                                            | sessao e company_id          | manter                                        |
+| Produtos      | Criacao                                 | PARCIAL          | media      | admin/manager                 | endpoint POST existe e persiste produto/modelo                                       | `products.manage`            | adicionar validacao e testes                  |
+| Produtos      | Edicao                                  | PARCIAL          | media      | admin/manager                 | endpoint PATCH existe                                                                | `products.manage`            | testar com usuario real                       |
+| Produtos      | Inativacao/soft delete                  | PARCIAL          | media      | admin/manager                 | pause PATCH e DELETE soft delete existem                                             | `products.manage`            | trocar `window.confirm` por modal DS          |
+| Produtos      | Vinculo com clientes                    | PARCIAL          | media      | todos                         | conta contratos por produto                                                          | contratos reais              | completar fluxo cliente-produto               |
+| Contratos     | Listagem                                | PARCIAL          | media      | roles com `contracts.read`    | endpoint real, base vazia                                                            | produtos/clientes            | manter                                        |
+| Contratos     | Criacao                                 | PARCIAL          | alta       | admin/manager                 | cria cliente se necessario e contrato pendente                                       | produto existente            | validar constraints e auditoria               |
+| Contratos     | Edicao/renovacao/cancelamento           | NAO IMPLEMENTADA | alta       | admin/manager                 | sem endpoints e sem UI                                                               | ciclo de vida de contrato    | implementar no sprint de Contratos            |
+| Financeiro    | Listagem de cobrancas                   | PARCIAL          | alta       | roles com `finance.read`      | endpoint protegido e company_id aplicado                                             | charges reais                | manter                                        |
+| Financeiro    | Metricas da tela                        | SOMENTE VISUAL   | alta       | todos                         | `formatCurrency(0)` hardcoded                                                        | agregacao financeira         | conectar a `charges`/contratos                |
+| Financeiro    | Criacao/edicao/baixa/cancelamento       | NAO IMPLEMENTADA | alta       | admin                         | endpoint rejeita metodos nao GET                                                     | CRUD financeiro              | implementar depois da modelagem               |
+| Financeiro    | Mercado Pago webhook                    | PARCIAL          | media      | sistema                       | webhook existe e valida assinatura quando secret configurado                         | env Mercado Pago             | validar end-to-end com sandbox                |
+| Agenda        | Calendario e criacao                    | PARCIAL          | media      | admin/manager/operator        | endpoint POST e listagem existem                                                     | `schedule.manage`            | manter e testar                               |
+| Agenda        | Timezone/UTC                            | QUEBRADA         | alta       | todos                         | armazena `scheduled_date` e `scheduled_time` separados, sem timezone/UTC             | user_preferences             | remodelar agendamentos com timezone           |
+| Agenda        | Edicao/cancelamento/lembretes           | NAO IMPLEMENTADA | media      | operadores                    | sem endpoints                                                                        | workflow agenda              | implementar sprint 7                          |
+| Suporte       | Listagem/criacao                        | PARCIAL          | media      | admin/manager/operator        | endpoint real e form basico                                                          | `support.manage`             | manter e testar                               |
+| Suporte       | Mensagens/SLA/anexos/encerramento       | NAO IMPLEMENTADA | alta       | suporte                       | sem UI/endpoint                                                                      | modelo ticket completo       | implementar sprint 8                          |
+| Relatorios    | CSV                                     | PARCIAL          | media      | usuarios autorizados pela API | exporta endpoints reais em CSV                                                       | sessao e APIs                | manter                                        |
+| Relatorios    | PDF/XLSX                                | SOMENTE VISUAL   | media      | todos                         | toast informa futuro                                                                 | exportador                   | implementar depois                            |
+| Relatorios    | Filtros por periodo                     | SOMENTE VISUAL   | media      | todos                         | select nao altera query                                                              | parametros API               | implementar filtros reais                     |
+| Configuracoes | Perfil                                  | FUNCIONAL        | baixa      | usuario autenticado           | form real com RHF/Zod grava em `user_profiles` e dados somente leitura do backend    | storage oficial de avatar    | validar autenticado em ambiente real          |
+| Configuracoes | Preferencias                            | FUNCIONAL        | baixa      | usuario autenticado           | preferencias gravam em `user_preferences` e afetam tema, saudacao e formatadores     | cobertura global de modulos  | expandir para Agenda/Financeiro               |
+| Configuracoes | Empresa                                 | SOMENTE VISUAL   | alta       | admin                         | empty state                                                                          | modulo empresa               | implementar                                   |
+| Configuracoes | Usuarios                                | NAO IMPLEMENTADA | critica    | admin                         | empty state, sem endpoint `/api/users`                                               | Better Auth admin flow       | implementar sprint 1                          |
+| Configuracoes | Permissoes                              | NAO IMPLEMENTADA | critica    | admin                         | empty state, sem endpoint `/api/permissions`                                         | RBAC completo                | implementar sprint 1                          |
+| Perfil        | Dados reais de auth                     | FUNCIONAL        | baixa      | usuario autenticado           | usa Better Auth, `users`, `roles`, `companies`, `user_profiles` e `user_preferences` | sessao valida                | testar autenticado                            |
+| Perfil        | Avatar upload                           | PARCIAL          | media      | usuario autenticado           | valida arquivo e usa adapter; storage persistente binario ainda nao definido         | storage oficial              | conectar S3/R2/Railway Volume quando aprovado |
+| Perfil        | Alteracao de senha                      | FUNCIONAL        | baixa      | usuario autenticado           | endpoint protegido integra Better Auth e audit log                                   | sessao valida                | testar autenticado                            |
+| Perfil        | Sessoes                                 | FUNCIONAL        | baixa      | usuario autenticado           | lista sessoes Better Auth, mascara IP e permite revogacao                            | sessao valida                | testar autenticado                            |
+| Usuarios      | Criar usuarios                          | NAO IMPLEMENTADA | critica    | admin                         | nao ha UI ativa, formulario, endpoint, convite ou senha temporaria                   | Better Auth + domain users   | implementar primeiro                          |
+| Permissoes    | RBAC server-side                        | PARCIAL          | alta       | todos                         | helper estatico e tabela populada, sem UI/edicao                                     | permissions UI               | expandir enforcement                          |
 
 ## 6. Causa da impossibilidade de criar usuarios
 
@@ -161,36 +161,21 @@ Fluxos ausentes:
 
 ### Saudacao
 
-Estado: QUEBRADA.
+Estado: FUNCIONAL nesta branch.
 
-O Dashboard usa `title=\"Bom dia\"` diretamente em `DashboardPage`. Nao usa primeiro nome, horario, idioma nem timezone do usuario.
-
-Necessario:
-
-- calcular saudacao por horario local do usuario;
-- usar primeiro nome de `profile.firstName` ou `session.user.name`;
-- fallback para `Conta` ou e-mail quando nome vazio;
-- respeitar `preferences.language`;
-- reavaliar ao mudar horario ou ao carregar preferencias.
+O Dashboard calcula a saudacao com primeiro nome do usuario autenticado, idioma e timezone resolvido por preferencias, navegador, empresa e fallback `America/Sao_Paulo`. O texto complementar permanece: "Acompanhe os principais indicadores e movimentos da operacao."
 
 ### Nome do usuario
 
-Estado: PARCIAL.
+Estado: FUNCIONAL nesta branch.
 
-O header usa `profile.firstName + profile.lastName`, fallback para e-mail. Isso funciona para o menu resumido, mas o Dashboard nao consome esses dados.
+O header usa nome, iniciais, avatar, role traduzida, empresa, ultimo acesso e saudacao dinamica derivados da identidade atual.
 
 ### Timezone
 
-Estado: PARCIAL.
+Estado: FUNCIONAL inicial nesta branch.
 
-Existe deteccao por `Intl.DateTimeFormat().resolvedOptions().timeZone` em preferencias, com fallback `America/Sao_Paulo`. O valor pode ser salvo em preferencias, mas:
-
-- formatadores compartilhados sao fixos em `pt-BR`;
-- nao recebem `timeZone`;
-- Dashboard usa `new Date()` diretamente;
-- Agenda nao converte para UTC;
-- `last_login` e expiracao de sessao usam formatador fixo;
-- o backend armazena timestamps em banco, mas a UI nao aplica timezone do usuario consistentemente.
+Existe deteccao por `Intl.DateTimeFormat().resolvedOptions().timeZone`, persistencia inicial sem sobrescrever escolha manual e helpers compartilhados para converter datas no frontend. A ordem de resolucao e preferencia do usuario, timezone do navegador, timezone da empresa e fallback `America/Sao_Paulo`. Agenda ainda precisa de remodelagem UTC/timezone em sprint dedicado.
 
 ### Geolocalizacao
 
@@ -200,15 +185,15 @@ Nao ha uso de `navigator.geolocation`. Nao ha solicitacao de permissao, coleta d
 
 ## 9. Formatacao regional
 
-| Item                   | Estado                                                             |
-| ---------------------- | ------------------------------------------------------------------ |
-| idioma                 | preferencia existe, mas nao e aplicada globalmente                 |
-| moeda                  | formatador fixo `pt-BR`/`BRL`; preferencia de moeda nao e aplicada |
-| data                   | formatador fixo `pt-BR`                                            |
-| hora                   | formatador fixo `pt-BR`, sem preference `12h/24h`                  |
-| timezone               | detectado/salvo parcialmente, nao aplicado nos formatadores        |
-| primeiro dia da semana | Agenda usa domingo fixo                                            |
-| calendario             | pt-BR fixo                                                         |
+| Item                   | Estado                                                        |
+| ---------------------- | ------------------------------------------------------------- |
+| idioma                 | aplicado nos helpers regionais e preferencias de perfil       |
+| moeda                  | aplicado via helper centralizado de moeda                     |
+| data                   | data curta, longa e data/hora usam helper centralizado        |
+| hora                   | respeita preferencia 24h/12h                                  |
+| timezone               | detectado, persistido e usado em saudacao/header/dashboard    |
+| primeiro dia da semana | persistido em `user_preferences`; Agenda sera ajustada depois |
+| calendario             | preparado para usar locale/preferencias em sprint de Agenda   |
 
 ## 10. Permissoes
 
@@ -237,7 +222,7 @@ Persistencia real implementada:
 - suporte: criar/listar tickets basicos;
 - agenda: criar/listar calls basicas;
 - financeiro: listar charges e receber webhook Mercado Pago;
-- perfil/preferencias: salvar em `app_settings`.
+- perfil/preferencias: salvar em `user_profiles` e `user_preferences`.
 
 Persistencia ausente ou incompleta:
 
@@ -248,7 +233,7 @@ Persistencia ausente ou incompleta:
 - ticket messages/SLA/anexos;
 - agenda com timezone/UTC;
 - auditoria automatica em CRUDs;
-- perfil/preferencias nas tabelas oficiais `user_profiles` e `user_preferences`.
+- expansao de timezone/UTC para Agenda.
 
 ## 12. Falhas por categoria
 
@@ -260,7 +245,6 @@ Persistencia ausente ou incompleta:
 
 ### Altas
 
-- Saudacao hardcoded.
 - Agenda sem timezone/UTC.
 - Financeiro com metricas hardcoded em zero.
 - Falta fluxo autenticado automatizado por perfil.
@@ -268,7 +252,6 @@ Persistencia ausente ou incompleta:
 
 ### Medias
 
-- Perfil/preferencias usando `app_settings`.
 - Activity logs nao sao gerados pelos CRUDs.
 - Graficos do Dashboard retornam arrays vazios.
 - Relatorios PDF/XLSX e filtros sao apenas visuais.
@@ -310,13 +293,12 @@ Motivo: ausencia de credenciais seguras de teste e ausencia de usuarios manager/
 
 1. Usuarios e permissoes reais.
 2. Suite de usuarios de teste por role, com credenciais em ambiente seguro.
-3. Perfil/preferencias oficiais em `user_profiles` e `user_preferences`.
-4. Saudacao dinamica, timezone e formatadores regionais.
-5. Auditoria automatica e activity logs.
-6. CRUD completo de Clientes.
-7. CRUD completo de Produtos.
-8. Ciclo completo de Contratos.
-9. Financeiro real.
-10. Agenda com UTC/timezone.
-11. Suporte completo.
-12. Relatorios e configuracoes avancadas.
+3. Testes autenticados da Fase 2: perfil, preferencias, sessoes e senha.
+4. Auditoria automatica e activity logs.
+5. CRUD completo de Clientes.
+6. CRUD completo de Produtos.
+7. Ciclo completo de Contratos.
+8. Financeiro real.
+9. Agenda com UTC/timezone.
+10. Suporte completo.
+11. Relatorios e configuracoes avancadas.
