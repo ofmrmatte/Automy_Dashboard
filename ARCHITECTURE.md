@@ -133,6 +133,17 @@ O modulo `src/features/dashboard` consome apenas dados reais agregados pela API 
 - `GET /api/dashboard/activity`: eventos recentes em `activity_logs`.
 - Series mensais usam `user_preferences.time_zone` com fallback `America/Sao_Paulo`.
 
+## Clientes
+
+O modulo `src/features/clients` usa formulario React Hook Form + Zod e persiste dados reais via `/api/clients`.
+
+- `GET /api/clients`: lista e detalha clientes da empresa autenticada, com contato e endereco principal.
+- `POST /api/clients`: cria cliente, contato principal e endereco principal em transacao.
+- `PATCH /api/clients`: atualiza dados cadastrais, status, contato e endereco.
+- `DELETE /api/clients?id=`: aplica soft delete.
+- Todas as escritas exigem `clients.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Documentos/anexos nao sao simulados; dependem de storage oficial.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
@@ -156,6 +167,7 @@ As migrations ativas da foundation sao:
 - `20260805190000_align_user_statuses.sql`
 - `20260805200000_identity_preferences_foundation.sql`
 - `20260805213000_settings_foundation.sql`
+- `20260805223000_clients_operational_fields.sql`
 
 A migration foundation cria:
 

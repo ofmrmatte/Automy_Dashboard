@@ -26,7 +26,7 @@
 ## Proxima Etapa
 
 - Validar Fase 4 autenticada em producao apos deploy da branch.
-- Seguir para Clientes completo sem reintroduzir mocks.
+- Seguir para Produtos completo sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
@@ -76,6 +76,15 @@
 - Criados endpoints protegidos `/api/dashboard/summary`, `/api/dashboard/charts`, `/api/dashboard/recent-clients` e `/api/dashboard/activity` com `company_id` derivado da sessao.
 - Mantidos empty states quando a empresa ainda nao possui dados reais.
 - Pendencias: gerar `activity_logs` em todos os CRUDs dos proximos modulos e validar RBAC com usuarios reais por role.
+
+## Fase 5 - Clientes
+
+- Implementado CRUD real de clientes com criar, listar, detalhar, editar, inativar, reativar e excluir logicamente.
+- Adicionados campos oficiais: inscricoes, segmento, e-mail, telefone, site, observacoes e logo por URL.
+- Integrados contato principal e endereco principal em `contacts` e `addresses`.
+- Implementadas validacoes com React Hook Form + Zod, busca, filtro por status, paginação inicial e confirmaçao de exclusao.
+- Endpoints `/api/clients` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Pendencias: documentos/anexos dependem de storage oficial e relacoes operacionais completas serao aprofundadas nos modulos Produtos, Contratos, Financeiro, Agenda e Suporte.
 
 ## Dados e Permissoes
 

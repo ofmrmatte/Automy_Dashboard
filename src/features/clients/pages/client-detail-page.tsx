@@ -7,13 +7,14 @@ import {
   Mail,
   MapPin,
   Phone,
+  Globe,
   User,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { clientDetailQueryOptions } from "@/features/clients/api/client.queries";
 import { EmptyState } from "@/shared/components/empty-state";
-import { Badge, Button, Card, Loader } from "@/shared/components/ui";
+import { Badge, Card, Loader } from "@/shared/components/ui";
 import { toneForStatus } from "@/shared/types/status";
 
 const CLIENT_DETAIL_TABS = [
@@ -63,9 +64,13 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
 
   const details: Array<{ icon: LucideIcon; label: string; value: string }> = [
     { icon: Building2, label: "Razão social", value: client.legal },
+    { icon: Building2, label: "Segmento", value: client.segment || "Não informado" },
     { icon: MapPin, label: "Localização", value: `${client.city}, ${client.state}` },
-    { icon: User, label: "Responsável", value: client.owner },
-    { icon: Building2, label: "Plano contratado", value: client.plan },
+    { icon: User, label: "Responsável", value: client.owner || "Não informado" },
+    { icon: Building2, label: "Plano contratado", value: client.plan || "Não informado" },
+    { icon: Mail, label: "E-mail", value: client.email || "Não informado" },
+    { icon: Phone, label: "Telefone", value: client.phone || "Não informado" },
+    { icon: Globe, label: "Site", value: client.website || "Não informado" },
   ];
 
   return (
@@ -129,15 +134,15 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
             <div className="mt-5 space-y-4">
               <div className="flex items-center gap-3 text-sm">
                 <User className="size-4 text-muted-foreground" />
-                {client.owner}
+                {client.owner || "Não informado"}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="size-4 text-muted-foreground" />
-                contato@{client.id}.com.br
+                {client.ownerEmail || client.email || "Não informado"}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="size-4 text-muted-foreground" />
-                (11) 4002-8922
+                {client.ownerPhone || client.phone || "Não informado"}
               </div>
             </div>
           </Card>
@@ -152,9 +157,6 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
             <p className="mt-1 text-sm text-muted-foreground">
               Nenhum registro real de {tab.toLowerCase()} foi cadastrado para este cliente.
             </p>
-            <Button variant="secondary" className="mt-5">
-              Adicionar registro
-            </Button>
           </div>
         </Card>
       )}

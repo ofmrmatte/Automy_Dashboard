@@ -1,4 +1,5 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
+import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
   jsonResponse,
   hasPermission,
@@ -8,6 +9,10 @@ import {
   type PermissionKey,
 } from "@/shared/server/authz";
 import type { QueryResultRow } from "pg";
+
+type QueryableConnection = {
+  query: (sql: string, values?: unknown[]) => Promise<{ rows: QueryResultRow[] }>;
+};
 
 const APP_DATA_PATHS = new Set([
   "/api/clients",
@@ -52,12 +57,42 @@ async function handleClients(url: URL, context: AuthenticatedUserContext) {
   const id = url.searchParams.get("id");
   const rows = await queryRows(
     `
-      select *
+      select
+        clients.*,
+        primary_contact.name as owner_name,
+        primary_contact.email as owner_email,
+        primary_contact.phone as owner_phone,
+        primary_address.street as address_street,
+        primary_address.number as address_number,
+        primary_address.complement as address_complement,
+        primary_address.district as address_district,
+        primary_address.city as address_city,
+        primary_address.state as address_state,
+        primary_address.postal_code as address_postal_code,
+        primary_address.country as address_country
       from public.clients
-      where deleted_at is null
-        and company_id = $2
-        and ($1::uuid is null or id = $1::uuid)
-      order by created_at desc
+      left join lateral (
+        select name, email, phone
+        from public.contacts
+        where contacts.client_id = clients.id
+          and contacts.company_id = clients.company_id
+          and contacts.deleted_at is null
+        order by contacts.is_primary desc, contacts.created_at asc
+        limit 1
+      ) as primary_contact on true
+      left join lateral (
+        select street, number, complement, district, city, state, postal_code, country
+        from public.addresses
+        where addresses.client_id = clients.id
+          and addresses.company_id = clients.company_id
+          and addresses.deleted_at is null
+        order by addresses.created_at asc
+        limit 1
+      ) as primary_address on true
+      where clients.deleted_at is null
+        and clients.company_id = $2
+        and ($1::uuid is null or clients.id = $1::uuid)
+      order by clients.created_at desc
       limit 200
     `,
     [id, context.companyId],
@@ -71,72 +106,452 @@ async function handleCreateClient(request: Request, context: AuthenticatedUserCo
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    tradeName?: unknown;
-    legalName?: unknown;
-    document?: unknown;
-    city?: unknown;
-    state?: unknown;
-    owner?: unknown;
-    plan?: unknown;
-    status?: unknown;
-  };
-  const tradeName = typeof payload.tradeName === "string" ? payload.tradeName.trim() : "";
-  const legalName =
-    typeof payload.legalName === "string" && payload.legalName.trim()
-      ? payload.legalName.trim()
-      : tradeName;
-  const document = typeof payload.document === "string" ? payload.document.trim() : "";
-
-  if (!tradeName || !document) {
-    return jsonResponse({ error: "Nome fantasia e CNPJ são obrigatórios." }, { status: 400 });
+  const parsed = clientFormSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      { status: 400 },
+    );
   }
 
   const db = await getRailwayPostgresPool();
-  const result = await db.query(
-    `
-      insert into public.clients (
-        company_id,
-        legal_name,
-        trade_name,
-        document,
-        city,
-        state,
-        owner_name,
-        plan_name,
-        status,
-        created_by,
-        updated_by
-      )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
-      on conflict do nothing
-      returning *
-    `,
-    [
-      context.companyId,
-      legalName,
-      tradeName,
-      document,
-      typeof payload.city === "string" ? payload.city : "",
-      typeof payload.state === "string" ? payload.state : "",
-      typeof payload.owner === "string" ? payload.owner : "",
-      typeof payload.plan === "string" ? payload.plan : "",
-      mapClientStatusToDatabase(typeof payload.status === "string" ? payload.status : "pending"),
-      context.domainUserId,
-    ],
-  );
+  const client = await db.connect();
 
-  if (!result.rows[0]) {
-    return jsonResponse({ error: "Cliente já cadastrado para este CNPJ." }, { status: 409 });
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `
+        insert into public.clients (
+          company_id,
+          legal_name,
+          trade_name,
+          document,
+          state_registration,
+          municipal_registration,
+          segment,
+          email,
+          phone,
+          website,
+          notes,
+          logo_url,
+          city,
+          state,
+          owner_name,
+          plan_name,
+          status,
+          created_by,
+          updated_by
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, nullif($8, ''), nullif($9, ''), nullif($10, ''), nullif($11, ''), nullif($12, ''), $13, $14, $15, $16, $17, $18, $18)
+        on conflict do nothing
+        returning *
+      `,
+      [
+        context.companyId,
+        parsed.data.legalName,
+        parsed.data.tradeName,
+        parsed.data.document.replace(/\D/g, ""),
+        parsed.data.stateRegistration,
+        parsed.data.municipalRegistration,
+        parsed.data.segment,
+        parsed.data.email,
+        parsed.data.phone,
+        parsed.data.website,
+        parsed.data.notes,
+        parsed.data.logoUrl,
+        parsed.data.city,
+        parsed.data.state,
+        parsed.data.owner,
+        parsed.data.plan,
+        mapClientStatusToDatabase(parsed.data.status),
+        context.authUserId,
+      ],
+    );
+
+    const created = result.rows[0];
+    if (!created) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Cliente já cadastrado para este CNPJ." }, { status: 409 });
+    }
+
+    await upsertPrimaryClientContact(client, context, created.id, parsed.data);
+    await upsertPrimaryClientAddress(client, context, created.id, parsed.data);
+    await recordClientAudit(client, context, "client.create", created.id, {
+      legalName: parsed.data.legalName,
+      document: parsed.data.document.replace(/\D/g, ""),
+    });
+    await client.query("commit");
+
+    return handleClientById(created.id, context, 201);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return jsonResponse({ client: result.rows[0] }, { status: 201 });
 }
 
 function mapClientStatusToDatabase(status: string) {
   if (status === "Ativo" || status === "active") return "active";
   if (status === "Implantação" || status === "onboarding") return "onboarding";
+  if (status === "Inativo" || status === "inactive") return "inactive";
+  if (status === "Bloqueado" || status === "blocked") return "blocked";
   return "pending";
+}
+
+async function handleClientById(clientId: string, context: AuthenticatedUserContext, status = 200) {
+  const response = await handleClients(
+    new URL(`http://automy.local/api/clients?id=${clientId}`),
+    context,
+  );
+  const payload = await response.json();
+  return jsonResponse(payload, { status });
+}
+
+async function upsertPrimaryClientContact(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  clientId: string,
+  payload: ClientFormData,
+) {
+  if (!payload.owner && !payload.ownerEmail && !payload.ownerPhone) return;
+
+  await db.query(
+    `
+      update public.contacts
+      set
+        name = $3,
+        email = nullif($4, ''),
+        phone = nullif($5, ''),
+        role = 'Responsável principal',
+        is_primary = true,
+        updated_at = now(),
+        updated_by = $6
+      where id = (
+        select id
+        from public.contacts
+        where company_id = $1
+          and client_id = $2
+          and deleted_at is null
+        order by is_primary desc, created_at asc
+        limit 1
+      )
+    `,
+    [
+      context.companyId,
+      clientId,
+      payload.owner || "Responsável principal",
+      payload.ownerEmail,
+      payload.ownerPhone,
+      context.authUserId,
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.contacts (
+        company_id,
+        client_id,
+        name,
+        email,
+        phone,
+        role,
+        is_primary,
+        created_by,
+        updated_by
+      )
+      select $1, $2, $3, nullif($4, ''), nullif($5, ''), 'Responsável principal', true, $6, $6
+      where not exists (
+        select 1
+        from public.contacts
+        where company_id = $1
+          and client_id = $2
+          and deleted_at is null
+      )
+    `,
+    [
+      context.companyId,
+      clientId,
+      payload.owner || "Responsável principal",
+      payload.ownerEmail,
+      payload.ownerPhone,
+      context.authUserId,
+    ],
+  );
+}
+
+async function upsertPrimaryClientAddress(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  clientId: string,
+  payload: ClientFormData,
+) {
+  const hasAddress = [
+    payload.postalCode,
+    payload.street,
+    payload.number,
+    payload.complement,
+    payload.district,
+    payload.city,
+    payload.state,
+  ].some(Boolean);
+  if (!hasAddress) return;
+
+  await db.query(
+    `
+      update public.addresses
+      set
+        street = nullif($3, ''),
+        number = nullif($4, ''),
+        complement = nullif($5, ''),
+        district = nullif($6, ''),
+        city = nullif($7, ''),
+        state = nullif($8, ''),
+        postal_code = nullif($9, ''),
+        country = coalesce(nullif($10, ''), 'BR'),
+        updated_at = now(),
+        updated_by = $11
+      where id = (
+        select id
+        from public.addresses
+        where company_id = $1
+          and client_id = $2
+          and deleted_at is null
+        order by created_at asc
+        limit 1
+      )
+    `,
+    [
+      context.companyId,
+      clientId,
+      payload.street,
+      payload.number,
+      payload.complement,
+      payload.district,
+      payload.city,
+      payload.state,
+      payload.postalCode,
+      payload.country || "BR",
+      context.authUserId,
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.addresses (
+        company_id,
+        client_id,
+        label,
+        street,
+        number,
+        complement,
+        district,
+        city,
+        state,
+        postal_code,
+        country,
+        created_by,
+        updated_by
+      )
+      select $1, $2, 'Principal', nullif($3, ''), nullif($4, ''), nullif($5, ''), nullif($6, ''), nullif($7, ''), nullif($8, ''), nullif($9, ''), coalesce(nullif($10, ''), 'BR'), $11, $11
+      where not exists (
+        select 1
+        from public.addresses
+        where company_id = $1
+          and client_id = $2
+          and deleted_at is null
+      )
+    `,
+    [
+      context.companyId,
+      clientId,
+      payload.street,
+      payload.number,
+      payload.complement,
+      payload.district,
+      payload.city,
+      payload.state,
+      payload.postalCode,
+      payload.country || "BR",
+      context.authUserId,
+    ],
+  );
+}
+
+async function recordClientAudit(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  action: string,
+  clientId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await db.query(
+    `
+      insert into public.audit_logs (
+        company_id,
+        actor_auth_user_id,
+        actor_user_id,
+        action,
+        resource_type,
+        resource_id,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $3, $4, 'client', $5, $6, $2, $2)
+    `,
+    [
+      context.companyId,
+      context.authUserId,
+      context.domainUserId,
+      action,
+      clientId,
+      JSON.stringify(metadata),
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.activity_logs (
+        company_id,
+        actor_user_id,
+        entity_type,
+        entity_id,
+        action,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, 'client', $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      context.domainUserId,
+      clientId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
+    ],
+  );
+}
+
+async function handleUpdateClient(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const parsed = clientFormSchema.safeParse(await request.json());
+  if (!parsed.success || !parsed.data.id) {
+    return jsonResponse(
+      { error: parsed.error?.issues[0]?.message ?? "Cliente não informado." },
+      { status: 400 },
+    );
+  }
+
+  const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `
+        update public.clients
+        set
+          legal_name = $3,
+          trade_name = $4,
+          document = $5,
+          state_registration = $6,
+          municipal_registration = $7,
+          segment = $8,
+          email = nullif($9, ''),
+          phone = nullif($10, ''),
+          website = nullif($11, ''),
+          notes = nullif($12, ''),
+          logo_url = nullif($13, ''),
+          city = $14,
+          state = $15,
+          owner_name = $16,
+          plan_name = $17,
+          status = $18,
+          updated_at = now(),
+          updated_by = $19
+        where id = $1
+          and company_id = $2
+          and deleted_at is null
+        returning id
+      `,
+      [
+        parsed.data.id,
+        context.companyId,
+        parsed.data.legalName,
+        parsed.data.tradeName,
+        parsed.data.document.replace(/\D/g, ""),
+        parsed.data.stateRegistration,
+        parsed.data.municipalRegistration,
+        parsed.data.segment,
+        parsed.data.email,
+        parsed.data.phone,
+        parsed.data.website,
+        parsed.data.notes,
+        parsed.data.logoUrl,
+        parsed.data.city,
+        parsed.data.state,
+        parsed.data.owner,
+        parsed.data.plan,
+        mapClientStatusToDatabase(parsed.data.status),
+        context.authUserId,
+      ],
+    );
+
+    if (!result.rows[0]) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Cliente não encontrado." }, { status: 404 });
+    }
+
+    await upsertPrimaryClientContact(client, context, parsed.data.id, parsed.data);
+    await upsertPrimaryClientAddress(client, context, parsed.data.id, parsed.data);
+    await recordClientAudit(client, context, "client.update", parsed.data.id, {
+      status: parsed.data.status,
+    });
+    await client.query("commit");
+
+    return handleClientById(parsed.data.id, context);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDeleteClient(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  if (!id) return jsonResponse({ error: "Cliente não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
+  const result = await db.query(
+    `
+      update public.clients
+      set deleted_at = now(), updated_at = now(), updated_by = $3
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+      returning id
+    `,
+    [id, context.companyId, context.authUserId],
+  );
+
+  if (!result.rows[0]) {
+    return jsonResponse({ error: "Cliente não encontrado." }, { status: 404 });
+  }
+
+  await recordClientAudit(db, context, "client.delete", id);
+  return jsonResponse({ ok: true });
 }
 
 async function handleContracts(context: AuthenticatedUserContext) {
@@ -1069,6 +1484,14 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "POST" && url.pathname === "/api/clients") {
     return handleCreateClient(request, auth.context);
+  }
+
+  if (request.method === "PATCH" && url.pathname === "/api/clients") {
+    return handleUpdateClient(request, auth.context);
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/clients") {
+    return handleDeleteClient(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/contracts") {

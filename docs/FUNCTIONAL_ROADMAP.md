@@ -117,22 +117,23 @@ Pendencias:
 
 Objetivo: completar o cadastro e relacionamento de clientes.
 
-Escopo:
+Status nesta branch: implementado para cadastro operacional completo.
 
-- Editar cliente.
-- Soft delete/inativacao.
-- Contatos vinculados.
-- Enderecos vinculados.
-- Produtos vinculados.
-- Contratos vinculados.
-- Documentos.
-- Historico.
-- Logo/avatar da empresa.
-- Busca server-side.
-- Filtros persistentes.
-- Paginacao server-side.
-- Audit logs.
-- Isolamento por `company_id`.
+Escopo entregue:
+
+- Criar, listar, detalhar e editar cliente.
+- Inativar, reativar e excluir logicamente.
+- Persistir campos oficiais de cadastro, inscricoes, segmento, contato principal, endereco principal, site, observacoes e logo por URL.
+- Busca, filtro por status e paginacao inicial.
+- Validacao com React Hook Form + Zod.
+- Audit log e activity log nas escritas.
+- Isolamento por `company_id` e RBAC em backend.
+
+Pendencias:
+
+- Produtos, contratos, cobrancas, tickets e agenda vinculados serao completados nos modulos correspondentes.
+- Documentos/anexos dependem de storage oficial aprovado.
+- Paginacao server-side podera substituir a paginacao client-side quando houver volume operacional.
 
 Critério de pronto:
 

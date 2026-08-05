@@ -15,6 +15,9 @@ export const clientService = {
   getClientById: (clientId: string) => clientRepository.findById(clientId),
   createClient: (payload: Parameters<typeof clientRepository.create>[0]) =>
     clientRepository.create(payload),
+  updateClient: (payload: Parameters<typeof clientRepository.update>[0]) =>
+    clientRepository.update(payload),
+  deleteClient: (clientId: string) => clientRepository.remove(clientId),
   filterClients: (clients: Client[], filter: ClientFilter) =>
     clients.filter((client) => matchesClientFilter(client, filter)),
 };

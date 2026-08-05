@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+- Implementado módulo Clientes completo com CRUD real, edição, inativação/reativação, soft delete, busca, filtro, paginação client-side, validação RHF+Zod, contato/endereço principal, auditoria e activity log.
+- Criada migration `20260805223000_clients_operational_fields.sql` para campos operacionais de clientes.
 - Implementada Fase 4 do Dashboard real com agregacoes server-side no Railway PostgreSQL.
 - Adicionados endpoints protegidos `/api/dashboard/charts` e `/api/dashboard/recent-clients`.
 - Dashboard passou a exibir metricas reais de clientes, contratos, receita, cobrancas, tickets, agendamentos e usuarios ativos conforme permissoes do usuario autenticado.
