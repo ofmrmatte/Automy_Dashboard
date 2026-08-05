@@ -230,6 +230,6 @@ Baixa:
 - `security:verify` local: origem nao confiavel retorna `403`.
 - `security:verify` local: validacoes admin/read_only ficaram `skipped` por ausencia de credenciais de teste em env.
 - PR `#1`: mergeado em `c9ccfd5`.
-- Deployment Railway `0e7a518c-ea9f-4437-84b4-325d898d4e42`: `SUCCESS`.
+- Deployment Railway `8d6660b5-f130-4494-94eb-6cae4267bf43`: `SUCCESS`.
 - `security:verify` em Railway: protecoes anonimas e origem nao confiavel passaram.
 - Login real, sessao autenticada e logout autenticado em Railway: nao executados por ausencia de credenciais seguras em env.

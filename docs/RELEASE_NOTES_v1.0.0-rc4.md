@@ -33,7 +33,7 @@ Esta release consolida a correcao critica de seguranca antes do inicio dos modul
 - Ambiente: `production`
 - Environment ID: `e91e2abc-b63a-4a4e-852a-452697e8856c`
 - URL validada: `https://automydashboard-production.up.railway.app`
-- Deployment validado: `0e7a518c-ea9f-4437-84b4-325d898d4e42`
+- Deployment validado: `8d6660b5-f130-4494-94eb-6cae4267bf43`
 - Status: `SUCCESS`
 
 ## Validacoes
