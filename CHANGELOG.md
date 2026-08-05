@@ -7,8 +7,8 @@
 - Design System, Brand Kit e Login Premium congelados.
 - Arquitetura Feature First consolidada.
 - Better Auth definido como provedor oficial de autenticacao.
-- Vercel conectado ao GitHub, com deploy de `main`.
-- Variaveis Railway pendentes no Vercel/local.
+- Vercel conectado ao GitHub e configurado com variaveis da nova foundation.
+- TCP Proxy Railway configurado para acesso local/Vercel.
 - Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
 
 # BASELINE v1.0.0-RC2
@@ -22,6 +22,17 @@
 
 ## 2026-08-05
 
+- Reconstruida a foundation de infraestrutura para nova conta Railway.
+- Removidas migrations Railway antigas.
+- Criada migration unica `20260805010000_automy_foundation_schema.sql`.
+- Criada migration `20260805012000_align_better_auth_column_names.sql` para alinhamento do adapter PostgreSQL do Better Auth.
+- Criado seed `20260805011000_foundation_rbac.sql` para roles e permissions oficiais.
+- Adicionado executor `db:migrate`, `db:seed`, `db:validate` e `db:inspect`.
+- Adicionado bootstrap controlado do primeiro administrador com bloqueio de reexecucao.
+- Configurado TCP Proxy Railway para desenvolvimento local e Vercel.
+- Removidas variaveis legadas Supabase do projeto Vercel.
+- Adicionado `INFRASTRUCTURE.md` com checklist Railway, Vercel, backup e recovery.
+- Integrado Better Auth Infra `dash()` via `@better-auth/infra`.
 - Implementado Better Auth como provedor oficial de autenticacao.
 - Adicionada migration Railway para tabelas `user`, `session`, `account`, `verification` e `rate_limit`.
 - Removida autenticacao temporaria por endpoint local e variaveis administrativas.

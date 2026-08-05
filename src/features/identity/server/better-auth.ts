@@ -1,4 +1,5 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
+import { dash } from "@better-auth/infra";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { PostgresDialect } from "kysely";
 import { Pool } from "pg";
@@ -33,6 +34,22 @@ function createAutomyAuth() {
   const pool = createPgPool();
   const baseURL = process.env["BETTER_AUTH_URL"];
   const vercelURL = process.env["VERCEL_URL"] ? `https://${process.env["VERCEL_URL"]}` : undefined;
+  const plugins: BetterAuthPlugin[] = [];
+  const betterAuthApiKey = process.env["BETTER_AUTH_API_KEY"];
+
+  if (betterAuthApiKey) {
+    plugins.push(
+      dash({
+        apiKey: betterAuthApiKey,
+        ...(process.env["BETTER_AUTH_API_URL"]
+          ? { apiUrl: process.env["BETTER_AUTH_API_URL"] }
+          : {}),
+        ...(process.env["BETTER_AUTH_KV_URL"] ? { kvUrl: process.env["BETTER_AUTH_KV_URL"] } : {}),
+      }),
+    );
+  }
+
+  plugins.push(tanstackStartCookies());
 
   return betterAuth({
     appName: APP_NAME,
@@ -90,6 +107,12 @@ function createAutomyAuth() {
           input: false,
           fieldName: "last_login",
         },
+        deletedAt: {
+          type: "date",
+          required: false,
+          input: false,
+          fieldName: "deleted_at",
+        },
       },
     },
     rateLimit: {
@@ -122,7 +145,7 @@ function createAutomyAuth() {
         },
       },
     },
-    plugins: [tanstackStartCookies()],
+    plugins,
   });
 }
 

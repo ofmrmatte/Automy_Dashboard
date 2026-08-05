@@ -42,45 +42,8 @@ async function ensureFinanceSchema() {
   if (!isFinanceDatabaseConfigured()) return;
 
   const db = await getRailwayPostgresPool();
-  await db.query(`
-    create extension if not exists pgcrypto;
-
-    create table if not exists public.charges (
-      id uuid primary key default gen_random_uuid(),
-      company_id uuid,
-      contract_id uuid,
-      client_id uuid,
-      invoice text not null,
-      client_name text not null default '',
-      due_date date,
-      amount numeric(14, 2) not null default 0,
-      method text not null default 'Mercado Pago',
-      status text not null default 'Pendente',
-      provider text not null,
-      provider_topic text,
-      provider_action text,
-      provider_payment_id text not null,
-      provider_subscription_id text,
-      provider_status text,
-      external_reference text,
-      paid_at timestamptz,
-      pending_at timestamptz,
-      last_notification_at timestamptz not null default now(),
-      payload jsonb not null default '{}'::jsonb,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now(),
-      deleted_at timestamptz,
-      created_by uuid,
-      updated_by uuid,
-      unique (provider, provider_payment_id)
-    );
-
-    create index if not exists charges_due_date_idx
-      on public.charges (due_date)
-      where deleted_at is null;
-  `);
+  await db.query("select 1 from public.charges limit 1");
 }
-
 function mapCharge(row: ChargeRow): Charge {
   return {
     id: row.id,

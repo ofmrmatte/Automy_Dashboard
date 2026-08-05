@@ -10,16 +10,16 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 
 ## Current Project Status
 
-- Release baseline: `v1.0.0-rc2`.
+- Foundation atual: infraestrutura Railway reconstruida e ativada na nova conta.
 - Design System Automy consolidado e aplicado.
 - Brand Kit Automy aplicado nos assets publicos.
 - Login Premium Automy consolidado e congelado.
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
 - Better Auth e o provedor oficial de autenticacao, usando Railway PostgreSQL.
-- Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e realiza deploys de `main`.
-- Ambiente local nao possui `.env.local` neste checkout.
-- Ambiente Vercel ainda precisa receber as variaveis Railway oficiais e remover variaveis antigas do provedor anterior.
+- Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e configurado com variaveis da nova foundation.
+- Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
+- Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
 
 # BASELINE v1.0.0-RC2
@@ -52,6 +52,10 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 ```bash
 npm install
 npm run dev
+npm run db:migrate
+npm run db:seed
+npm run db:validate
+npm run db:inspect
 npm run lint
 npx tsc --noEmit
 npm run build
@@ -94,13 +98,30 @@ A aplicação segue organização feature-first em `src/features`, com component
 
 Railway PostgreSQL e a fonte oficial de dados da Automy.
 
-Configure as variaveis de ambiente no ambiente de deploy:
+Configure as variaveis de ambiente no ambiente de deploy.
+
+Para Railway runtime interno:
 
 ```bash
 DATABASE_URL=
 PGSSLMODE=require
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
+BETTER_AUTH_API_KEY=
+BETTER_AUTH_API_URL=
+BETTER_AUTH_KV_URL=
+```
+
+Para local e Vercel via TCP Proxy Railway:
+
+```bash
+DATABASE_URL=
+PGSSLMODE=disable
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+BETTER_AUTH_API_KEY=
+BETTER_AUTH_API_URL=
+BETTER_AUTH_KV_URL=
 ```
 
 `BETTER_AUTH_SECRET` deve ser um valor forte e exclusivo por ambiente. Gere com `openssl rand -base64 32`.
@@ -109,8 +130,8 @@ Use `.env.example` como referencia de nomes de variaveis. Nunca versionar `.env.
 
 ### URLs por ambiente
 
-- LOCAL: usar a URL publica/proxy do Railway, pois o host `*.railway.internal` nao e acessivel fora da rede privada Railway.
-- Vercel: usar a URL publica/proxy do Railway, com `PGSSLMODE=require` quando TLS for exigido.
+- LOCAL: usar a URL publica/TCP Proxy do Railway, pois o host `*.railway.internal` nao e acessivel fora da rede privada Railway.
+- Vercel: usar a URL publica/TCP Proxy do Railway, com `PGSSLMODE=disable` para o proxy validado nesta foundation.
 - Railway: pode usar a URL interna `*.railway.internal` somente quando a aplicacao estiver rodando dentro da propria rede Railway.
 
 As migrations oficiais ficam em:
@@ -118,6 +139,14 @@ As migrations oficiais ficam em:
 ```bash
 railway/migrations
 ```
+
+Seeds de configuração de sistema ficam em:
+
+```bash
+railway/seeds
+```
+
+Detalhes completos da nova foundation estão em `INFRASTRUCTURE.md`.
 
 Rotas de autenticacao:
 
@@ -137,3 +166,4 @@ Better Auth e a autenticacao oficial da Automy.
 - Recuperacao de senha: estrutura configurada; envio transacional deve ser conectado ao provedor de e-mail aprovado.
 - Verificacao de e-mail: estrutura configurada; envio permanece desabilitado ate ativacao do provedor de e-mail.
 - RBAC inicial: `admin`, `manager`, `operator`, `read_only`.
+- Better Auth Infra: `dash()` habilitado quando `BETTER_AUTH_API_KEY` estiver configurada.

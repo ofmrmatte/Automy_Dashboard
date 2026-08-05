@@ -82,5 +82,7 @@ Todo CRUD deve possuir:
 - Nao conceder hard delete para fluxos de usuario final.
 - Toda leitura de entidade ativa deve filtrar `deleted_at is null`.
 - Migrations devem ficar em `railway/migrations`.
+- Seeds de sistema devem ficar em `railway/seeds` e nao podem criar dados ficticios de negocio.
 - Novas tabelas devem receber indices para `company_id` e filtros frequentes quando aplicavel.
 - Dados globais somente podem ser alterados por fluxos administrativos controlados.
+- DDL nao deve ser executado por paginas, componentes ou handlers de feature; schema deve ser versionado por migration.

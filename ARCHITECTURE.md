@@ -11,8 +11,8 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
 - Better Auth e o provedor oficial de autenticacao.
-- O projeto Vercel `automy-dashboard` esta conectado ao GitHub e possui deployment de producao pronto.
-- As variaveis Railway ainda devem ser configuradas no Vercel antes de validar persistencia real em producao.
+- O projeto Vercel `automy-dashboard` esta conectado ao GitHub e configurado com as variaveis da nova foundation.
+- A persistencia real em Railway PostgreSQL foi validada por TCP Proxy fora da rede Railway e por runtime interno Railway.
 - Cadastro publico esta desabilitado; criacao de usuarios deve ocorrer por fluxo administrativo controlado.
 
 # BASELINE v1.0.0-RC2
@@ -45,7 +45,8 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/features/*/repositories`: acesso a persistencia.
 - `src/features/*/types.ts`: tipos do dominio.
 - `src/shared`: componentes, tokens, constantes, utilitarios e infraestrutura compartilhada.
-- `railway/migrations`: schema versionado do banco oficial.
+- `railway/migrations`: schema versionado da foundation oficial.
+- `railway/seeds`: configuracoes iniciais de sistema, sem dados ficticios.
 
 ## Fluxo de Dados
 
@@ -70,44 +71,47 @@ O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
 
 - `DATABASE_URL`
-- `PGSSLMODE=require` quando o ambiente exigir TLS
+- `PGSSLMODE=require` no runtime Railway interno
+- `PGSSLMODE=disable` para o TCP Proxy publico validado em local/Vercel
 - `RAILWAY_ENVIRONMENT` para identificar runtime Railway
 
 Sem `DATABASE_URL`, os endpoints de leitura retornam colecoes vazias quando possivel e os fluxos de escrita retornam erro operacional claro.
 
-`DATABASE_URL` com host `*.railway.internal` deve ser usada apenas em runtimes dentro da rede privada Railway. Para desenvolvimento local e Vercel, usar a URL publica/proxy do Railway.
+`DATABASE_URL` com host `*.railway.internal` deve ser usada apenas em runtimes dentro da rede privada Railway. Para desenvolvimento local e Vercel, usar a URL publica/TCP Proxy do Railway.
 
-## Banco Inicial
+## Banco Foundation
 
-A migration inicial cria:
+As migrations ativas da foundation sao:
+
+- `20260805010000_automy_foundation_schema.sql`
+- `20260805012000_align_better_auth_column_names.sql`
+
+A migration foundation cria:
 
 - `companies`
 - `users`
 - `roles`
 - `permissions`
 - `role_permissions`
-- `user_profiles`
-- `user_preferences`
 - `clients`
 - `contacts`
 - `addresses`
 - `products`
 - `contracts`
+- `activities`
 - `activity_logs`
+- `audit_logs`
+- `user_profiles`
+- `user_preferences`
 - `support_tickets`
 - `scheduled_calls`
 - `charges`
 - `app_settings`
-
-A migration Better Auth cria:
-
-- `user`
-- `session`
-- `account`
-- `verification`
-- `rate_limit`
+- Better Auth: `user`, `session`, `account`, `verification`, `rate_limit`
 
 As entidades usam UUID, auditoria e soft delete. Como o acesso ao banco ocorre por API server-side propria, controles de permissao devem ser aplicados na camada de API/service. RLS pode ser adotado posteriormente caso o banco passe a ser exposto diretamente a clientes ou gateways externos.
+
+A migration de alinhamento Better Auth ajusta os nomes fisicos das colunas base exigidas pelo adapter PostgreSQL e mantem os campos adicionais Automy como extensoes de dominio.
 
 ## Better Auth
 
@@ -120,6 +124,7 @@ Better Auth substitui a autenticacao temporaria por env vars.
 - `last_login` e atualizado quando uma sessao e criada.
 - RBAC inicial fica no campo `role` da tabela `user`: `admin`, `manager`, `operator`, `read_only`.
 - `status` controla o ciclo de vida do usuario: `active`, `inactive`, `pending`, `blocked`.
+- Better Auth Infra usa `@better-auth/infra` e habilita `dash()` apenas quando `BETTER_AUTH_API_KEY` estiver configurada.
 
 ## Prisma
 

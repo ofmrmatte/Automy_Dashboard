@@ -44,14 +44,14 @@
 
 ## Autenticação Temporária
 
-- A autenticacao atual usa `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD`.
+- A autenticacao temporaria usada nesta release foi substituida por Better Auth na foundation posterior.
 - Essa abordagem e temporaria e nao deve ser expandida para multiusuario.
 - A autenticacao definitiva deve usar PostgreSQL com usuarios, senhas com hash, sessoes, recuperacao de senha, auditoria e politicas de acesso.
 
 ## Próximos Passos
 
-- Configurar `DATABASE_URL`, `PGSSLMODE`, `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` no Vercel.
-- Aplicar `railway/migrations/20260805000000_initial_railway_schema.sql` no Railway.
+- Configuracoes de autenticacao temporaria desta release foram substituidas pela foundation Better Auth.
+- A migration desta release foi substituida por `railway/migrations/20260805010000_automy_foundation_schema.sql`.
 - Remover variaveis legadas do provedor anterior no Vercel apos validar Railway.
 - Implementar autenticacao definitiva em PostgreSQL.
 - Criar a issue GitHub correspondente ao item de autenticacao quando a integracao tiver permissao de escrita.

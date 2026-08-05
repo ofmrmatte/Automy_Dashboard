@@ -10,6 +10,63 @@ begin
 end;
 $$;
 
+create table if not exists public."user" (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  email_verified boolean not null default false,
+  image text,
+  role text not null default 'admin' check (role in ('admin', 'manager', 'operator', 'read_only')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'pending', 'blocked')),
+  last_login timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table if not exists public.session (
+  id uuid primary key default gen_random_uuid(),
+  expires_at timestamptz not null,
+  token text not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  ip_address text,
+  user_agent text,
+  user_id uuid not null references public."user"(id) on delete cascade,
+  deleted_at timestamptz
+);
+
+create table if not exists public.account (
+  id uuid primary key default gen_random_uuid(),
+  account_id text not null,
+  provider_id text not null,
+  user_id uuid not null references public."user"(id) on delete cascade,
+  access_token text,
+  refresh_token text,
+  id_token text,
+  access_token_expires_at timestamptz,
+  refresh_token_expires_at timestamptz,
+  scope text,
+  password text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.verification (
+  id uuid primary key default gen_random_uuid(),
+  identifier text not null,
+  value text not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.rate_limit (
+  key text primary key,
+  count integer not null default 0,
+  last_request bigint not null
+);
+
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   legal_name text not null,
@@ -17,37 +74,38 @@ create table if not exists public.companies (
   document text,
   email text,
   phone text,
-  status text not null default 'active' check (status in ('active', 'inactive', 'pending')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'pending', 'blocked')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.roles (
   id uuid primary key default gen_random_uuid(),
   company_id uuid references public.companies(id) on delete cascade,
+  key text not null,
   name text not null,
   description text,
   is_system boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.permissions (
   id uuid primary key default gen_random_uuid(),
-  key text not null unique,
+  key text not null,
   name text not null,
   description text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.role_permissions (
@@ -57,23 +115,23 @@ create table if not exists public.role_permissions (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  auth_user_id uuid unique,
+  company_id uuid references public.companies(id) on delete cascade,
+  auth_user_id uuid unique references public."user"(id) on delete cascade,
   role_id uuid references public.roles(id) on delete set null,
   name text not null,
   email text not null,
-  status text not null default 'active' check (status in ('active', 'inactive', 'pending')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'pending', 'blocked')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.clients (
@@ -87,12 +145,12 @@ create table if not exists public.clients (
   owner_user_id uuid references public.users(id) on delete set null,
   owner_name text,
   plan_name text,
-  status text not null default 'pending' check (status in ('active', 'onboarding', 'pending')),
+  status text not null default 'pending' check (status in ('active', 'onboarding', 'pending', 'inactive', 'blocked')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.contacts (
@@ -107,8 +165,8 @@ create table if not exists public.contacts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.addresses (
@@ -127,8 +185,8 @@ create table if not exists public.addresses (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.products (
@@ -138,14 +196,14 @@ create table if not exists public.products (
   category text,
   version text,
   description text,
-  status text not null default 'active' check (status in ('active', 'beta', 'discontinuing')),
+  status text not null default 'active' check (status in ('active', 'beta', 'discontinuing', 'inactive')),
   commercial_terms jsonb,
   contract_template text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.contracts (
@@ -158,7 +216,7 @@ create table if not exists public.contracts (
   starts_at date,
   ends_at date,
   status text not null default 'pending' check (
-    status in ('active', 'onboarding', 'renewal', 'pending', 'cancelled')
+    status in ('active', 'onboarding', 'renewal', 'pending', 'cancelled', 'inactive')
   ),
   signer_name text,
   witness_name text,
@@ -166,13 +224,13 @@ create table if not exists public.contracts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
-create table if not exists public.activity_logs (
+create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
+  company_id uuid references public.companies(id) on delete cascade,
   actor_user_id uuid references public.users(id) on delete set null,
   entity_type text not null,
   entity_id uuid,
@@ -181,13 +239,46 @@ create table if not exists public.activity_logs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
+);
+
+create table if not exists public.activity_logs (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references public.companies(id) on delete cascade,
+  actor_user_id uuid references public.users(id) on delete set null,
+  entity_type text not null,
+  entity_id uuid,
+  action text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
+);
+
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references public.companies(id) on delete cascade,
+  actor_auth_user_id uuid references public."user"(id) on delete set null,
+  actor_user_id uuid references public.users(id) on delete set null,
+  action text not null,
+  resource_type text not null,
+  resource_id uuid,
+  ip_address text,
+  user_agent text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.user_profiles (
   id uuid primary key default gen_random_uuid(),
-  auth_user_id uuid not null unique,
+  auth_user_id uuid not null unique references public."user"(id) on delete cascade,
   first_name text,
   last_name text,
   phone text,
@@ -197,13 +288,13 @@ create table if not exists public.user_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.user_preferences (
   id uuid primary key default gen_random_uuid(),
-  auth_user_id uuid not null unique,
+  auth_user_id uuid not null unique references public."user"(id) on delete cascade,
   theme text not null default 'system' check (theme in ('system', 'light', 'dark')),
   language text not null default 'pt-BR',
   time_zone text not null default 'America/Sao_Paulo',
@@ -218,8 +309,8 @@ create table if not exists public.user_preferences (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.support_tickets (
@@ -235,8 +326,8 @@ create table if not exists public.support_tickets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.scheduled_calls (
@@ -255,8 +346,8 @@ create table if not exists public.scheduled_calls (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null
 );
 
 create table if not exists public.charges (
@@ -284,8 +375,8 @@ create table if not exists public.charges (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  created_by uuid,
-  updated_by uuid,
+  created_by uuid references public."user"(id) on delete set null,
+  updated_by uuid references public."user"(id) on delete set null,
   unique (provider, provider_payment_id)
 );
 
@@ -296,23 +387,56 @@ create table if not exists public.app_settings (
   updated_at timestamptz not null default now()
 );
 
+create unique index if not exists better_auth_user_email_unique_idx
+  on public."user" (lower(email))
+  where deleted_at is null;
+create index if not exists better_auth_user_role_status_idx on public."user" (role, status) where deleted_at is null;
+create index if not exists better_auth_user_last_login_idx on public."user" (last_login desc);
+create index if not exists session_user_id_idx on public.session (user_id) where deleted_at is null;
+create index if not exists session_expires_at_idx on public.session (expires_at) where deleted_at is null;
+create index if not exists account_user_id_idx on public.account (user_id);
+create unique index if not exists account_provider_account_unique_idx on public.account (provider_id, account_id);
+create index if not exists verification_identifier_idx on public.verification (identifier);
+
+create unique index if not exists companies_document_unique_idx on public.companies (document) where deleted_at is null and document is not null;
+create unique index if not exists companies_trade_name_unique_idx on public.companies (lower(trade_name)) where deleted_at is null and trade_name is not null;
+create unique index if not exists roles_global_key_unique_idx on public.roles (key) where company_id is null and deleted_at is null;
+create unique index if not exists roles_company_key_unique_idx on public.roles (company_id, key) where company_id is not null and deleted_at is null;
+create unique index if not exists permissions_key_unique_idx on public.permissions (key) where deleted_at is null;
+create unique index if not exists role_permissions_unique_idx on public.role_permissions (role_id, permission_id) where deleted_at is null;
+create unique index if not exists users_company_email_unique_idx on public.users (company_id, lower(email)) where deleted_at is null and company_id is not null;
+create unique index if not exists clients_company_document_unique_idx on public.clients (company_id, document) where deleted_at is null and document is not null;
+create unique index if not exists products_company_name_unique_idx on public.products (company_id, lower(name)) where deleted_at is null;
+
 create index if not exists users_company_idx on public.users (company_id) where deleted_at is null;
+create index if not exists users_auth_user_idx on public.users (auth_user_id) where deleted_at is null;
 create index if not exists clients_company_idx on public.clients (company_id) where deleted_at is null;
 create index if not exists contacts_company_client_idx on public.contacts (company_id, client_id) where deleted_at is null;
 create index if not exists addresses_company_client_idx on public.addresses (company_id, client_id) where deleted_at is null;
 create index if not exists products_company_idx on public.products (company_id) where deleted_at is null;
 create index if not exists contracts_company_client_idx on public.contracts (company_id, client_id) where deleted_at is null;
 create index if not exists contracts_ends_at_idx on public.contracts (ends_at) where deleted_at is null;
+create index if not exists activities_company_created_idx on public.activities (company_id, created_at desc) where deleted_at is null;
 create index if not exists activity_logs_company_created_idx on public.activity_logs (company_id, created_at desc) where deleted_at is null;
+create index if not exists audit_logs_resource_idx on public.audit_logs (resource_type, resource_id) where deleted_at is null;
+create index if not exists audit_logs_actor_created_idx on public.audit_logs (actor_auth_user_id, created_at desc) where deleted_at is null;
 create index if not exists user_profiles_auth_user_idx on public.user_profiles (auth_user_id) where deleted_at is null;
 create index if not exists user_preferences_auth_user_idx on public.user_preferences (auth_user_id) where deleted_at is null;
+create index if not exists support_tickets_company_created_idx on public.support_tickets (company_id, created_at desc) where deleted_at is null;
+create index if not exists scheduled_calls_company_date_idx on public.scheduled_calls (company_id, scheduled_date, scheduled_time) where deleted_at is null;
 create index if not exists charges_due_date_idx on public.charges (due_date) where deleted_at is null;
 
-create unique index if not exists roles_company_name_unique_idx on public.roles (company_id, name) where deleted_at is null;
-create unique index if not exists role_permissions_unique_idx on public.role_permissions (role_id, permission_id) where deleted_at is null;
-create unique index if not exists users_company_email_unique_idx on public.users (company_id, email) where deleted_at is null;
-create unique index if not exists clients_company_document_unique_idx on public.clients (company_id, document) where deleted_at is null and document is not null;
-create unique index if not exists products_company_name_unique_idx on public.products (company_id, name) where deleted_at is null;
+drop trigger if exists set_better_auth_user_updated_at on public."user";
+create trigger set_better_auth_user_updated_at before update on public."user" for each row execute function public.set_updated_at();
+
+drop trigger if exists set_better_auth_session_updated_at on public.session;
+create trigger set_better_auth_session_updated_at before update on public.session for each row execute function public.set_updated_at();
+
+drop trigger if exists set_better_auth_account_updated_at on public.account;
+create trigger set_better_auth_account_updated_at before update on public.account for each row execute function public.set_updated_at();
+
+drop trigger if exists set_better_auth_verification_updated_at on public.verification;
+create trigger set_better_auth_verification_updated_at before update on public.verification for each row execute function public.set_updated_at();
 
 drop trigger if exists set_companies_updated_at on public.companies;
 create trigger set_companies_updated_at before update on public.companies for each row execute function public.set_updated_at();
@@ -344,8 +468,14 @@ create trigger set_products_updated_at before update on public.products for each
 drop trigger if exists set_contracts_updated_at on public.contracts;
 create trigger set_contracts_updated_at before update on public.contracts for each row execute function public.set_updated_at();
 
+drop trigger if exists set_activities_updated_at on public.activities;
+create trigger set_activities_updated_at before update on public.activities for each row execute function public.set_updated_at();
+
 drop trigger if exists set_activity_logs_updated_at on public.activity_logs;
 create trigger set_activity_logs_updated_at before update on public.activity_logs for each row execute function public.set_updated_at();
+
+drop trigger if exists set_audit_logs_updated_at on public.audit_logs;
+create trigger set_audit_logs_updated_at before update on public.audit_logs for each row execute function public.set_updated_at();
 
 drop trigger if exists set_user_profiles_updated_at on public.user_profiles;
 create trigger set_user_profiles_updated_at before update on public.user_profiles for each row execute function public.set_updated_at();

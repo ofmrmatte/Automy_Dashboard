@@ -3,12 +3,12 @@
 ## Current Project Status
 
 - `v1.0.0-rc2` congela a baseline oficial da Automy antes dos modulos reais.
-- O codigo esta preparado para Railway PostgreSQL.
-- O projeto Vercel esta conectado ao GitHub.
+- O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
+- O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - Design System, Brand Kit e Login Premium estao congelados.
 - A arquitetura Feature First esta consolidada.
 - Better Auth e a autenticacao oficial da Automy.
-- As variaveis Railway precisam ser configuradas no Vercel antes de considerar persistencia de producao validada.
+- A persistencia foi validada via TCP Proxy Railway em ambiente local e as variaveis foram configuradas no Vercel.
 - Envio de e-mail transacional para recuperacao de senha e verificacao de e-mail ainda precisa de provedor aprovado.
 
 # BASELINE v1.0.0-RC2
@@ -23,11 +23,10 @@
 ## Proxima Etapa
 
 - Iniciar desenvolvimento dos modulos de negocio: Usuarios, Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
-- Aplicar a migration inicial em Railway PostgreSQL.
-- Aplicar a migration Better Auth em Railway PostgreSQL.
-- Validar variaveis `DATABASE_URL`, `PGSSLMODE`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_URL` em producao.
+- Manter migrations incrementais para qualquer evolucao de schema.
+- Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
-- Remover variaveis legadas do provedor anterior no Vercel apos confirmar que a aplicacao usa somente Railway.
+- Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
 - Implementar CRUDs reais para clientes, produtos e contratos.
