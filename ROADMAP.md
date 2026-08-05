@@ -25,21 +25,21 @@
 
 ## Proxima Etapa
 
+- Seguir para Suporte completo sem reintroduzir mocks.
 - Validar Fase 7 autenticada em producao apos deploy da branch.
-- Seguir para Agenda completa sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Agenda, Suporte, Relatorios, Busca, Notificacoes e Auditoria administrativa.
+- Continuar desenvolvimento dos modulos de negocio: Suporte, Relatorios, Busca, Notificacoes e Auditoria administrativa.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para agenda, suporte, relatorios e modulos posteriores.
+- Implementar CRUDs reais para suporte, relatorios e modulos posteriores.
 
 ## Fase 1 - Usuarios e Permissoes
 
@@ -113,6 +113,15 @@
 - Finalizada base Mercado Pago com assinatura de webhook, janela anti-replay, idempotencia por evento e tabela `payment_webhook_events`.
 - Pendencias: validar sandbox/producao Mercado Pago com credenciais oficiais e ativar geracao externa de pagamentos quando a decisao comercial estiver definida.
 
+## Fase 9 - Agenda
+
+- Implementado CRUD real de calls com criar, listar, visualizar, editar, reagendar, concluir, cancelar e excluir logicamente.
+- Persistidos cliente vinculado, responsavel, participantes, inicio, fim, timezone, link, lembretes, status e observacoes.
+- Datas sao armazenadas em UTC (`start_at`/`end_at`) e exibidas no timezone resolvido do usuario.
+- Endpoint `/api/scheduled-calls` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Implementados busca, filtro por status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
+- Pendencias: notificacoes reais de lembrete dependem do modulo de Notificacoes/event scheduler e validacao por usuarios reais de cada role.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -128,6 +137,7 @@
 - Produtos: CRUD, termos comerciais, modelo de contrato e vinculacao real com contratos.
 - Contratos: ciclo de vida, valores, renovacoes e itens de contrato.
 - Financeiro: CRUD de cobrancas, baixa manual, cancelamento, metricas e conciliacao Mercado Pago preparada.
+- Agenda: CRUD de calls com UTC/timezone, cliente vinculado, responsavel e lembretes preparados.
 - Suporte: modelagem propria antes de exibir tickets.
 - Relatorios: exportacao somente com dados reais.
 

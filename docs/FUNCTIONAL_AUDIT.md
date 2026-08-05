@@ -74,7 +74,7 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Dashboard     | Rota abre                             | FUNCIONAL         | baixa      | todos autenticados            | rota existe                                                                          | sessao Better Auth           | manter                                        |
 | Dashboard     | Metricas principais                   | FUNCIONAL         | baixa      | todos autenticados            | agregacoes server-side por `company_id`, permissoes e soft delete                    | dados reais por modulo       | validar com massa controlada                  |
 | Dashboard     | Saudacao dinamica                     | FUNCIONAL         | baixa      | todos                         | usa primeiro nome, idioma e timezone resolvido                                       | perfil/preferencias/timezone | validar autenticado em ambiente real          |
-| Dashboard     | Fuso horario no header                | FUNCIONAL         | baixa      | todos                         | datas principais usam helpers regionais com timezone do usuario                      | user_preferences             | expandir para Agenda em sprint dedicado       |
+| Dashboard     | Fuso horario no header                | FUNCIONAL         | baixa      | todos                         | datas principais usam helpers regionais com timezone do usuario                      | user_preferences             | manter e validar por role                     |
 | Dashboard     | Graficos                              | FUNCIONAL         | baixa      | todos autenticados            | usa `/api/dashboard/charts` com dados reais e empty states                           | historico real               | validar com massa controlada                  |
 | Dashboard     | Atividades recentes                   | PARCIAL           | media      | todos                         | le `activity_logs`, mas CRUDs antigos ainda nao geram logs em todos os modulos       | eventos de dominio           | registrar activity_logs nos proximos CRUDs    |
 | Clientes      | Listagem                              | FUNCIONAL         | baixa      | roles com `clients.read`      | endpoint real com `company_id`, contato/endereco principal e soft delete             | sessao e company_id          | validar por role                              |
@@ -94,9 +94,9 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Financeiro    | Metricas no Dashboard                 | FUNCIONAL         | baixa      | roles com `finance.read`      | Dashboard agrega `charges` e contratos reais quando permitido                        | charges/contratos reais      | manter                                        |
 | Financeiro    | Criacao/edicao/baixa/cancelamento     | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, endpoint POST/PATCH/DELETE, soft delete, audit/activity log                 | `finance.manage`             | validar por role                              |
 | Financeiro    | Mercado Pago webhook                  | FUNCIONAL/PARCIAL | media      | sistema                       | assinatura, anti-replay, idempotencia e eventos persistidos; sandbox depende env     | env Mercado Pago             | validar end-to-end com sandbox                |
-| Agenda        | Calendario e criacao                  | PARCIAL           | media      | admin/manager/operator        | endpoint POST e listagem existem                                                     | `schedule.manage`            | manter e testar                               |
-| Agenda        | Timezone/UTC                          | QUEBRADA          | alta       | todos                         | armazena `scheduled_date` e `scheduled_time` separados, sem timezone/UTC             | user_preferences             | remodelar agendamentos com timezone           |
-| Agenda        | Edicao/cancelamento/lembretes         | NAO IMPLEMENTADA  | media      | operadores                    | sem endpoints                                                                        | workflow agenda              | implementar sprint 7                          |
+| Agenda        | Calendario e criacao                  | FUNCIONAL         | baixa      | admin/manager/operator        | endpoint real, cliente vinculado, RHF+Zod, audit/activity log                        | `schedule.manage`            | validar por role                              |
+| Agenda        | Timezone/UTC                          | FUNCIONAL         | baixa      | todos                         | armazena `start_at`/`end_at` em UTC e exibe no timezone do usuario                   | user_preferences             | validar com usuarios em fusos diferentes      |
+| Agenda        | Edicao/cancelamento/lembretes         | FUNCIONAL/PARCIAL | media      | operadores                    | editar/reagendar/concluir/cancelar existem; disparo de lembrete depende scheduler    | workflow agenda              | integrar notificacoes reais                   |
 | Suporte       | Listagem/criacao                      | PARCIAL           | media      | admin/manager/operator        | endpoint real e form basico                                                          | `support.manage`             | manter e testar                               |
 | Suporte       | Mensagens/SLA/anexos/encerramento     | NAO IMPLEMENTADA  | alta       | suporte                       | sem UI/endpoint                                                                      | modelo ticket completo       | implementar sprint 8                          |
 | Relatorios    | CSV                                   | PARCIAL           | media      | usuarios autorizados pela API | exporta endpoints reais em CSV                                                       | sessao e APIs                | manter                                        |
@@ -114,36 +114,20 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Perfil        | Avatar upload                         | PARCIAL           | media      | usuario autenticado           | valida arquivo e usa adapter; storage persistente binario ainda nao definido         | storage oficial              | conectar S3/R2/Railway Volume quando aprovado |
 | Perfil        | Alteracao de senha                    | FUNCIONAL         | baixa      | usuario autenticado           | endpoint protegido integra Better Auth e audit log                                   | sessao valida                | testar autenticado                            |
 | Perfil        | Sessoes                               | FUNCIONAL         | baixa      | usuario autenticado           | lista sessoes Better Auth, mascara IP e permite revogacao                            | sessao valida                | testar autenticado                            |
-| Usuarios      | Criar usuarios                        | NAO IMPLEMENTADA  | critica    | admin                         | nao ha UI ativa, formulario, endpoint, convite ou senha temporaria                   | Better Auth + domain users   | implementar primeiro                          |
-| Permissoes    | RBAC server-side                      | PARCIAL           | alta       | todos                         | helper estatico e tabela populada, sem UI/edicao                                     | permissions UI               | expandir enforcement                          |
+| Usuarios      | Criar usuarios                        | FUNCIONAL         | baixa      | admin                         | UI, endpoint, senha temporaria, Better Auth e vinculo de dominio implementados       | Better Auth + domain users   | validar por role                              |
+| Permissoes    | RBAC server-side                      | FUNCIONAL/PARCIAL | media      | todos                         | enforcement server-side existe; UI ainda nao oculta todas as acoes por role          | permissions UI               | expandir RBAC visual                          |
 
 ## 6. Historico da impossibilidade de criar usuarios
 
 O administrador nao conseguia criar outros usuarios por ausencia de implementacao, nao por erro pontual. Essa lacuna foi corrigida na Fase 1 da branch funcional.
 
-Evidencias:
+Estado atual:
 
-- A navegacao nao possui rota dedicada de Usuarios.
-- `Configuracoes > Usuarios` renderiza apenas `EmptyState` com mensagem de area sem configuracao ativa.
-- Nao existe componente `UserCreateModal`, formulario de convite ou tela de listagem de usuarios.
-- Nao existe endpoint `/api/users`; producao retornou 404.
-- Nao existe endpoint `/api/permissions`; producao retornou 404.
-- Better Auth esta configurado para login/sessao/perfil, mas nao ha fluxo admin para criar conta.
-- As tabelas `user`, `users`, `roles`, `permissions`, `user_profiles` e `user_preferences` existem.
-- Permissoes `users.read` e `users.manage` existem e sao atribuidas ao role `admin`, mas ainda nao sao usadas por nenhuma API de usuarios.
-
-Fluxos ausentes:
-
-- convite por e-mail;
-- criacao direta com senha temporaria;
-- definicao de role/status;
-- vinculo com `company_id`;
-- criacao transacional em Better Auth + `users` + `user_profiles` + `user_preferences`;
-- tratamento de e-mail duplicado;
-- edicao, ativacao, inativacao e soft delete;
-- redefinicao de senha administrativa;
-- listagem/revogacao de sessoes;
-- bloqueio contra remover a ultima permissao administrativa.
+- `Configuracoes > Usuarios`, `/usuarios` e `/permissoes` existem.
+- `/api/users`, `/api/users/password`, `/api/users/sessions` e `/api/permissions` existem.
+- Criacao transacional em Better Auth + `users` + `user_profiles` + `user_preferences` foi implementada.
+- Edicao, senha temporaria, status, role, soft delete e bloqueio contra remover o ultimo admin ativo foram implementados.
+- Pendencia restante: validar cenarios autenticados com usuarios reais `manager`, `operator` e `read_only`.
 
 ## 7. Dashboard e indicadores
 
@@ -190,7 +174,7 @@ O header usa nome, iniciais, avatar, role traduzida, empresa, ultimo acesso e sa
 
 Estado: FUNCIONAL inicial nesta branch.
 
-Existe deteccao por `Intl.DateTimeFormat().resolvedOptions().timeZone`, persistencia inicial sem sobrescrever escolha manual e helpers compartilhados para converter datas no frontend. A ordem de resolucao e preferencia do usuario, timezone do navegador, timezone da empresa e fallback `America/Sao_Paulo`. Agenda ainda precisa de remodelagem UTC/timezone em sprint dedicado.
+Existe deteccao por `Intl.DateTimeFormat().resolvedOptions().timeZone`, persistencia inicial sem sobrescrever escolha manual e helpers compartilhados para converter datas no frontend. A ordem de resolucao e preferencia do usuario, timezone do navegador, timezone da empresa e fallback `America/Sao_Paulo`. Agenda usa timestamps UTC e converte a exibicao para o timezone resolvido do usuario.
 
 ### Geolocalizacao
 
@@ -200,15 +184,15 @@ Nao ha uso de `navigator.geolocation`. Nao ha solicitacao de permissao, coleta d
 
 ## 9. Formatacao regional
 
-| Item                   | Estado                                                        |
-| ---------------------- | ------------------------------------------------------------- |
-| idioma                 | aplicado nos helpers regionais e preferencias de perfil       |
-| moeda                  | aplicado via helper centralizado de moeda                     |
-| data                   | data curta, longa e data/hora usam helper centralizado        |
-| hora                   | respeita preferencia 24h/12h                                  |
-| timezone               | detectado, persistido e usado em saudacao/header/dashboard    |
-| primeiro dia da semana | persistido em `user_preferences`; Agenda sera ajustada depois |
-| calendario             | preparado para usar locale/preferencias em sprint de Agenda   |
+| Item                   | Estado                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| idioma                 | aplicado nos helpers regionais e preferencias de perfil                            |
+| moeda                  | aplicado via helper centralizado de moeda                                          |
+| data                   | data curta, longa e data/hora usam helper centralizado                             |
+| hora                   | respeita preferencia 24h/12h                                                       |
+| timezone               | detectado, persistido e usado em saudacao/header/dashboard                         |
+| primeiro dia da semana | persistido em `user_preferences`; pronto para ajuste fino do calendario por locale |
+| calendario             | Agenda usa locale/timezone do usuario para exibicao operacional                    |
 
 ## 10. Permissoes
 
@@ -223,7 +207,7 @@ Limitacoes:
 
 - nao ha usuarios de teste para validar manager/operator/read_only;
 - UI nao oculta botoes por permissao;
-- endpoints de Usuarios/Permissoes nao existem;
+- validacao automatizada por usuarios reais `manager`, `operator` e `read_only` ainda esta pendente;
 - alguns botoes podem aparecer para perfis que receberiam 403 no backend;
 - testes de isolamento multiempresa exigem fixtures dedicadas.
 
@@ -235,7 +219,7 @@ Persistencia real implementada:
 - produtos: criar/listar/visualizar/editar/ativar/inativar/soft delete;
 - contratos: criar/listar/visualizar/editar/ciclo de vida/soft delete;
 - suporte: criar/listar tickets basicos;
-- agenda: criar/listar calls basicas;
+- agenda: criar/listar/visualizar/editar/reagendar/concluir/cancelar/excluir calls;
 - financeiro: criar/listar/visualizar/editar/baixar/cancelar/excluir charges e receber webhook Mercado Pago;
 - perfil/preferencias: salvar em `user_profiles` e `user_preferences`.
 
@@ -245,21 +229,17 @@ Persistencia ausente ou incompleta:
 - ciclo completo de contratos;
 - geracao externa de pagamentos Mercado Pago;
 - ticket messages/SLA/anexos;
-- agenda com timezone/UTC;
-- auditoria automatica em CRUDs;
-- expansao de timezone/UTC para Agenda.
+- notificacoes reais de lembrete da agenda;
+- auditoria automatica em CRUDs ainda nao finalizados.
 
 ## 12. Falhas por categoria
 
 ### Criticas
 
-- Modulo de Usuarios nao implementado.
-- Modulo de Permissoes nao implementado.
-- Admin nao consegue criar usuarios.
+- Nenhuma falha critica ativa documentada nesta auditoria funcional.
 
 ### Altas
 
-- Agenda sem timezone/UTC.
 - Validacao Mercado Pago sandbox/producao depende de credenciais oficiais.
 - Falta fluxo autenticado automatizado por perfil.
 - UI ainda nao aplica RBAC para ocultar/desabilitar acoes.
@@ -304,13 +284,8 @@ Motivo: ausencia de credenciais seguras de teste e ausencia de usuarios manager/
 
 ## 14. Ordem recomendada de implementacao
 
-1. Usuarios e permissoes reais.
+1. Suporte completo.
 2. Suite de usuarios de teste por role, com credenciais em ambiente seguro.
-3. Testes autenticados da Fase 2: perfil, preferencias, sessoes e senha.
-4. Auditoria automatica e activity logs.
-5. CRUD completo de Clientes.
-6. CRUD completo de Produtos.
-7. Ciclo completo de Contratos.
-8. Agenda com UTC/timezone.
-9. Suporte completo.
-10. Relatorios e configuracoes avancadas.
+3. Testes autenticados por role para Usuarios, Clientes, Produtos, Contratos, Financeiro e Agenda.
+4. Auditoria administrativa e activity logs dos modulos restantes.
+5. Relatorios e configuracoes avancadas.

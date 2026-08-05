@@ -14,6 +14,10 @@
 
 ## Unreleased
 
+- Implementado modulo Agenda completo com criar, listar, visualizar, editar, reagendar, concluir, cancelar, soft delete, busca, filtro, paginacao, validacao RHF+Zod, auditoria e activity log.
+- Criada migration `20260806020000_scheduling_timezone_lifecycle.sql` para persistencia UTC em `start_at`/`end_at`, timezone original, responsavel, participantes, lembretes, cliente vinculado e indices operacionais.
+- Finalizado endpoint protegido `/api/scheduled-calls` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `schedule.read`/`schedule.manage`.
+- Agenda passou a apresentar horarios no timezone do usuario, mantendo armazenamento em UTC e evitando dependencia do timezone local do servidor.
 - Implementado modulo Financeiro completo com criar, listar, visualizar, editar, marcar como paga, cancelar, detectar atraso, soft delete, filtros, paginacao, validacao RHF+Zod, auditoria e activity log.
 - Criada migration `20260806010000_finance_billing_lifecycle.sql` para status oficiais `pending/paid/overdue/canceled/failed`, campos de conciliacao, indices financeiros e eventos de webhook.
 - Finalizado endpoint protegido `/api/finance/charges` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `finance.read`/`finance.manage`.

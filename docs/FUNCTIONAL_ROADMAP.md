@@ -226,18 +226,23 @@ Critério de pronto:
 
 Objetivo: tornar a agenda confiavel por fuso horario.
 
-Escopo:
+Status nesta branch: implementado como Fase 9 funcional inicial. Falta ativar notificacoes reais de lembrete e validar por usuarios reais de cada role.
 
-- Remodelar agendamento para armazenar timestamp UTC.
-- Persistir timezone original do usuario.
-- Converter exibicao para timezone do usuario.
-- Criar/editar/cancelar call.
-- Responsaveis.
-- Cliente vinculado.
-- Lembretes.
-- Status.
-- Permissoes.
-- Audit logs.
+Escopo entregue:
+
+- Agendamentos armazenam `start_at` e `end_at` em UTC.
+- Timezone original do agendamento e persistido.
+- Interface converte exibicao para timezone do usuario.
+- Criar, visualizar, editar, reagendar, concluir, cancelar e excluir logicamente.
+- Responsavel e cliente vinculado reais.
+- Participantes, link, status, observacoes e lembrete em minutos.
+- Endpoint protegido com RBAC `schedule.read` e `schedule.manage`.
+- Audit logs e activity logs.
+
+Pendencias:
+
+- Disparo real de lembretes por scheduler/notificacoes.
+- Validacao por manager/operator/read_only.
 
 Critério de pronto:
 

@@ -11,6 +11,13 @@ import {
   type ProductFormData,
 } from "@/features/products/validation";
 import {
+  scheduledCallFormSchema,
+  scheduledCallPatchSchema,
+  type ScheduledCallFormData,
+  type ScheduledCallPatchData,
+} from "@/features/scheduling/validation";
+import { zonedLocalDateTimeToUtc } from "@/features/scheduling/utils/timezone";
+import {
   jsonResponse,
   hasPermission,
   requireAuthenticatedUser,
@@ -1454,8 +1461,8 @@ async function handleDashboardSummary(context: AuthenticatedUserContext) {
           from public.scheduled_calls
           where deleted_at is null
             and company_id = $1
-            and status = 'Agendada'
-            and scheduled_date >= current_date
+            and status in ('scheduled', 'rescheduled')
+            and start_at >= now()
         `,
           [context.companyId],
         )
@@ -1738,11 +1745,17 @@ async function handleScheduledCalls(context: AuthenticatedUserContext) {
 
   const calls = await queryRows(
     `
-    select *
+    select
+      scheduled_calls.*,
+      coalesce(clients.trade_name, clients.legal_name, scheduled_calls.client_name) as client_name
     from public.scheduled_calls
-    where deleted_at is null
-      and company_id = $1
-    order by scheduled_date asc, scheduled_time asc
+    left join public.clients
+      on clients.id = scheduled_calls.client_id
+      and clients.company_id = scheduled_calls.company_id
+      and clients.deleted_at is null
+    where scheduled_calls.deleted_at is null
+      and scheduled_calls.company_id = $1
+    order by scheduled_calls.start_at asc
     limit 500
   `,
     [context.companyId],
@@ -1756,70 +1769,395 @@ async function handleCreateScheduledCall(request: Request, context: Authenticate
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    scheduledDate?: unknown;
-    scheduledTime?: unknown;
-    title?: unknown;
-    clientName?: unknown;
-    contactName?: unknown;
-    contactEmail?: unknown;
-    contactPhone?: unknown;
-    meetingLink?: unknown;
-    notes?: unknown;
-    status?: unknown;
-  };
-  const scheduledDate =
-    typeof payload.scheduledDate === "string" ? payload.scheduledDate.trim() : "";
-  const scheduledTime =
-    typeof payload.scheduledTime === "string" ? payload.scheduledTime.trim() : "";
-  const title = typeof payload.title === "string" ? payload.title.trim() : "";
-  const clientName = typeof payload.clientName === "string" ? payload.clientName.trim() : "";
-
-  if (!scheduledDate || !scheduledTime || !title || !clientName) {
+  const parsed = scheduledCallFormSchema.safeParse(await request.json());
+  if (!parsed.success) {
     return jsonResponse(
-      { error: "Data, horário, título e cliente são obrigatórios." },
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
       { status: 400 },
     );
   }
 
   const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const timeValues = scheduledCallTimeValues(parsed.data);
+    const result = await client.query<{ id: string }>(
+      `
+        insert into public.scheduled_calls (
+          company_id,
+          client_id,
+          owner_user_id,
+          scheduled_date,
+          scheduled_time,
+          title,
+          description,
+          client_name,
+          contact_name,
+          contact_email,
+          contact_phone,
+          meeting_link,
+          participants,
+          start_at,
+          end_at,
+          timezone,
+          reminder_minutes,
+          notes,
+          status,
+          created_by,
+          updated_by
+        )
+        select
+          $1,
+          $2::uuid,
+          nullif($3::text, '')::uuid,
+          $4::date,
+          $5,
+          $6,
+          nullif($7, ''),
+          coalesce(clients.trade_name, clients.legal_name, 'Cliente não vinculado'),
+          nullif($8, ''),
+          nullif($9, ''),
+          nullif($10, ''),
+          nullif($11, ''),
+          $12,
+          $13::timestamptz,
+          $14::timestamptz,
+          $15,
+          $16,
+          nullif($17, ''),
+          $18,
+          $19,
+          $19
+        from (select 1) seed
+        join public.clients
+          on clients.id = $2::uuid
+          and clients.company_id = $1
+          and clients.deleted_at is null
+        where nullif($3::text, '') is null
+          or exists (
+            select 1
+            from public.users
+            where users.id = nullif($3::text, '')::uuid
+              and users.company_id = $1
+              and users.deleted_at is null
+          )
+        returning id
+      `,
+      [
+        context.companyId,
+        parsed.data.clientId,
+        parsed.data.ownerUserId,
+        parsed.data.startDate,
+        parsed.data.startTime,
+        parsed.data.title,
+        parsed.data.description,
+        parsed.data.contactName,
+        parsed.data.contactEmail,
+        parsed.data.contactPhone,
+        parsed.data.meetingLink,
+        JSON.stringify(parseParticipants(parsed.data.participants)),
+        timeValues.startAt,
+        timeValues.endAt,
+        parsed.data.timezone,
+        parsed.data.reminderMinutes,
+        parsed.data.notes,
+        parsed.data.status,
+        context.authUserId,
+      ],
+    );
+
+    const created = result.rows[0];
+    if (!created) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Cliente não encontrado." }, { status: 404 });
+    }
+
+    await recordScheduledCallAudit(client, context, "scheduled_call.create", created.id, {
+      title: parsed.data.title,
+      status: parsed.data.status,
+      startAt: timeValues.startAt,
+    });
+    await client.query("commit");
+
+    return handleScheduledCallById(created.id, context, 201);
+  } catch (error) {
+    await client.query("rollback");
+    if (error instanceof ScheduledCallTimeError) {
+      return jsonResponse({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleUpdateScheduledCall(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const parsed = scheduledCallPatchSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Agendamento não informado." },
+      { status: 400 },
+    );
+  }
+
+  const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const timeValues = hasScheduledCallTimeValues(parsed.data)
+      ? scheduledCallTimeValues(parsed.data as ScheduledCallFormData)
+      : { startAt: null, endAt: null };
+    const result = await client.query<{ id: string }>(
+      `
+      update public.scheduled_calls
+      set
+        client_id = coalesce($3::uuid, client_id),
+        owner_user_id = coalesce(nullif($4::text, '')::uuid, owner_user_id),
+        scheduled_date = coalesce($5::date, scheduled_date),
+        scheduled_time = coalesce(nullif($6, ''), scheduled_time),
+        title = coalesce(nullif($7, ''), title),
+        description = coalesce($8, description),
+        client_name = coalesce((
+          select coalesce(clients.trade_name, clients.legal_name)
+          from public.clients
+          where clients.id = coalesce($3::uuid, scheduled_calls.client_id)
+            and clients.company_id = $2
+            and clients.deleted_at is null
+          limit 1
+        ), client_name),
+        contact_name = coalesce($9, contact_name),
+        contact_email = coalesce($10, contact_email),
+        contact_phone = coalesce($11, contact_phone),
+        meeting_link = coalesce($12, meeting_link),
+        participants = coalesce($13, participants),
+        start_at = coalesce($14::timestamptz, start_at),
+        end_at = coalesce($15::timestamptz, end_at),
+        timezone = coalesce(nullif($16, ''), timezone),
+        reminder_minutes = coalesce($17, reminder_minutes),
+        notes = coalesce($18, notes),
+        status = coalesce(nullif($19, ''), status),
+        completed_at = case when $19 = 'completed' then coalesce(completed_at, now()) else completed_at end,
+        canceled_at = case when $19 = 'canceled' then coalesce(canceled_at, now()) else canceled_at end,
+        updated_by = $20,
+        updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+        and exists (
+          select 1 from public.clients
+          where clients.id = coalesce($3::uuid, scheduled_calls.client_id)
+            and clients.company_id = $2
+            and clients.deleted_at is null
+        )
+        and (
+          nullif($4::text, '') is null
+          or exists (
+            select 1
+            from public.users
+            where users.id = nullif($4::text, '')::uuid
+              and users.company_id = $2
+              and users.deleted_at is null
+          )
+        )
+      returning id
+      `,
+      [
+        parsed.data.id,
+        context.companyId,
+        parsed.data.clientId ?? null,
+        parsed.data.ownerUserId ?? "",
+        parsed.data.startDate ?? null,
+        parsed.data.startTime ?? "",
+        parsed.data.title ?? "",
+        parsed.data.description ?? null,
+        parsed.data.contactName ?? null,
+        parsed.data.contactEmail ?? null,
+        parsed.data.contactPhone ?? null,
+        parsed.data.meetingLink ?? null,
+        parsed.data.participants !== undefined
+          ? JSON.stringify(parseParticipants(parsed.data.participants))
+          : null,
+        timeValues.startAt,
+        timeValues.endAt,
+        parsed.data.timezone ?? "",
+        parsed.data.reminderMinutes ?? null,
+        parsed.data.notes ?? null,
+        parsed.data.status ?? "",
+        context.authUserId,
+      ],
+    );
+
+    const updated = result.rows[0];
+    if (!updated) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Agendamento não encontrado." }, { status: 404 });
+    }
+
+    await recordScheduledCallAudit(client, context, "scheduled_call.update", updated.id, {
+      status: parsed.data.status,
+      startAt: timeValues.startAt,
+    });
+    await client.query("commit");
+
+    return handleScheduledCallById(updated.id, context);
+  } catch (error) {
+    await client.query("rollback");
+    if (error instanceof ScheduledCallTimeError) {
+      return jsonResponse({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDeleteScheduledCall(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  if (!id) return jsonResponse({ error: "Agendamento não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
-      insert into public.scheduled_calls (
-        company_id,
-        scheduled_date,
-        scheduled_time,
-        title,
-        client_name,
-        contact_name,
-        contact_email,
-        contact_phone,
-        meeting_link,
-        notes,
-        status,
-        created_by,
-        updated_by
-      )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
-      returning *
+    update public.scheduled_calls
+    set deleted_at = now(), updated_at = now(), updated_by = $3
+    where id = $1
+      and company_id = $2
+      and deleted_at is null
+    returning id
+    `,
+    [id, context.companyId, context.authUserId],
+  );
+
+  if (!result.rows[0]) {
+    return jsonResponse({ error: "Agendamento não encontrado." }, { status: 404 });
+  }
+
+  await recordScheduledCallAudit(db, context, "scheduled_call.delete", id);
+  return jsonResponse({ ok: true });
+}
+
+async function handleScheduledCallById(
+  callId: string,
+  context: AuthenticatedUserContext,
+  status = 200,
+) {
+  const rows = await queryRows(
+    `
+    select
+      scheduled_calls.*,
+      coalesce(clients.trade_name, clients.legal_name, scheduled_calls.client_name) as client_name
+    from public.scheduled_calls
+    left join public.clients
+      on clients.id = scheduled_calls.client_id
+      and clients.company_id = scheduled_calls.company_id
+      and clients.deleted_at is null
+    where scheduled_calls.id = $2
+      and scheduled_calls.company_id = $1
+      and scheduled_calls.deleted_at is null
+    limit 1
+    `,
+    [context.companyId, callId],
+  );
+
+  return jsonResponse({ call: rows[0] ?? null }, { status });
+}
+
+function hasScheduledCallTimeValues(payload: ScheduledCallPatchData) {
+  return Boolean(payload.startDate && payload.startTime && payload.endDate && payload.endTime);
+}
+
+function scheduledCallTimeValues(payload: ScheduledCallFormData) {
+  const startAt = zonedLocalDateTimeToUtc(payload.startDate, payload.startTime, payload.timezone);
+  const endAt = zonedLocalDateTimeToUtc(payload.endDate, payload.endTime, payload.timezone);
+
+  if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+    throw new ScheduledCallTimeError("O término deve ser posterior ao início.");
+  }
+
+  return { startAt, endAt };
+}
+
+function parseParticipants(value: string | undefined) {
+  return (value ?? "")
+    .split(/[,\n;]/)
+    .map((participant) => participant.trim())
+    .filter(Boolean);
+}
+
+class ScheduledCallTimeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScheduledCallTimeError";
+  }
+}
+
+async function recordScheduledCallAudit(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  action: string,
+  callId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await db.query(
+    `
+    insert into public.audit_logs (
+      company_id,
+      actor_auth_user_id,
+      actor_user_id,
+      action,
+      resource_type,
+      resource_id,
+      metadata,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, $3, $4, 'scheduled_call', $5, $6, $2, $2)
     `,
     [
       context.companyId,
-      scheduledDate,
-      scheduledTime,
-      title,
-      clientName,
-      typeof payload.contactName === "string" ? payload.contactName : "",
-      typeof payload.contactEmail === "string" ? payload.contactEmail : "",
-      typeof payload.contactPhone === "string" ? payload.contactPhone : "",
-      typeof payload.meetingLink === "string" ? payload.meetingLink : "",
-      typeof payload.notes === "string" ? payload.notes : "",
-      typeof payload.status === "string" ? payload.status : "Agendada",
+      context.authUserId,
       context.domainUserId,
+      action,
+      callId,
+      JSON.stringify(metadata),
     ],
   );
 
-  return jsonResponse({ call: result.rows[0] }, { status: 201 });
+  await db.query(
+    `
+    insert into public.activity_logs (
+      company_id,
+      actor_user_id,
+      entity_type,
+      entity_id,
+      action,
+      metadata,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, 'scheduled_call', $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      context.domainUserId,
+      callId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
+    ],
+  );
 }
 
 async function handleCreateTicket(request: Request, context: AuthenticatedUserContext) {
@@ -2008,6 +2346,14 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "POST" && url.pathname === "/api/scheduled-calls") {
     return handleCreateScheduledCall(request, auth.context);
+  }
+
+  if (request.method === "PATCH" && url.pathname === "/api/scheduled-calls") {
+    return handleUpdateScheduledCall(request, auth.context);
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/scheduled-calls") {
+    return handleDeleteScheduledCall(request, auth.context);
   }
 
   if (request.method === "PUT" && url.pathname === "/api/settings/profile") {

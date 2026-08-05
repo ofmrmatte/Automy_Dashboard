@@ -164,7 +164,19 @@ O modulo `src/features/contracts` usa formulario React Hook Form + Zod e persist
 - `PATCH /api/contracts`: atualiza dados comerciais e status; suporta ativar, suspender, renovar, cancelar e encerrar.
 - `DELETE /api/contracts?id=`: aplica soft delete.
 - Todas as escritas exigem `contracts.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
-- Datas de contrato sao persistidas como `date`; fluxos de Agenda continuarao responsaveis por UTC/timezone.
+- Datas de contrato sao persistidas como `date`; Agenda persiste `start_at`/`end_at` em UTC com timezone original do agendamento.
+
+## Agenda
+
+O modulo `src/features/scheduling` usa formulario React Hook Form + Zod e persiste calls via `/api/scheduled-calls`.
+
+- `GET /api/scheduled-calls`: lista calls da empresa autenticada com cliente vinculado.
+- `POST /api/scheduled-calls`: cria call em transacao, validando cliente real da empresa, intervalo e timezone.
+- `PATCH /api/scheduled-calls`: atualiza dados, permite reagendar e alterar status para agendada, reagendada, concluida ou cancelada.
+- `DELETE /api/scheduled-calls?id=`: aplica soft delete.
+- `start_at` e `end_at` sao armazenados em UTC; a interface converte para o timezone do usuario.
+- Todas as escritas exigem `schedule.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Lembretes ficam modelados por `reminder_minutes`; disparo ativo dependera do modulo de notificacoes/agendador.
 
 ## Railway PostgreSQL
 
@@ -193,6 +205,7 @@ As migrations ativas da foundation sao:
 - `20260805233000_products_operational_fields.sql`
 - `20260806000000_contracts_lifecycle_fields.sql`
 - `20260806010000_finance_billing_lifecycle.sql`
+- `20260806020000_scheduling_timezone_lifecycle.sql`
 
 A migration foundation cria:
 

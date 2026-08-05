@@ -830,6 +830,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      scheduled_calls: {
+        Row: AuditColumns & {
+          company_id: string;
+          client_id: string | null;
+          owner_user_id: string | null;
+          scheduled_date: string;
+          scheduled_time: string;
+          title: string;
+          description: string | null;
+          client_name: string;
+          contact_name: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          meeting_link: string | null;
+          participants: Json;
+          start_at: string;
+          end_at: string;
+          timezone: string;
+          reminder_minutes: number;
+          notes: string | null;
+          status: "scheduled" | "rescheduled" | "completed" | "canceled";
+          completed_at: string | null;
+          canceled_at: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          client_id?: string | null;
+          owner_user_id?: string | null;
+          scheduled_date: string;
+          scheduled_time: string;
+          title: string;
+          description?: string | null;
+          client_name: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          meeting_link?: string | null;
+          participants?: Json;
+          start_at: string;
+          end_at: string;
+          timezone?: string;
+          reminder_minutes?: number;
+          notes?: string | null;
+          status?: "scheduled" | "rescheduled" | "completed" | "canceled";
+          completed_at?: string | null;
+          canceled_at?: string | null;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          client_id?: string | null;
+          owner_user_id?: string | null;
+          scheduled_date?: string;
+          scheduled_time?: string;
+          title?: string;
+          description?: string | null;
+          client_name?: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          meeting_link?: string | null;
+          participants?: Json;
+          start_at?: string;
+          end_at?: string;
+          timezone?: string;
+          reminder_minutes?: number;
+          notes?: string | null;
+          status?: "scheduled" | "rescheduled" | "completed" | "canceled";
+          completed_at?: string | null;
+          canceled_at?: string | null;
+        };
+        Relationships: [];
+      };
       charges: {
         Row: AuditColumns & {
           company_id: string | null;
