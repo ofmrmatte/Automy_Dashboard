@@ -1,5 +1,7 @@
+import { authClient } from "@/features/identity/auth-client";
 import type {
   AuthSession,
+  AuthUser,
   IdentityPreferences,
   IdentityProfile,
   NotificationPreferences,
@@ -13,13 +15,28 @@ type AuthChangeEvent = "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "USER_UP
 type Subscription = { unsubscribe: () => void };
 type SignOutScope = "global" | "local" | "others";
 
-const SESSION_KEY = "automy.railway.session";
-const PROFILE_KEY = "automy.railway.profile";
-const PREFERENCES_KEY = "automy.railway.preferences";
-
-function canUseStorage() {
-  return typeof window !== "undefined";
-}
+type BetterAuthSessionPayload = {
+  session: {
+    id: string;
+    token: string;
+    userId: string;
+    expiresAt: Date | string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+  };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    image?: string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    role?: AuthUser["role"];
+    status?: AuthUser["status"];
+    lastLogin?: Date | string | null;
+  };
+};
 
 function defaultNotifications(): NotificationPreferences {
   return {
@@ -29,74 +46,81 @@ function defaultNotifications(): NotificationPreferences {
   };
 }
 
-function readJson<T>(key: string) {
-  if (!canUseStorage()) return null;
+function toIsoDate(value: Date | string | number | null | undefined) {
+  if (!value) return new Date().toISOString();
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
 
-  const value = window.localStorage.getItem(key);
+function optionalIsoDate(value: Date | string | number | null | undefined) {
   if (!value) return null;
-
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    window.localStorage.removeItem(key);
-    return null;
-  }
+  return toIsoDate(value);
 }
 
-function writeJson(key: string, value: unknown) {
-  if (!canUseStorage()) return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+function splitName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const firstName = parts.shift() ?? "";
+  return {
+    firstName,
+    lastName: parts.join(" "),
+  };
 }
 
-function removeStoredIdentity() {
-  if (!canUseStorage()) return;
-  window.localStorage.removeItem(SESSION_KEY);
-  window.localStorage.removeItem(PROFILE_KEY);
-  window.localStorage.removeItem(PREFERENCES_KEY);
+function fullName(payload: ProfileUpdatePayload) {
+  return [payload.firstName, payload.lastName]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
 }
 
 function createRecordId() {
   return crypto.randomUUID();
 }
 
-async function readServerSetting<T>(path: string, authUserId: string) {
-  const response = await fetch(`${path}?authUserId=${encodeURIComponent(authUserId)}`);
-  if (!response.ok) return null;
+function mapAuthSession(payload: BetterAuthSessionPayload | null): AuthSession | null {
+  if (!payload) return null;
 
-  const payload = (await response.json()) as { value?: T | null };
-  return payload.value ?? null;
-}
+  const expiresAt = new Date(payload.session.expiresAt);
+  const user: AuthUser = {
+    id: payload.user.id,
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: toIsoDate(payload.user.createdAt),
+    updated_at: toIsoDate(payload.user.updatedAt),
+    last_sign_in_at: optionalIsoDate(payload.user.lastLogin),
+    email: payload.user.email,
+    email_verified: payload.user.emailVerified,
+    name: payload.user.name,
+    image: payload.user.image ?? null,
+    role: payload.user.role ?? "admin",
+    status: payload.user.status ?? "active",
+  };
 
-async function writeServerSetting<T>(path: string, authUserId: string, value: T) {
-  const response = await fetch(path, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ authUserId, value }),
-  });
-
-  if (!response.ok) {
-    throw new RepositoryError("Não foi possível salvar no banco da Railway.");
-  }
-
-  const payload = (await response.json()) as { value?: T | null };
-  return payload.value ?? value;
+  return {
+    access_token: payload.session.token,
+    refresh_token: "",
+    expires_in: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+    expires_at: Math.floor(expiresAt.getTime() / 1000),
+    token_type: "bearer",
+    user,
+  };
 }
 
 function createProfile(session: AuthSession): IdentityProfile {
   const now = new Date().toISOString();
-  const metadata = session.user.user_metadata;
+  const names = splitName(session.user.name ?? "");
 
   return {
     id: createRecordId(),
     authUserId: session.user.id,
-    firstName: typeof metadata["first_name"] === "string" ? metadata["first_name"] : "",
-    lastName: typeof metadata["last_name"] === "string" ? metadata["last_name"] : "",
+    firstName: names.firstName,
+    lastName: names.lastName,
     phone: "",
     jobTitle: "",
     companyName: "Automy",
-    avatarPath: null,
-    createdAt: now,
-    updatedAt: now,
+    avatarPath: session.user.image ?? null,
+    createdAt: session.user.created_at,
+    updatedAt: session.user.updated_at ?? now,
     deletedAt: null,
     createdBy: session.user.id,
     updatedBy: session.user.id,
@@ -124,39 +148,138 @@ function createPreferences(authUserId: string): IdentityPreferences {
   };
 }
 
+async function readServerSetting<T>(path: string, authUserId: string) {
+  const response = await fetch(`${path}?authUserId=${encodeURIComponent(authUserId)}`, {
+    credentials: "include",
+  });
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as { value?: T | null };
+  return payload.value ?? null;
+}
+
+async function writeServerSetting<T>(path: string, authUserId: string, value: T) {
+  const response = await fetch(path, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ authUserId, value }),
+  });
+
+  if (!response.ok) {
+    throw new RepositoryError("Não foi possível salvar no banco da Railway.");
+  }
+
+  const payload = (await response.json()) as { value?: T | null };
+  return payload.value ?? value;
+}
+
+function getBetterAuthErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
+async function currentSession() {
+  const response = await authClient.getSession();
+  if (response.error) {
+    throw new RepositoryError(
+      getBetterAuthErrorMessage(response.error, "Não foi possível carregar a sessão."),
+    );
+  }
+
+  return mapAuthSession(response.data as BetterAuthSessionPayload | null);
+}
+
 export const identityRepository = {
-  getSession: async () => readJson<AuthSession>(SESSION_KEY),
+  getSession: currentSession,
 
   onAuthStateChange: (_callback: (event: AuthChangeEvent, session: AuthSession | null) => void) =>
     ({ unsubscribe: () => undefined }) satisfies Subscription,
 
-  signInWithPassword: async (email: string, password: string) => {
-    const response = await fetch("/api/auth/local-login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
+  signInWithPassword: async (email: string, password: string, rememberMe = false) => {
+    const response = await authClient.signIn.email({
+      email,
+      password,
+      rememberMe,
     });
 
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new RepositoryError(payload?.error ?? "Não foi possível entrar com estes dados.");
+    if (response.error) {
+      throw new RepositoryError(
+        getBetterAuthErrorMessage(response.error, "E-mail ou senha inválidos."),
+      );
     }
 
-    const payload = (await response.json()) as { session: AuthSession };
-    writeJson(SESSION_KEY, payload.session);
-    return payload.session;
+    const session = await currentSession();
+    if (!session) {
+      throw new RepositoryError("Sessão não encontrada após autenticação.");
+    }
+
+    return session;
   },
 
-  sendPasswordRecovery: async (_email: string) => {
-    throw new RepositoryError("Recuperação de senha ainda não está disponível neste modo.");
+  sendPasswordRecovery: async (email: string) => {
+    const response = await authClient.requestPasswordReset({
+      email,
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+
+    if (response.error) {
+      throw new RepositoryError(
+        getBetterAuthErrorMessage(response.error, "Não foi possível solicitar recuperação."),
+      );
+    }
   },
 
-  updatePassword: async (_password: string, _currentPassword?: string) => {
-    throw new RepositoryError("Alteração de senha ainda não está disponível neste modo.");
+  updatePassword: async (password: string, currentPassword?: string) => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    const response = currentPassword
+      ? await authClient.changePassword({
+          currentPassword,
+          newPassword: password,
+          revokeOtherSessions: true,
+        })
+      : await authClient.resetPassword({
+          newPassword: password,
+          token: token ?? undefined,
+        });
+
+    if (response.error) {
+      throw new RepositoryError(
+        getBetterAuthErrorMessage(response.error, "Não foi possível alterar a senha."),
+      );
+    }
   },
 
-  signOut: async (_scope: SignOutScope = "local") => {
-    removeStoredIdentity();
+  signOut: async (scope: SignOutScope = "local") => {
+    if (scope === "others" && "revokeOtherSessions" in authClient) {
+      const response = await authClient.revokeOtherSessions();
+      if (response.error) {
+        throw new RepositoryError(
+          getBetterAuthErrorMessage(response.error, "Não foi possível encerrar outras sessões."),
+        );
+      }
+      return;
+    }
+
+    if (scope === "global" && "revokeSessions" in authClient) {
+      const response = await authClient.revokeSessions();
+      if (response.error) {
+        throw new RepositoryError(
+          getBetterAuthErrorMessage(response.error, "Não foi possível encerrar as sessões."),
+        );
+      }
+    }
+
+    const response = await authClient.signOut();
+    if (response.error) {
+      throw new RepositoryError(
+        getBetterAuthErrorMessage(response.error, "Não foi possível sair."),
+      );
+    }
   },
 
   ensureIdentityRecords: async (session: AuthSession) => {
@@ -164,33 +287,20 @@ export const identityRepository = {
       "/api/settings/profile",
       session.user.id,
     );
-    if (serverProfile) {
-      writeJson(PROFILE_KEY, serverProfile);
-    } else {
-      const profile = readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
-      const savedProfile = await writeServerSetting(
-        "/api/settings/profile",
-        session.user.id,
-        profile,
-      );
-      writeJson(PROFILE_KEY, savedProfile);
+    if (!serverProfile) {
+      await writeServerSetting("/api/settings/profile", session.user.id, createProfile(session));
     }
 
     const serverPreferences = await readServerSetting<IdentityPreferences>(
       "/api/settings/preferences",
       session.user.id,
     );
-    if (serverPreferences) {
-      writeJson(PREFERENCES_KEY, serverPreferences);
-    } else {
-      const preferences =
-        readJson<IdentityPreferences>(PREFERENCES_KEY) ?? createPreferences(session.user.id);
-      const savedPreferences = await writeServerSetting(
+    if (!serverPreferences) {
+      await writeServerSetting(
         "/api/settings/preferences",
         session.user.id,
-        preferences,
+        createPreferences(session.user.id),
       );
-      writeJson(PREFERENCES_KEY, savedPreferences);
     }
   },
 
@@ -199,17 +309,14 @@ export const identityRepository = {
       "/api/settings/profile",
       authUserId,
     );
-    if (serverProfile) {
-      writeJson(PROFILE_KEY, serverProfile);
-      return serverProfile;
-    }
+    if (serverProfile) return serverProfile;
 
-    const session = readJson<AuthSession>(SESSION_KEY);
+    const session = await currentSession();
     if (!session) {
       throw new RepositoryError("Sessão não encontrada para carregar o perfil.");
     }
 
-    return readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
+    return createProfile(session);
   },
 
   getPreferences: async (authUserId: string) => {
@@ -217,21 +324,16 @@ export const identityRepository = {
       "/api/settings/preferences",
       authUserId,
     );
-    if (serverPreferences) {
-      writeJson(PREFERENCES_KEY, serverPreferences);
-      return serverPreferences;
-    }
-
-    return readJson<IdentityPreferences>(PREFERENCES_KEY) ?? createPreferences(authUserId);
+    return serverPreferences ?? createPreferences(authUserId);
   },
 
   updateProfile: async (authUserId: string, payload: ProfileUpdatePayload) => {
-    const session = readJson<AuthSession>(SESSION_KEY);
+    const session = await currentSession();
     if (!session) {
       throw new RepositoryError("Sessão não encontrada para salvar o perfil.");
     }
 
-    const current = readJson<IdentityProfile>(PROFILE_KEY) ?? createProfile(session);
+    const current = await identityRepository.getProfile(authUserId);
     const nextProfile: IdentityProfile = {
       ...current,
       ...payload,
@@ -239,13 +341,23 @@ export const identityRepository = {
       updatedAt: new Date().toISOString(),
       updatedBy: authUserId,
     };
-    const saved = await writeServerSetting("/api/settings/profile", authUserId, nextProfile);
-    writeJson(PROFILE_KEY, saved);
-    return saved;
+
+    const authResponse = await authClient.updateUser({
+      name: fullName(payload) || session.user.email || "Automy",
+      image: nextProfile.avatarPath,
+    });
+
+    if (authResponse.error) {
+      throw new RepositoryError(
+        getBetterAuthErrorMessage(authResponse.error, "Não foi possível atualizar o usuário."),
+      );
+    }
+
+    return writeServerSetting("/api/settings/profile", authUserId, nextProfile);
   },
 
   updatePreferences: async (authUserId: string, payload: PreferencesUpdatePayload) => {
-    const current = readJson<IdentityPreferences>(PREFERENCES_KEY) ?? createPreferences(authUserId);
+    const current = await identityRepository.getPreferences(authUserId);
     const nextPreferences: IdentityPreferences = {
       ...current,
       ...payload,
@@ -253,18 +365,13 @@ export const identityRepository = {
       updatedAt: new Date().toISOString(),
       updatedBy: authUserId,
     };
-    const saved = await writeServerSetting(
-      "/api/settings/preferences",
-      authUserId,
-      nextPreferences,
-    );
-    writeJson(PREFERENCES_KEY, saved);
-    return saved;
+
+    return writeServerSetting("/api/settings/preferences", authUserId, nextPreferences);
   },
 
   uploadAvatar: async (_authUserId: string, _file: File): Promise<IdentityProfile> => {
     throw new RepositoryError("Upload de avatar ainda não está disponível neste modo.");
   },
 
-  getAvatarUrl: async (_avatarPath: string | null) => null,
+  getAvatarUrl: async (avatarPath: string | null) => avatarPath,
 };

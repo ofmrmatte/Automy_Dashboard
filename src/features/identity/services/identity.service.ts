@@ -8,8 +8,8 @@ import type {
 export const identityService = {
   getSession: () => identityRepository.getSession(),
   onAuthStateChange: identityRepository.onAuthStateChange,
-  signIn: (email: string, password: string) =>
-    identityRepository.signInWithPassword(email, password),
+  signIn: (email: string, password: string, rememberMe?: boolean) =>
+    identityRepository.signInWithPassword(email, password, rememberMe),
   sendPasswordRecovery: (email: string) => identityRepository.sendPasswordRecovery(email),
   updatePassword: (password: string, currentPassword?: string) =>
     identityRepository.updatePassword(password, currentPassword),

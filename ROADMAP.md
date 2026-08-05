@@ -7,8 +7,9 @@
 - O projeto Vercel esta conectado ao GitHub.
 - Design System, Brand Kit e Login Premium estao congelados.
 - A arquitetura Feature First esta consolidada.
+- Better Auth e a autenticacao oficial da Automy.
 - As variaveis Railway precisam ser configuradas no Vercel antes de considerar persistencia de producao validada.
-- A autenticacao atual e temporaria e deve ser migrada para um fluxo definitivo em PostgreSQL.
+- Envio de e-mail transacional para recuperacao de senha e verificacao de e-mail ainda precisa de provedor aprovado.
 
 # BASELINE v1.0.0-RC2
 
@@ -23,8 +24,9 @@
 
 - Iniciar desenvolvimento dos modulos de negocio: Usuarios, Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
 - Aplicar a migration inicial em Railway PostgreSQL.
-- Validar variaveis `DATABASE_URL`, `PGSSLMODE`, `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` em producao.
-- Definir o provedor definitivo de autenticacao antes de expandir usuarios e permissoes.
+- Aplicar a migration Better Auth em Railway PostgreSQL.
+- Validar variaveis `DATABASE_URL`, `PGSSLMODE`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_URL` em producao.
+- Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Remover variaveis legadas do provedor anterior no Vercel apos confirmar que a aplicacao usa somente Railway.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
@@ -37,6 +39,7 @@
 - Definir fluxo administrativo para permissions globais.
 - Adicionar auditoria automatica de `created_by` e `updated_by`.
 - Avaliar endpoint administrativo para auditoria completa de sessoes, caso o produto precise listar todos os dispositivos conectados.
+- Conectar provedor de e-mail transacional ao Better Auth.
 
 ## Modulos
 

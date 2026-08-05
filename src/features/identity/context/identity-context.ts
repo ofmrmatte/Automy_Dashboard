@@ -16,7 +16,7 @@ export type IdentityContextValue = {
   avatarUrl: string | null;
   isLoading: boolean;
   refreshIdentity: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   sendPasswordRecovery: (email: string) => Promise<void>;
   updatePassword: (password: string, currentPassword?: string) => Promise<void>;
   signOut: (scope?: "global" | "local" | "others") => Promise<void>;

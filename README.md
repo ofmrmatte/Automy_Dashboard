@@ -16,10 +16,11 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Login Premium Automy consolidado e congelado.
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
+- Better Auth e o provedor oficial de autenticacao, usando Railway PostgreSQL.
 - Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e realiza deploys de `main`.
 - Ambiente local nao possui `.env.local` neste checkout.
 - Ambiente Vercel ainda precisa receber as variaveis Railway oficiais e remover variaveis antigas do provedor anterior.
-- Autenticacao atual e temporaria, baseada em `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD`, ate a implementacao da autenticacao definitiva em PostgreSQL.
+- Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
 
 # BASELINE v1.0.0-RC2
 
@@ -44,6 +45,7 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Recharts
 - Railway PostgreSQL
 - Node Postgres (`pg`)
+- Better Auth
 
 ## Scripts
 
@@ -97,12 +99,11 @@ Configure as variaveis de ambiente no ambiente de deploy:
 ```bash
 DATABASE_URL=
 PGSSLMODE=require
-AUTOMY_ADMIN_EMAIL=
-AUTOMY_ADMIN_PASSWORD=
-AUTOMY_ADMIN_USER_ID=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
 ```
 
-`AUTOMY_ADMIN_USER_ID` e opcional. Quando ausente, a aplicacao deriva um UUID estavel a partir do e-mail administrativo configurado.
+`BETTER_AUTH_SECRET` deve ser um valor forte e exclusivo por ambiente. Gere com `openssl rand -base64 32`.
 
 Use `.env.example` como referencia de nomes de variaveis. Nunca versionar `.env.local` ou valores reais.
 
@@ -123,3 +124,16 @@ Rotas de autenticacao:
 - `/login`
 - `/recuperar-senha`
 - `/redefinir-senha`
+
+## Autenticacao
+
+Better Auth e a autenticacao oficial da Automy.
+
+- Endpoint: `/api/auth/*`.
+- Banco: Railway PostgreSQL.
+- Sessao: cookies HttpOnly.
+- Login: e-mail e senha.
+- Remember Me: integrado ao endpoint oficial do Better Auth.
+- Recuperacao de senha: estrutura configurada; envio transacional deve ser conectado ao provedor de e-mail aprovado.
+- Verificacao de e-mail: estrutura configurada; envio permanece desabilitado ate ativacao do provedor de e-mail.
+- RBAC inicial: `admin`, `manager`, `operator`, `read_only`.

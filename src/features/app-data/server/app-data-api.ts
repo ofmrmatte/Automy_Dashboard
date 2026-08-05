@@ -1,4 +1,5 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
+import { getBetterAuthSessionFromRequest } from "@/features/identity/server/better-auth";
 import type { QueryResultRow } from "pg";
 
 const APP_DATA_PATHS = new Set([
@@ -949,12 +950,31 @@ async function handleCreateTicket(request: Request) {
   return jsonResponse({ ticket: result.rows[0] }, { status: 201 });
 }
 
-async function handleSetting(url: URL, keyPrefix: string) {
+async function requireAuthenticatedUser(request: Request) {
+  const session = await getBetterAuthSessionFromRequest(request);
+  const userId = session?.user.id;
+
+  if (!userId) {
+    return { error: jsonResponse({ error: "Sessão inválida ou expirada." }, { status: 401 }) };
+  }
+
+  return { userId };
+}
+
+function assertOwnResource(authUserId: string, currentUserId: string) {
+  return authUserId === currentUserId;
+}
+
+async function handleSetting(request: Request, url: URL, keyPrefix: string, currentUserId: string) {
   await ensureBusinessSchema();
 
   const authUserId = url.searchParams.get("authUserId");
   if (!authUserId) {
     return jsonResponse({ error: "Usuário não informado." }, { status: 400 });
+  }
+
+  if (!assertOwnResource(authUserId, currentUserId)) {
+    return jsonResponse({ error: "Permissão insuficiente." }, { status: 403 });
   }
 
   const db = await getRailwayPostgresPool();
@@ -971,7 +991,7 @@ async function handleSetting(url: URL, keyPrefix: string) {
   return jsonResponse({ value: result.rows[0]?.value ?? null });
 }
 
-async function handleUpdateSetting(request: Request, keyPrefix: string) {
+async function handleUpdateSetting(request: Request, keyPrefix: string, currentUserId: string) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -980,6 +1000,10 @@ async function handleUpdateSetting(request: Request, keyPrefix: string) {
   const authUserId = typeof payload.authUserId === "string" ? payload.authUserId : "";
   if (!authUserId) {
     return jsonResponse({ error: "Usuário não informado." }, { status: 400 });
+  }
+
+  if (!assertOwnResource(authUserId, currentUserId)) {
+    return jsonResponse({ error: "Permissão insuficiente." }, { status: 403 });
   }
 
   await ensureBusinessSchema();
@@ -998,9 +1022,12 @@ async function handleUpdateSetting(request: Request, keyPrefix: string) {
   return jsonResponse({ value: result.rows[0]?.value ?? null });
 }
 
-export function handleAppDataApiRequest(request: Request) {
+export async function handleAppDataApiRequest(request: Request) {
   const url = new URL(request.url);
   if (!APP_DATA_PATHS.has(url.pathname)) return null;
+
+  const auth = await requireAuthenticatedUser(request);
+  if ("error" in auth) return auth.error;
 
   if (request.method === "POST" && url.pathname === "/api/products") {
     return handleCreateProduct(request);
@@ -1031,11 +1058,11 @@ export function handleAppDataApiRequest(request: Request) {
   }
 
   if (request.method === "PUT" && url.pathname === "/api/settings/profile") {
-    return handleUpdateSetting(request, "profile");
+    return handleUpdateSetting(request, "profile", auth.userId);
   }
 
   if (request.method === "PUT" && url.pathname === "/api/settings/preferences") {
-    return handleUpdateSetting(request, "preferences");
+    return handleUpdateSetting(request, "preferences", auth.userId);
   }
 
   if (request.method !== "GET") {
@@ -1047,8 +1074,12 @@ export function handleAppDataApiRequest(request: Request) {
   if (url.pathname === "/api/products") return handleProducts();
   if (url.pathname === "/api/support/tickets") return handleTickets();
   if (url.pathname === "/api/scheduled-calls") return handleScheduledCalls();
-  if (url.pathname === "/api/settings/profile") return handleSetting(url, "profile");
-  if (url.pathname === "/api/settings/preferences") return handleSetting(url, "preferences");
+  if (url.pathname === "/api/settings/profile") {
+    return handleSetting(request, url, "profile", auth.userId);
+  }
+  if (url.pathname === "/api/settings/preferences") {
+    return handleSetting(request, url, "preferences", auth.userId);
+  }
   if (url.pathname === "/api/dashboard/summary") return handleDashboardSummary();
   return handleDashboardActivity();
 }

@@ -6,8 +6,14 @@ export type AuthUser = {
   user_metadata: Record<string, unknown>;
   aud: string;
   created_at: string;
+  updated_at?: string | null;
   last_sign_in_at?: string | null;
   email?: string;
+  email_verified?: boolean;
+  name?: string;
+  image?: string | null;
+  role?: "admin" | "manager" | "operator" | "read_only";
+  status?: "active" | "inactive" | "pending" | "blocked";
 };
 
 export type AuthSession = {

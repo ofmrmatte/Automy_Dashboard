@@ -32,17 +32,14 @@ Variaveis esperadas por ambiente:
 
 - `DATABASE_URL`
 - `PGSSLMODE`
-- `AUTOMY_ADMIN_EMAIL`
-- `AUTOMY_ADMIN_PASSWORD`
-- `AUTOMY_ADMIN_USER_ID` opcional
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
 
 Hosts `*.railway.internal` devem ser usados apenas dentro da rede privada Railway. Local e Vercel devem utilizar a URL publica/proxy do Railway.
 
 ## Autenticacao
 
-A autenticacao atual por `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` e temporaria. Ela deve ser mantida nesta baseline para preservar acesso ao sistema, mas nao deve ser expandida para multiusuario.
-
-A autenticacao definitiva devera utilizar PostgreSQL, senha com hash, sessoes persistidas, recuperacao de senha, auditoria e politicas de permissao.
+Better Auth e a autenticacao oficial da Automy a partir da etapa posterior ao freeze `v1.0.0-rc2`. A baseline permanece registrada como ponto estrutural congelado; a autenticacao atual usa Railway PostgreSQL, cookies HttpOnly, hash padrao do Better Auth e RBAC inicial.
 
 ## Checklist da Baseline
 

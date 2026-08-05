@@ -6,9 +6,10 @@
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
 - Arquitetura Feature First consolidada.
+- Better Auth definido como provedor oficial de autenticacao.
 - Vercel conectado ao GitHub, com deploy de `main`.
 - Variaveis Railway pendentes no Vercel/local.
-- Autenticacao temporaria por env vars mantida ate a migracao definitiva para PostgreSQL.
+- Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
 
 # BASELINE v1.0.0-RC2
 
@@ -21,6 +22,12 @@
 
 ## 2026-08-05
 
+- Implementado Better Auth como provedor oficial de autenticacao.
+- Adicionada migration Railway para tabelas `user`, `session`, `account`, `verification` e `rate_limit`.
+- Removida autenticacao temporaria por endpoint local e variaveis administrativas.
+- Integrado login, logout, sessao persistente, remember me, alteracao de senha e recuperacao de senha ao Better Auth.
+- Preparada estrutura de verificacao de e-mail com envio desabilitado ate configuracao de provedor transacional.
+- Protegidos endpoints internos de dados com sessao Better Auth.
 - Congelada a baseline `v1.0.0-rc2` antes do desenvolvimento dos modulos de negocio.
 - Adicionada documentacao de Baseline Freeze em `docs/BASELINE_FREEZE.md`.
 - Documentado que alteracoes estruturais futuras exigem aprovacao explicita.

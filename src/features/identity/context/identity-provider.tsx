@@ -82,8 +82,8 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       avatarUrl,
       isLoading,
       refreshIdentity,
-      signIn: async (email, password) => {
-        const nextSession = await identityService.signIn(email, password);
+      signIn: async (email, password, rememberMe) => {
+        const nextSession = await identityService.signIn(email, password, rememberMe);
         await loadIdentity(nextSession);
       },
       sendPasswordRecovery: (email) => identityService.sendPasswordRecovery(email),

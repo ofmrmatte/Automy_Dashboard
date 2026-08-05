@@ -9,6 +9,7 @@ Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo tempora
 - Login Premium esta congelado.
 - Arquitetura Feature First esta consolidada.
 - Railway PostgreSQL e o banco oficial.
+- Better Auth e o provedor oficial de autenticacao.
 - Toda nova funcionalidade devera respeitar este `PROJECT_RULES.md`.
 - Nenhuma alteracao estrutural deve ser feita sem aprovacao explicita.
 
@@ -33,6 +34,7 @@ Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo tempora
 - Services sao a fronteira de regras de aplicacao.
 - Prisma, quando adotado, deve ficar atras de repositories.
 - Railway PostgreSQL e a fonte oficial de dados.
+- Autenticacao deve usar Better Auth.
 - Nao criar novos mocks.
 - Nao criar dados ficticios.
 - Quando nao houver dados reais, utilizar Empty State profissional.

@@ -10,9 +10,10 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
+- Better Auth e o provedor oficial de autenticacao.
 - O projeto Vercel `automy-dashboard` esta conectado ao GitHub e possui deployment de producao pronto.
 - As variaveis Railway ainda devem ser configuradas no Vercel antes de validar persistencia real em producao.
-- A autenticacao administrativa por env vars e temporaria e deve ser substituida por autenticacao persistida em PostgreSQL.
+- Cadastro publico esta desabilitado; criacao de usuarios deve ocorrer por fluxo administrativo controlado.
 
 # BASELINE v1.0.0-RC2
 
@@ -23,6 +24,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - Railway PostgreSQL e o banco oficial.
 - Toda nova funcionalidade devera respeitar `PROJECT_RULES.md`.
 - Paginas, componentes e modulos de negocio devem manter o fluxo: Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL.
+- Autenticacao deve permanecer em Better Auth salvo aprovacao explicita para mudanca estrutural.
 
 ## Frontend
 
@@ -55,11 +57,12 @@ Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos extern
 
 O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias do usuario.
 
-- Auth: e-mail e senha via endpoint interno em `src/features/identity/server/railway-auth.ts`.
-- Sessao: `IdentityProvider` consome o service de identidade e persiste a sessao do usuario no cliente.
+- Auth: Better Auth em `src/features/identity/server/better-auth.ts`.
+- Cliente: `src/features/identity/auth-client.ts`.
+- Sessao: `IdentityProvider` consome o service de identidade e carrega a sessao via cookie HttpOnly.
 - Rotas publicas: `/login`, `/recuperar-senha`, `/redefinir-senha`.
 - Rotas privadas: todas as demais rotas sao protegidas no root route.
-- Perfil: dados pessoais, avatar, senha, preferencias e sessoes ativas.
+- Perfil: dados de usuario Better Auth, dados complementares de perfil, avatar, senha, preferencias e sessoes ativas.
 - Avatar: estrutura mantida no dominio de identidade; upload definitivo sera conectado a storage dedicado em etapa futura.
 
 ## Railway PostgreSQL
@@ -96,11 +99,27 @@ A migration inicial cria:
 - `charges`
 - `app_settings`
 
+A migration Better Auth cria:
+
+- `user`
+- `session`
+- `account`
+- `verification`
+- `rate_limit`
+
 As entidades usam UUID, auditoria e soft delete. Como o acesso ao banco ocorre por API server-side propria, controles de permissao devem ser aplicados na camada de API/service. RLS pode ser adotado posteriormente caso o banco passe a ser exposto diretamente a clientes ou gateways externos.
 
-## Autenticacao Temporaria
+## Better Auth
 
-A release `v1.0.0-rc1` mantem autenticacao por `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` para preservar acesso durante a migracao de infraestrutura. Essa abordagem nao deve ser expandida para multiusuario. A autenticacao definitiva deve usar tabela de usuarios, hash de senha, sessoes persistidas, recuperacao de senha, bloqueio por tentativa e auditoria.
+Better Auth substitui a autenticacao temporaria por env vars.
+
+- Senhas usam o hash padrao do Better Auth.
+- Sessoes usam cookies HttpOnly.
+- `rememberMe` usa o payload oficial do endpoint de login.
+- Recuperacao de senha e verificacao de e-mail estao preparadas, com envio transacional pendente de provedor aprovado.
+- `last_login` e atualizado quando uma sessao e criada.
+- RBAC inicial fica no campo `role` da tabela `user`: `admin`, `manager`, `operator`, `read_only`.
+- `status` controla o ciclo de vida do usuario: `active`, `inactive`, `pending`, `blocked`.
 
 ## Prisma
 

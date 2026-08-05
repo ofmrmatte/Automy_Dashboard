@@ -1,38 +1,29 @@
 # Technical Issues
 
-## Implementar autenticação definitiva com PostgreSQL
+## Autenticacao oficial com Better Auth
 
-Status: pendente de criação no GitHub.
-
-Motivo: a criação via conector GitHub retornou `403 Resource not accessible by integration`, e o GitHub CLI (`gh`) não está instalado neste ambiente.
+Status: implementado.
 
 ### Contexto
 
-A baseline `v1.0.0-rc1` mantém autenticação temporária por `AUTOMY_ADMIN_EMAIL` e `AUTOMY_ADMIN_PASSWORD` para preservar acesso durante a consolidação da migração Railway.
+A autenticacao temporaria por variaveis administrativas foi substituida por Better Auth usando Railway PostgreSQL como fonte oficial.
 
-Essa solução não deve ser expandida para multiusuario nem tratada como autenticação final de produção.
+### Escopo implementado
 
-### Objetivo
+- Login por e-mail e senha.
+- Logout.
+- Sessao persistente com cookies HttpOnly.
+- Remember Me.
+- Alteracao de senha.
+- Recuperacao e redefinicao de senha.
+- Estrutura de verificacao de e-mail.
+- Perfil integrado aos dados reais do Better Auth.
+- RBAC inicial com `admin`, `manager`, `operator` e `read_only`.
+- Tabelas Better Auth versionadas em `railway/migrations`.
 
-Implementar autenticação definitiva usando PostgreSQL como fonte de verdade, mantendo a arquitetura atual da Automy.
+### Pendencias
 
-### Escopo técnico
-
-- Criar modelagem de usuários, credenciais e sessões em PostgreSQL.
-- Armazenar senhas apenas com hash forte e salt.
-- Implementar criação, login, logout e expiração de sessão.
-- Implementar recuperação e redefinição de senha.
-- Implementar bloqueio/rate limit por tentativas inválidas.
-- Registrar eventos em `activity_logs`.
-- Manter acesso via Repository Pattern e Service Layer.
-- Não acessar banco diretamente por páginas ou componentes.
-- Atualizar migrations em `railway/migrations`.
-- Adicionar testes de unidade e integração para fluxos críticos.
-
-### Critérios de aceite
-
-- Nenhuma credencial administrativa fixa por env var é necessária para login comum.
-- Sessões são persistidas e podem ser revogadas.
-- Usuários reais são carregados da tabela `users`.
-- Fluxo de recuperação de senha funciona sem expor informação sensível.
-- Lint, TypeScript e build passam.
+- Conectar provedor transacional de e-mail para envio real de recuperacao de senha e verificacao de e-mail.
+- Criar fluxo administrativo para cadastro e gestao de usuarios.
+- Adicionar auditoria de eventos de autenticacao em `activity_logs`.
+- Adicionar testes automatizados para fluxos criticos de autenticacao.

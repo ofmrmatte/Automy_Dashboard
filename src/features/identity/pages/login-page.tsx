@@ -15,7 +15,7 @@ export function LoginPage() {
   const { session, signIn } = useIdentity();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", rememberMe: false },
   });
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function LoginPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await signIn(values.email, values.password);
+      await signIn(values["email"], values["password"], values["rememberMe"]);
       toast.success("Sessão iniciada.");
       navigate({ to: "/" });
     } catch (error) {
@@ -65,7 +65,7 @@ export function LoginPage() {
         </Field>
         <div className="flex items-center justify-between gap-4">
           <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox className="size-5" />
+            <Checkbox className="size-5" {...form.register("rememberMe")} />
             Lembrar de mim
           </label>
           <Link
