@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+- Implementado modulo Produtos completo com CRUD real, visualizar, editar, ativar/inativar, soft delete, busca, filtros, paginacao, validação RHF+Zod, termos comerciais, modelo de contrato, auditoria e activity log.
+- Criada migration `20260805233000_products_operational_fields.sql` para campos operacionais e indices de produtos.
 - Implementado módulo Clientes completo com CRUD real, edição, inativação/reativação, soft delete, busca, filtro, paginação client-side, validação RHF+Zod, contato/endereço principal, auditoria e activity log.
 - Criada migration `20260805223000_clients_operational_fields.sql` para campos operacionais de clientes.
 - Implementada Fase 4 do Dashboard real com agregacoes server-side no Railway PostgreSQL.

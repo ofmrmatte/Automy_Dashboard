@@ -82,11 +82,11 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Clientes      | Criacao                               | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, endpoint POST, contato/endereco principal, audit/activity log               | `clients.manage`             | manter                                        |
 | Clientes      | Edicao/inativacao/reativacao/exclusao | FUNCIONAL         | baixa      | admin/manager                 | PATCH e DELETE soft delete implementados                                             | `clients.manage`             | validar por role                              |
 | Clientes      | Relacionamentos/documentos            | PARCIAL           | media      | todos                         | produtos/contratos/financeiro/tickets/agenda dependem dos modulos correspondentes    | modulos externos             | completar nas proximas fases                  |
-| Produtos      | Listagem                              | PARCIAL           | media      | roles com `products.read`     | endpoint real, base vazia                                                            | sessao e company_id          | manter                                        |
-| Produtos      | Criacao                               | PARCIAL           | media      | admin/manager                 | endpoint POST existe e persiste produto/modelo                                       | `products.manage`            | adicionar validacao e testes                  |
-| Produtos      | Edicao                                | PARCIAL           | media      | admin/manager                 | endpoint PATCH existe                                                                | `products.manage`            | testar com usuario real                       |
-| Produtos      | Inativacao/soft delete                | PARCIAL           | media      | admin/manager                 | pause PATCH e DELETE soft delete existem                                             | `products.manage`            | trocar `window.confirm` por modal DS          |
-| Produtos      | Vinculo com clientes                  | PARCIAL           | media      | todos                         | conta contratos por produto                                                          | contratos reais              | completar fluxo cliente-produto               |
+| Produtos      | Listagem/busca/filtro/paginacao       | FUNCIONAL         | baixa      | roles com `products.read`     | endpoint real, filtros por termo/status/categoria e paginacao client-side            | sessao e company_id          | evoluir para server-side em alto volume       |
+| Produtos      | Criacao                               | FUNCIONAL         | baixa      | admin/manager                 | RHF+Zod, endpoint POST, termos comerciais, template, audit/activity log              | `products.manage`            | validar por role                              |
+| Produtos      | Visualizacao/edicao                   | FUNCIONAL         | baixa      | admin/manager                 | modal de detalhe e PATCH com campos operacionais                                     | `products.manage`            | manter                                        |
+| Produtos      | Ativacao/inativacao/soft delete       | FUNCIONAL         | baixa      | admin/manager                 | PATCH status e DELETE soft delete com modal do Design System                         | `products.manage`            | validar por role                              |
+| Produtos      | Vinculo com clientes                  | FUNCIONAL         | baixa      | todos                         | clientes e contratos sao contados por vinculos reais em `contracts`                  | contratos reais              | aprofundar no modulo Contratos                |
 | Contratos     | Listagem                              | PARCIAL           | media      | roles com `contracts.read`    | endpoint real, base vazia                                                            | produtos/clientes            | manter                                        |
 | Contratos     | Criacao                               | PARCIAL           | alta       | admin/manager                 | cria cliente se necessario e contrato pendente                                       | produto existente            | validar constraints e auditoria               |
 | Contratos     | Edicao/renovacao/cancelamento         | NAO IMPLEMENTADA  | alta       | admin/manager                 | sem endpoints e sem UI                                                               | ciclo de vida de contrato    | implementar no sprint de Contratos            |
@@ -232,7 +232,7 @@ Limitacoes:
 Persistencia real implementada:
 
 - clientes: criar/listar/detalhar basico;
-- produtos: criar/listar/editar/pausar/soft delete;
+- produtos: criar/listar/visualizar/editar/ativar/inativar/soft delete;
 - contratos: criar/listar basico;
 - suporte: criar/listar tickets basicos;
 - agenda: criar/listar calls basicas;
@@ -266,10 +266,9 @@ Persistencia ausente ou incompleta:
 
 ### Medias
 
-- Activity logs nao sao gerados pelos CRUDs.
+- Activity logs ainda nao sao gerados por todos os CRUDs antigos.
 - Graficos do Dashboard usam dados reais, mas dependem de massa operacional para exibicao.
 - Relatorios PDF/XLSX e filtros sao apenas visuais.
-- Produtos usa `window.confirm`.
 
 ### Baixas
 

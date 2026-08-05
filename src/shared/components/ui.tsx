@@ -235,15 +235,44 @@ export function Modal({
   );
 }
 
-export function Pagination({ label = DEFAULT_PAGINATION_LABEL }: { label?: string }) {
+export function Pagination({
+  label = DEFAULT_PAGINATION_LABEL,
+  page,
+  pageCount,
+  onPageChange,
+}: {
+  label?: string;
+  page?: number;
+  pageCount?: number;
+  onPageChange?: (page: number) => void;
+}) {
+  const currentPage = page ?? 1;
+  const totalPages = pageCount ?? 1;
+  const canGoBack = currentPage > 1;
+  const canGoForward = currentPage < totalPages;
+
   return (
     <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
       <span>{label}</span>
       <div className="flex gap-1">
-        <Button variant="ghost" size="icon" aria-label="Página anterior">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Página anterior"
+          disabled={!onPageChange || !canGoBack}
+          onClick={() => onPageChange?.(Math.max(1, currentPage - 1))}
+        >
           <ChevronLeft className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Próxima página">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Próxima página"
+          disabled={!onPageChange || !canGoForward}
+          onClick={() => onPageChange?.(Math.min(totalPages, currentPage + 1))}
+        >
           <ChevronRight className="size-4" />
         </Button>
       </div>

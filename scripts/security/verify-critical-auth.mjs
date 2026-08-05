@@ -84,6 +84,12 @@ async function verifyAnonymousApiProtection() {
   const deleteClientResponse = await request("/api/clients?id=test", { method: "DELETE" });
   assertStatus("DELETE /api/clients sem sessao", deleteClientResponse.status, 401);
 
+  const updateProductResponse = await request("/api/products", { method: "PATCH", body: "{}" });
+  assertStatus("PATCH /api/products sem sessao", updateProductResponse.status, 401);
+
+  const deleteProductResponse = await request("/api/products?id=test", { method: "DELETE" });
+  assertStatus("DELETE /api/products sem sessao", deleteProductResponse.status, 401);
+
   const passwordResponse = await request("/api/users/password", { method: "POST", body: "{}" });
   assertStatus("POST /api/users/password sem sessao", passwordResponse.status, 401);
 

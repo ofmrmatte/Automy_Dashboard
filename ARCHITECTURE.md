@@ -144,6 +144,17 @@ O modulo `src/features/clients` usa formulario React Hook Form + Zod e persiste 
 - Todas as escritas exigem `clients.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Documentos/anexos nao sao simulados; dependem de storage oficial.
 
+## Produtos
+
+O modulo `src/features/products` usa formulario React Hook Form + Zod e persiste portfolio, termos comerciais e modelo de contrato via `/api/products`.
+
+- `GET /api/products`: lista produtos da empresa autenticada com contadores reais de clientes e contratos vinculados.
+- `POST /api/products`: cria produto com campos operacionais, termos comerciais e template de contrato.
+- `PATCH /api/products`: atualiza cadastro, status, termos e contrato; tambem suporta ativar/inativar.
+- `DELETE /api/products?id=`: aplica soft delete.
+- Todas as escritas exigem `products.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Vinculos com clientes sao calculados por contratos reais; nao ha simulacao de uso.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
@@ -168,6 +179,7 @@ As migrations ativas da foundation sao:
 - `20260805200000_identity_preferences_foundation.sql`
 - `20260805213000_settings_foundation.sql`
 - `20260805223000_clients_operational_fields.sql`
+- `20260805233000_products_operational_fields.sql`
 
 A migration foundation cria:
 

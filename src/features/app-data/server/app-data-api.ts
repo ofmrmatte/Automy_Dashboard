@@ -1,6 +1,11 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
+  productFormSchema,
+  productPatchSchema,
+  type ProductFormData,
+} from "@/features/products/validation";
+import {
   jsonResponse,
   hasPermission,
   requireAuthenticatedUser,
@@ -12,6 +17,26 @@ import type { QueryResultRow } from "pg";
 
 type QueryableConnection = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: QueryResultRow[] }>;
+};
+
+type ProductTermsPayload = {
+  category?: string | undefined;
+  hostedOnAutomyUrl?: boolean | undefined;
+  customUrl?: boolean | undefined;
+  userLimit?: number | undefined;
+  segment?: string | undefined;
+  implementationDays?: number | undefined;
+  implementationFee?: number | undefined;
+  paymentMethod?: string | undefined;
+  installments?: number | undefined;
+  discountPercent?: number | undefined;
+  hasMonthlyFee?: boolean | undefined;
+  monthlyFee?: number | undefined;
+  hasDatabaseCost?: boolean | undefined;
+  databaseCost?: number | undefined;
+  extraUserPrice?: number | undefined;
+  loyaltyMonths?: number | undefined;
+  deliverables?: string | undefined;
 };
 
 const APP_DATA_PATHS = new Set([
@@ -585,7 +610,8 @@ async function handleProducts(context: AuthenticatedUserContext) {
     `
     select
       products.*,
-      count(contracts.id)::int as clients
+      count(distinct contracts.client_id)::int as clients,
+      count(contracts.id)::int as contracts
     from public.products
     left join public.contracts
       on contracts.product_id = products.id
@@ -608,53 +634,75 @@ async function handleCreateProduct(request: Request, context: AuthenticatedUserC
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    name?: unknown;
-    category?: unknown;
-    version?: unknown;
-    description?: unknown;
-    commercialTerms?: unknown;
-    contractTemplate?: unknown;
-  };
-  const name = typeof payload.name === "string" ? payload.name.trim() : "";
-  if (!name) return jsonResponse({ error: "Nome do produto é obrigatório." }, { status: 400 });
-
-  const db = await getRailwayPostgresPool();
-  const result = await db.query(
-    `
-      insert into public.products (
-        company_id,
-        name,
-        category,
-        version,
-        description,
-        status,
-        commercial_terms,
-        contract_template,
-        created_by,
-        updated_by
-      )
-      values ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $8)
-      on conflict do nothing
-      returning *, 0::int as clients
-    `,
-    [
-      context.companyId,
-      name,
-      typeof payload.category === "string" ? payload.category : "Automação",
-      typeof payload.version === "string" ? payload.version : "1.0",
-      typeof payload.description === "string" ? payload.description : "",
-      JSON.stringify(payload.commercialTerms ?? {}),
-      typeof payload.contractTemplate === "string" ? payload.contractTemplate : "",
-      context.domainUserId,
-    ],
-  );
-
-  if (!result.rows[0]) {
-    return jsonResponse({ error: "Produto já cadastrado." }, { status: 409 });
+  const parsed = productFormSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      { status: 400 },
+    );
   }
 
-  return jsonResponse({ product: result.rows[0] }, { status: 201 });
+  const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `
+        insert into public.products (
+          company_id,
+          name,
+          category,
+          version,
+          description,
+          status,
+          base_price,
+          billing_mode,
+          notes,
+          commercial_terms,
+          contract_template,
+          created_by,
+          updated_by
+        )
+        values ($1, $2, $3, $4, nullif($5, ''), $6, $7, $8, nullif($9, ''), $10, nullif($11, ''), $12, $12)
+        on conflict do nothing
+        returning *
+      `,
+      [
+        context.companyId,
+        parsed.data.name,
+        parsed.data.category,
+        parsed.data.version,
+        parsed.data.description,
+        mapProductStatusToDatabase(parsed.data.status),
+        parsed.data.basePrice,
+        parsed.data.billingMode,
+        parsed.data.notes,
+        JSON.stringify(buildProductCommercialTerms(parsed.data)),
+        parsed.data.contractTemplate,
+        context.authUserId,
+      ],
+    );
+
+    const created = result.rows[0];
+    if (!created) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Produto já cadastrado." }, { status: 409 });
+    }
+
+    await recordProductAudit(client, context, "product.create", created.id, {
+      name: parsed.data.name,
+      status: parsed.data.status,
+    });
+    await client.query("commit");
+
+    return handleProductById(created.id, context, 201);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function handleUpdateProduct(request: Request, context: AuthenticatedUserContext) {
@@ -662,49 +710,79 @@ async function handleUpdateProduct(request: Request, context: AuthenticatedUserC
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    id?: unknown;
-    name?: unknown;
-    category?: unknown;
-    version?: unknown;
-    status?: unknown;
-  };
-  const id = typeof payload.id === "string" ? payload.id : "";
-  if (!id) return jsonResponse({ error: "Produto não informado." }, { status: 400 });
+  const parsed = productPatchSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Produto não informado." },
+      { status: 400 },
+    );
+  }
 
   await ensureBusinessSchema();
   const db = await getRailwayPostgresPool();
-  const result = await db.query(
-    `
-      update public.products
-      set
-        name = coalesce(nullif($3, ''), name),
-        category = coalesce(nullif($4, ''), category),
-        version = coalesce(nullif($5, ''), version),
-        status = coalesce(nullif($6, ''), status),
-        updated_by = $7,
-        updated_at = now()
-      where id = $1
-        and company_id = $2
-        and deleted_at is null
-      returning *, 0::int as clients
-    `,
-    [
-      id,
-      context.companyId,
-      typeof payload.name === "string" ? payload.name.trim() : "",
-      typeof payload.category === "string" ? payload.category.trim() : "",
-      typeof payload.version === "string" ? payload.version.trim() : "",
-      mapProductStatusToDatabase(typeof payload.status === "string" ? payload.status : ""),
-      context.domainUserId,
-    ],
-  );
+  const client = await db.connect();
 
-  if (!result.rows[0]) {
-    return jsonResponse({ error: "Produto não encontrado." }, { status: 404 });
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `
+        update public.products
+        set
+          name = coalesce(nullif($3, ''), name),
+          category = coalesce(nullif($4, ''), category),
+          version = coalesce(nullif($5, ''), version),
+          description = coalesce($6, description),
+          status = coalesce(nullif($7, ''), status),
+          base_price = coalesce($8, base_price),
+          billing_mode = coalesce(nullif($9, ''), billing_mode),
+          notes = coalesce($10, notes),
+          commercial_terms = coalesce($11, commercial_terms),
+          contract_template = coalesce($12, contract_template),
+          updated_by = $13,
+          updated_at = now()
+        where id = $1
+          and company_id = $2
+          and deleted_at is null
+        returning *
+      `,
+      [
+        parsed.data.id,
+        context.companyId,
+        parsed.data.name ?? "",
+        parsed.data.category ?? "",
+        parsed.data.version ?? "",
+        parsed.data.description ?? null,
+        mapProductStatusToDatabase(parsed.data.status ?? ""),
+        parsed.data.basePrice ?? null,
+        parsed.data.billingMode ?? "",
+        parsed.data.notes ?? null,
+        hasCompleteProductTerms(parsed.data)
+          ? JSON.stringify(buildProductCommercialTerms(parsed.data))
+          : null,
+        parsed.data.contractTemplate ?? null,
+        context.authUserId,
+      ],
+    );
+
+    const updated = result.rows[0];
+    if (!updated) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Produto não encontrado." }, { status: 404 });
+    }
+
+    await recordProductAudit(client, context, "product.update", updated.id, {
+      name: updated.name,
+      status: updated.status,
+    });
+    await client.query("commit");
+
+    return handleProductById(updated.id, context);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return jsonResponse({ product: result.rows[0] });
 }
 
 async function handleDeleteProduct(request: Request, context: AuthenticatedUserContext) {
@@ -727,12 +805,14 @@ async function handleDeleteProduct(request: Request, context: AuthenticatedUserC
         and deleted_at is null
       returning id
     `,
-    [id, context.companyId, context.domainUserId],
+    [id, context.companyId, context.authUserId],
   );
 
   if (!result.rows[0]) {
     return jsonResponse({ error: "Produto não encontrado." }, { status: 404 });
   }
+
+  await recordProductAudit(db, context, "product.delete", id);
 
   return jsonResponse({ ok: true });
 }
@@ -740,8 +820,126 @@ async function handleDeleteProduct(request: Request, context: AuthenticatedUserC
 function mapProductStatusToDatabase(status: string) {
   if (status === "Ativo" || status === "active") return "active";
   if (status === "Beta" || status === "beta") return "beta";
+  if (status === "Inativo" || status === "inactive") return "inactive";
   if (status === "Descontinuando" || status === "discontinuing") return "discontinuing";
   return "";
+}
+
+async function handleProductById(
+  productId: string,
+  context: AuthenticatedUserContext,
+  status = 200,
+) {
+  const rows = await queryRows(
+    `
+      select
+        products.*,
+        count(distinct contracts.client_id)::int as clients,
+        count(contracts.id)::int as contracts
+      from public.products
+      left join public.contracts
+        on contracts.product_id = products.id
+        and contracts.company_id = $1
+        and contracts.deleted_at is null
+      where products.id = $2
+        and products.company_id = $1
+        and products.deleted_at is null
+      group by products.id
+      limit 1
+    `,
+    [context.companyId, productId],
+  );
+
+  return jsonResponse({ product: rows[0] ?? null }, { status });
+}
+
+function buildProductCommercialTerms(payload: ProductTermsPayload) {
+  return {
+    hostedOnAutomyUrl: payload.hostedOnAutomyUrl ?? true,
+    customUrl: payload.customUrl ?? false,
+    userLimit: payload.userLimit ?? 5,
+    segment: payload.segment || payload.category || "Automação operacional",
+    implementationDays: payload.implementationDays ?? 30,
+    implementationFee: payload.implementationFee ?? 0,
+    paymentMethod: payload.paymentMethod ?? "Boleto à vista",
+    installments: payload.installments ?? 1,
+    discountPercent: payload.discountPercent ?? 0,
+    hasMonthlyFee: payload.hasMonthlyFee ?? true,
+    monthlyFee: payload.monthlyFee ?? 0,
+    hasDatabaseCost: payload.hasDatabaseCost ?? false,
+    databaseCost: payload.databaseCost ?? 0,
+    extraUserPrice: payload.extraUserPrice ?? 0,
+    loyaltyMonths: payload.loyaltyMonths ?? 12,
+    deliverables:
+      payload.deliverables ??
+      "Implantação, configuração inicial, treinamento operacional e suporte conforme plano contratado.",
+  };
+}
+
+function hasCompleteProductTerms(payload: ProductTermsPayload) {
+  return Boolean(
+    payload.paymentMethod &&
+    payload.deliverables &&
+    payload.userLimit !== undefined &&
+    payload.implementationDays !== undefined,
+  );
+}
+
+async function recordProductAudit(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  action: string,
+  productId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await db.query(
+    `
+      insert into public.audit_logs (
+        company_id,
+        actor_auth_user_id,
+        actor_user_id,
+        action,
+        resource_type,
+        resource_id,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $3, $4, 'product', $5, $6, $2, $2)
+    `,
+    [
+      context.companyId,
+      context.authUserId,
+      context.domainUserId,
+      action,
+      productId,
+      JSON.stringify(metadata),
+    ],
+  );
+
+  await db.query(
+    `
+      insert into public.activity_logs (
+        company_id,
+        actor_user_id,
+        entity_type,
+        entity_id,
+        action,
+        metadata,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, 'product', $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      context.domainUserId,
+      productId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
+    ],
+  );
 }
 
 async function handleCreateContract(request: Request, context: AuthenticatedUserContext) {

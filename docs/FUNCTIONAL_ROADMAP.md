@@ -145,23 +145,25 @@ Critério de pronto:
 
 Objetivo: consolidar o portfolio comercial e operacional.
 
+Status nesta branch: implementado como Fase 6 funcional inicial. Falta validar o fluxo completo com usuarios reais por role e aprofundar versionamento historico quando houver contratos reais.
+
 Escopo:
 
-- Revisar criacao/edicao atual com RHF + Zod.
-- Substituir `window.confirm` por modal do Design System.
-- Completar ativacao/inativacao.
-- Soft delete com confirmacao.
-- Vincular clientes e contratos.
-- Versionamento.
-- Categorias reais.
-- Quantidade de clientes por produto.
-- Audit logs.
-- Paginacao server-side.
+- Criacao/edicao revisada com React Hook Form + Zod.
+- Confirmacao de exclusao usando modal do Design System.
+- Ativacao e inativacao completas.
+- Soft delete com auditoria.
+- Vinculo com clientes e contratos calculado por contratos reais.
+- Categorias reais persistidas.
+- Quantidade de clientes e contratos por produto.
+- Audit logs e activity logs.
+- Paginacao client-side inicial com componente compartilhado.
 
 Critério de pronto:
 
-- CRUD completo testado por role.
-- Produto removido nao aparece em novos contratos.
+- CRUD completo validado tecnicamente com usuario admin.
+- Produto removido nao aparece em listagens operacionais.
+- Pendencias: validacao por role e versionamento historico.
 
 ## Sprint 5 - Contratos
 

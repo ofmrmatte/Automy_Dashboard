@@ -25,21 +25,21 @@
 
 ## Proxima Etapa
 
-- Validar Fase 4 autenticada em producao apos deploy da branch.
-- Seguir para Produtos completo sem reintroduzir mocks.
+- Validar Fase 6 autenticada em producao apos deploy da branch.
+- Seguir para Contratos completo sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Continuar desenvolvimento dos modulos de negocio: Contratos, Financeiro, Agenda e Suporte.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para clientes, produtos e contratos.
+- Implementar CRUDs reais para contratos e modulos posteriores.
 
 ## Fase 1 - Usuarios e Permissoes
 
@@ -86,6 +86,15 @@
 - Endpoints `/api/clients` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
 - Pendencias: documentos/anexos dependem de storage oficial e relacoes operacionais completas serao aprofundadas nos modulos Produtos, Contratos, Financeiro, Agenda e Suporte.
 
+## Fase 6 - Produtos
+
+- Implementado CRUD real de produtos com criar, listar, visualizar, editar, ativar, inativar e excluir logicamente.
+- Persistidos campos oficiais: nome, descricao, categoria, versao, status, preco-base, modalidade, observacoes, termos comerciais e modelo de contrato.
+- Implementados busca, filtros por status/categoria, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
+- Endpoints `/api/products` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Quantidade de clientes e contratos por produto e calculada por vinculos reais em `contracts`.
+- Pendencias: versionamento historico e relacoes operacionais serao aprofundados no ciclo de Contratos.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -98,7 +107,7 @@
 ## Modulos
 
 - Clientes: CRUD, contatos, enderecos e historico.
-- Produtos: CRUD e vinculacao com contratos.
+- Produtos: CRUD, termos comerciais, modelo de contrato e vinculacao real com contratos.
 - Contratos: vigencia, valores e renovacoes.
 - Financeiro: modelagem propria antes de exibir cobrancas.
 - Suporte: modelagem propria antes de exibir tickets.

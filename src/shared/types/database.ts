@@ -704,6 +704,11 @@ export type Database = {
           version: string | null;
           description: string | null;
           status: string;
+          base_price: number | null;
+          billing_mode: string | null;
+          notes: string | null;
+          commercial_terms: Json | null;
+          contract_template: string | null;
         };
         Insert: AuditInsertColumns & {
           company_id: string;
@@ -712,6 +717,11 @@ export type Database = {
           version?: string | null;
           description?: string | null;
           status?: string;
+          base_price?: number | null;
+          billing_mode?: string | null;
+          notes?: string | null;
+          commercial_terms?: Json | null;
+          contract_template?: string | null;
         };
         Update: AuditUpdateColumns & {
           company_id?: string;
@@ -720,6 +730,11 @@ export type Database = {
           version?: string | null;
           description?: string | null;
           status?: string;
+          base_price?: number | null;
+          billing_mode?: string | null;
+          notes?: string | null;
+          commercial_terms?: Json | null;
+          contract_template?: string | null;
         };
         Relationships: [];
       };
