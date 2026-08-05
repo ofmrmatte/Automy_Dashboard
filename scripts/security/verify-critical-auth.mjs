@@ -1,4 +1,5 @@
 const baseUrl = process.env.SECURITY_BASE_URL || "http://127.0.0.1:4173";
+const requestOrigin = process.env.SECURITY_ORIGIN || new URL(baseUrl).origin;
 
 const checks = [];
 
@@ -21,6 +22,7 @@ async function request(path, init = {}) {
     ...init,
     headers: {
       accept: "application/json",
+      origin: requestOrigin,
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },

@@ -619,25 +619,25 @@ export async function handleIdentityApiRequest(request: Request) {
       return jsonResponse({ profile: await getProfile(auth.context, session) });
     }
     if (url.pathname === "/api/identity/profile" && request.method === "PATCH") {
-      return handleUpdateProfile(request, auth.context);
+      return await handleUpdateProfile(request, auth.context);
     }
     if (url.pathname === "/api/identity/preferences" && request.method === "GET") {
       return jsonResponse({ preferences: await getPreferences(auth.context, session) });
     }
     if (url.pathname === "/api/identity/preferences" && request.method === "PATCH") {
-      return handleUpdatePreferences(request, auth.context);
+      return await handleUpdatePreferences(request, auth.context);
     }
     if (url.pathname === "/api/identity/avatar" && request.method === "POST") {
-      return handleUploadAvatar(request, auth.context);
+      return await handleUploadAvatar(request, auth.context);
     }
     if (url.pathname === "/api/identity/password" && request.method === "POST") {
-      return handleChangePassword(request, auth.context);
+      return await handleChangePassword(request, auth.context);
     }
     if (url.pathname === "/api/identity/sessions" && request.method === "GET") {
       return jsonResponse({ sessions: await listSessions(auth.context, session) });
     }
     if (url.pathname === "/api/identity/sessions" && request.method === "DELETE") {
-      return revokeSession(request, auth.context, session);
+      return await revokeSession(request, auth.context, session);
     }
 
     return jsonResponse({ error: "Método não permitido." }, { status: 405 });

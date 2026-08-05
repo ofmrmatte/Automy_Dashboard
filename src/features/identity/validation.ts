@@ -22,7 +22,7 @@ export const resetPasswordSchema = z
 
 export const profileSchema = z.object({
   firstName: z.string().trim().min(1, "Informe o nome."),
-  lastName: z.string().trim().min(1, "Informe o sobrenome."),
+  lastName: z.string().trim(),
   phone: z.string().trim(),
   jobTitle: z.string().trim(),
   avatarUrl: z

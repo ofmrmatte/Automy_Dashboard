@@ -233,7 +233,7 @@ async function writeAuditLog(
       action,
       resourceId,
       JSON.stringify(metadata),
-      context.domainUserId,
+      context.authUserId,
     ],
   );
 }
@@ -371,9 +371,9 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
           "createdAt",
           "updatedAt"
         )
-        values ($1, 'credential', $1, $2, now(), now())
+        values ($1, 'credential', $2, $3, now(), now())
       `,
-      [authUserId, passwordHash],
+      [authUserId, authUserId, passwordHash],
     );
 
     const domainUserResult = await client.query<{ id: string }>(
@@ -398,7 +398,7 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
         parsed.data.name,
         parsed.data.email,
         parsed.data.status,
-        context.domainUserId,
+        context.authUserId,
       ],
     );
     const domainUserId = domainUserResult.rows[0]?.id;
@@ -410,7 +410,7 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
         values ($1, split_part($2, ' ', 1), trim(substr($2, length(split_part($2, ' ', 1)) + 1)), $3, $3)
         on conflict (auth_user_id) do nothing
       `,
-      [authUserId, parsed.data.name, context.domainUserId],
+      [authUserId, parsed.data.name, context.authUserId],
     );
 
     await client.query(
@@ -419,7 +419,7 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
         values ($1, $2, $2)
         on conflict (auth_user_id) do nothing
       `,
-      [authUserId, context.domainUserId],
+      [authUserId, context.authUserId],
     );
 
     await writeAuditLog(client, context, "user.created", domainUserId, {
@@ -484,7 +484,7 @@ async function handleUpdateUser(request: Request, context: AuthenticatedUserCont
         parsed.data.name,
         parsed.data.email,
         parsed.data.status,
-        context.domainUserId,
+        context.authUserId,
       ],
     );
     if (!result.rows[0]) throw new ApiError("Usuário não encontrado.", 404, "not_found");
@@ -551,7 +551,7 @@ async function handleDeleteUser(url: URL, context: AuthenticatedUserContext) {
           and company_id = $2
           and deleted_at is null
       `,
-      [id, context.companyId, context.domainUserId],
+      [id, context.companyId, context.authUserId],
     );
     await client.query(
       `
@@ -777,28 +777,28 @@ export async function handleUsersApiRequest(request: Request) {
     if (permissionError) return permissionError;
 
     if (url.pathname === "/api/users" && request.method === "GET") {
-      return handleListUsers(url, auth.context);
+      return await handleListUsers(url, auth.context);
     }
     if (url.pathname === "/api/users" && request.method === "POST") {
-      return handleCreateUser(request, auth.context);
+      return await handleCreateUser(request, auth.context);
     }
     if (url.pathname === "/api/users" && request.method === "PATCH") {
-      return handleUpdateUser(request, auth.context);
+      return await handleUpdateUser(request, auth.context);
     }
     if (url.pathname === "/api/users" && request.method === "DELETE") {
-      return handleDeleteUser(url, auth.context);
+      return await handleDeleteUser(url, auth.context);
     }
     if (url.pathname === "/api/users/password" && request.method === "POST") {
-      return handleUpdatePassword(request, auth.context);
+      return await handleUpdatePassword(request, auth.context);
     }
     if (url.pathname === "/api/users/sessions" && request.method === "GET") {
-      return handleListSessions(url, auth.context);
+      return await handleListSessions(url, auth.context);
     }
     if (url.pathname === "/api/users/sessions" && request.method === "DELETE") {
-      return handleRevokeSessions(url, auth.context);
+      return await handleRevokeSessions(url, auth.context);
     }
     if (url.pathname === "/api/permissions" && request.method === "GET") {
-      return handlePermissions(auth.context);
+      return await handlePermissions(auth.context);
     }
 
     return jsonResponse({ error: "Método não permitido." }, { status: 405 });
