@@ -166,6 +166,19 @@ O modulo `src/features/contracts` usa formulario React Hook Form + Zod e persist
 - Todas as escritas exigem `contracts.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Datas de contrato sao persistidas como `date`; Agenda persiste `start_at`/`end_at` em UTC com timezone original do agendamento.
 
+## Suporte
+
+O modulo `src/features/support` usa formulario React Hook Form + Zod e persiste tickets via `/api/support/tickets`.
+
+- `GET /api/support/tickets`: lista tickets da empresa autenticada com cliente, responsavel, mensagens, eventos e anexos.
+- `POST /api/support/tickets`: cria ticket em transacao, validando cliente real da empresa e responsavel opcional.
+- `PATCH /api/support/tickets`: atualiza cadastro, prioridade, status, SLA, mensagens e anexos por URL/metadados.
+- `DELETE /api/support/tickets?id=`: aplica soft delete.
+- `support_ticket_messages` registra atualizacoes internas/clientes.
+- `support_ticket_events` registra historico operacional.
+- `support_ticket_attachments` registra metadados/URL; upload binario depende de storage oficial.
+- Todas as escritas exigem `support.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+
 ## Agenda
 
 O modulo `src/features/scheduling` usa formulario React Hook Form + Zod e persiste calls via `/api/scheduled-calls`.
@@ -206,6 +219,7 @@ As migrations ativas da foundation sao:
 - `20260806000000_contracts_lifecycle_fields.sql`
 - `20260806010000_finance_billing_lifecycle.sql`
 - `20260806020000_scheduling_timezone_lifecycle.sql`
+- `20260806030000_support_ticket_lifecycle.sql`
 
 A migration foundation cria:
 
@@ -226,6 +240,9 @@ A migration foundation cria:
 - `user_profiles`
 - `user_preferences`
 - `support_tickets`
+- `support_ticket_messages`
+- `support_ticket_events`
+- `support_ticket_attachments`
 - `scheduled_calls`
 - `charges`
 - `payment_webhook_events`

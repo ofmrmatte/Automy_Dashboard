@@ -18,6 +18,12 @@ import {
 } from "@/features/scheduling/validation";
 import { zonedLocalDateTimeToUtc } from "@/features/scheduling/utils/timezone";
 import {
+  ticketFormSchema,
+  ticketPatchSchema,
+  type TicketFormData,
+  type TicketPatchData,
+} from "@/features/support/validation";
+import {
   jsonResponse,
   hasPermission,
   requireAuthenticatedUser,
@@ -1727,11 +1733,46 @@ async function handleTickets(context: AuthenticatedUserContext) {
 
   const tickets = await queryRows(
     `
-    select *
+    select
+      support_tickets.*,
+      coalesce(clients.trade_name, clients.legal_name, support_tickets.client_name) as client_name,
+      coalesce(users.name, support_tickets.owner) as owner,
+      coalesce(messages.items, '[]'::jsonb) as messages,
+      coalesce(attachments.items, '[]'::jsonb) as attachments,
+      coalesce(events.items, '[]'::jsonb) as events
     from public.support_tickets
-    where deleted_at is null
-      and company_id = $1
-    order by created_at desc
+    left join public.clients
+      on clients.id = support_tickets.client_id
+      and clients.company_id = support_tickets.company_id
+      and clients.deleted_at is null
+    left join public.users
+      on users.id = support_tickets.owner_user_id
+      and users.company_id = support_tickets.company_id
+      and users.deleted_at is null
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_messages) order by support_ticket_messages.created_at asc) as items
+      from public.support_ticket_messages
+      where support_ticket_messages.ticket_id = support_tickets.id
+        and support_ticket_messages.company_id = support_tickets.company_id
+        and support_ticket_messages.deleted_at is null
+    ) messages on true
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_attachments) order by support_ticket_attachments.created_at desc) as items
+      from public.support_ticket_attachments
+      where support_ticket_attachments.ticket_id = support_tickets.id
+        and support_ticket_attachments.company_id = support_tickets.company_id
+        and support_ticket_attachments.deleted_at is null
+    ) attachments on true
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_events) order by support_ticket_events.created_at desc) as items
+      from public.support_ticket_events
+      where support_ticket_events.ticket_id = support_tickets.id
+        and support_ticket_events.company_id = support_tickets.company_id
+        and support_ticket_events.deleted_at is null
+    ) events on true
+    where support_tickets.deleted_at is null
+      and support_tickets.company_id = $1
+    order by support_tickets.updated_at desc
     limit 200
   `,
     [context.companyId],
@@ -2165,51 +2206,473 @@ async function handleCreateTicket(request: Request, context: AuthenticatedUserCo
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
 
-  const payload = (await request.json()) as {
-    clientName?: unknown;
-    title?: unknown;
-    description?: unknown;
-    priority?: unknown;
-    owner?: unknown;
-    status?: unknown;
-  };
-  const clientName = typeof payload.clientName === "string" ? payload.clientName.trim() : "";
-  const title = typeof payload.title === "string" ? payload.title.trim() : "";
-
-  if (!clientName || !title) {
-    return jsonResponse({ error: "Cliente e título são obrigatórios." }, { status: 400 });
+  const parsed = ticketFormSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      { status: 400 },
+    );
   }
 
   const db = await getRailwayPostgresPool();
-  const result = await db.query(
-    `
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const result = await client.query<{ id: string }>(
+      `
       insert into public.support_tickets (
         company_id,
+        ticket_number,
+        client_id,
         client_name,
         title,
         description,
+        category,
         priority,
+        owner_user_id,
         owner,
         status,
+        source,
+        tags,
+        first_response_due_at,
+        resolution_due_at,
         created_by,
         updated_by
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $8)
-      returning *
+      select
+        $1,
+        concat('TCK-', to_char(now(), 'YYYYMMDDHH24MISS'), '-', upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6))),
+        clients.id,
+        coalesce(clients.trade_name, clients.legal_name),
+        $3,
+        nullif($4, ''),
+        $5,
+        $6,
+        nullif($7::text, '')::uuid,
+        users.name,
+        $8,
+        'manual',
+        $9,
+        nullif($10, '')::timestamptz,
+        nullif($11, '')::timestamptz,
+        $12,
+        $12
+      from public.clients
+      left join public.users
+        on users.id = nullif($7::text, '')::uuid
+        and users.company_id = $1
+        and users.deleted_at is null
+      where clients.id = $2::uuid
+        and clients.company_id = $1
+        and clients.deleted_at is null
+        and (nullif($7::text, '') is null or users.id is not null)
+      returning id
+    `,
+      ticketQueryValues(parsed.data, context),
+    );
+
+    const created = result.rows[0];
+    if (!created) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Cliente ou responsável não encontrado." }, { status: 404 });
+    }
+
+    if (parsed.data.initialMessage) {
+      await insertTicketMessage(client, context, created.id, parsed.data.initialMessage);
+    }
+    await recordTicketAudit(client, context, "ticket.create", created.id, {
+      priority: parsed.data.priority,
+      status: parsed.data.status,
+    });
+    await client.query("commit");
+
+    return handleTicketById(created.id, context, 201);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleUpdateTicket(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const parsed = ticketPatchSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return jsonResponse(
+      { error: parsed.error.issues[0]?.message ?? "Ticket não informado." },
+      { status: 400 },
+    );
+  }
+
+  const db = await getRailwayPostgresPool();
+  const client = await db.connect();
+
+  try {
+    await client.query("begin");
+    const result = await client.query<{ id: string }>(
+      `
+      update public.support_tickets
+      set
+        client_id = coalesce($3::uuid, client_id),
+        client_name = coalesce((
+          select coalesce(clients.trade_name, clients.legal_name)
+          from public.clients
+          where clients.id = coalesce($3::uuid, support_tickets.client_id)
+            and clients.company_id = $2
+            and clients.deleted_at is null
+          limit 1
+        ), client_name),
+        title = coalesce(nullif($4, ''), title),
+        description = coalesce($5, description),
+        category = coalesce(nullif($6, ''), category),
+        priority = coalesce(nullif($7, ''), priority),
+        owner_user_id = coalesce(nullif($8::text, '')::uuid, owner_user_id),
+        owner = coalesce((
+          select users.name
+          from public.users
+          where users.id = coalesce(nullif($8::text, '')::uuid, support_tickets.owner_user_id)
+            and users.company_id = $2
+            and users.deleted_at is null
+          limit 1
+        ), owner),
+        status = coalesce(nullif($9, ''), status),
+        tags = coalesce($10, tags),
+        first_response_due_at = coalesce(nullif($11, '')::timestamptz, first_response_due_at),
+        resolution_due_at = coalesce(nullif($12, '')::timestamptz, resolution_due_at),
+        first_responded_at = case
+          when $9 in ('Em andamento', 'Resolvido', 'Fechado') then coalesce(first_responded_at, now())
+          else first_responded_at
+        end,
+        resolved_at = case
+          when $9 in ('Resolvido', 'Fechado') then coalesce(resolved_at, now())
+          when $9 = 'Aberto' then null
+          else resolved_at
+        end,
+        closed_at = case
+          when $9 in ('Fechado', 'Cancelado') then coalesce(closed_at, now())
+          when $9 = 'Aberto' then null
+          else closed_at
+        end,
+        reopened_at = case when $9 = 'Aberto' then now() else reopened_at end,
+        updated_by = $13,
+        updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+        and exists (
+          select 1
+          from public.clients
+          where clients.id = coalesce($3::uuid, support_tickets.client_id)
+            and clients.company_id = $2
+            and clients.deleted_at is null
+        )
+        and (
+          nullif($8::text, '') is null
+          or exists (
+            select 1
+            from public.users
+            where users.id = nullif($8::text, '')::uuid
+              and users.company_id = $2
+              and users.deleted_at is null
+          )
+        )
+      returning id
+      `,
+      [
+        parsed.data.id,
+        context.companyId,
+        parsed.data.clientId ?? null,
+        parsed.data.title ?? "",
+        parsed.data.description ?? null,
+        parsed.data.category ?? "",
+        parsed.data.priority ?? "",
+        parsed.data.ownerUserId ?? "",
+        parsed.data.status ?? "",
+        parsed.data.tags !== undefined ? JSON.stringify(parseTags(parsed.data.tags)) : null,
+        parsed.data.firstResponseDueAt ?? "",
+        parsed.data.resolutionDueAt ?? "",
+        context.authUserId,
+      ],
+    );
+
+    const updated = result.rows[0];
+    if (!updated) {
+      await client.query("rollback");
+      return jsonResponse({ error: "Ticket não encontrado." }, { status: 404 });
+    }
+
+    if (parsed.data.message) {
+      await insertTicketMessage(client, context, updated.id, parsed.data.message);
+    }
+
+    if (parsed.data.attachmentName && parsed.data.attachmentUrl) {
+      await insertTicketAttachment(client, context, updated.id, parsed.data);
+    }
+
+    await recordTicketAudit(client, context, "ticket.update", updated.id, {
+      status: parsed.data.status,
+      priority: parsed.data.priority,
+    });
+    await client.query("commit");
+
+    return handleTicketById(updated.id, context);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDeleteTicket(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  if (!id) return jsonResponse({ error: "Ticket não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
+  const result = await db.query<{ id: string }>(
+    `
+    update public.support_tickets
+    set deleted_at = now(), updated_at = now(), updated_by = $3
+    where id = $1
+      and company_id = $2
+      and deleted_at is null
+    returning id
+    `,
+    [id, context.companyId, context.authUserId],
+  );
+
+  if (!result.rows[0]) {
+    return jsonResponse({ error: "Ticket não encontrado." }, { status: 404 });
+  }
+
+  await recordTicketAudit(db, context, "ticket.delete", id);
+  return jsonResponse({ ok: true });
+}
+
+async function handleTicketById(ticketId: string, context: AuthenticatedUserContext, status = 200) {
+  const rows = await queryRows(
+    `
+    select
+      support_tickets.*,
+      coalesce(clients.trade_name, clients.legal_name, support_tickets.client_name) as client_name,
+      coalesce(users.name, support_tickets.owner) as owner,
+      coalesce(messages.items, '[]'::jsonb) as messages,
+      coalesce(attachments.items, '[]'::jsonb) as attachments,
+      coalesce(events.items, '[]'::jsonb) as events
+    from public.support_tickets
+    left join public.clients
+      on clients.id = support_tickets.client_id
+      and clients.company_id = support_tickets.company_id
+      and clients.deleted_at is null
+    left join public.users
+      on users.id = support_tickets.owner_user_id
+      and users.company_id = support_tickets.company_id
+      and users.deleted_at is null
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_messages) order by support_ticket_messages.created_at asc) as items
+      from public.support_ticket_messages
+      where support_ticket_messages.ticket_id = support_tickets.id
+        and support_ticket_messages.company_id = support_tickets.company_id
+        and support_ticket_messages.deleted_at is null
+    ) messages on true
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_attachments) order by support_ticket_attachments.created_at desc) as items
+      from public.support_ticket_attachments
+      where support_ticket_attachments.ticket_id = support_tickets.id
+        and support_ticket_attachments.company_id = support_tickets.company_id
+        and support_ticket_attachments.deleted_at is null
+    ) attachments on true
+    left join lateral (
+      select jsonb_agg(to_jsonb(support_ticket_events) order by support_ticket_events.created_at desc) as items
+      from public.support_ticket_events
+      where support_ticket_events.ticket_id = support_tickets.id
+        and support_ticket_events.company_id = support_tickets.company_id
+        and support_ticket_events.deleted_at is null
+    ) events on true
+    where support_tickets.id = $2
+      and support_tickets.company_id = $1
+      and support_tickets.deleted_at is null
+    limit 1
+    `,
+    [context.companyId, ticketId],
+  );
+
+  return jsonResponse({ ticket: rows[0] ?? null }, { status });
+}
+
+function ticketQueryValues(payload: TicketFormData, context: AuthenticatedUserContext) {
+  return [
+    context.companyId,
+    payload.clientId,
+    payload.title,
+    payload.description,
+    payload.category,
+    payload.priority,
+    payload.ownerUserId,
+    payload.status,
+    JSON.stringify(parseTags(payload.tags)),
+    payload.firstResponseDueAt,
+    payload.resolutionDueAt,
+    context.authUserId,
+  ];
+}
+
+function parseTags(value: string | undefined) {
+  return (value ?? "")
+    .split(/[,\n;]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+async function insertTicketMessage(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  ticketId: string,
+  body: string,
+) {
+  await db.query(
+    `
+    insert into public.support_ticket_messages (
+      company_id,
+      ticket_id,
+      author_user_id,
+      author_name,
+      body,
+      visibility,
+      created_by,
+      updated_by
+    )
+    select $1, $2, users.id, users.name, $3, 'internal', $4, $4
+    from public.users
+    where users.id = $5
+      and users.company_id = $1
+      and users.deleted_at is null
+    limit 1
+    `,
+    [context.companyId, ticketId, body, context.authUserId, context.domainUserId],
+  );
+}
+
+async function insertTicketAttachment(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  ticketId: string,
+  payload: TicketPatchData,
+) {
+  await db.query(
+    `
+    insert into public.support_ticket_attachments (
+      company_id,
+      ticket_id,
+      file_name,
+      file_url,
+      mime_type,
+      size_bytes,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, $3, $4, nullif($5, ''), $6, $7, $7)
     `,
     [
       context.companyId,
-      clientName,
-      title,
-      typeof payload.description === "string" ? payload.description : "",
-      typeof payload.priority === "string" ? payload.priority : "Média",
-      typeof payload.owner === "string" ? payload.owner : "Automy",
-      typeof payload.status === "string" ? payload.status : "Aberto",
+      ticketId,
+      payload.attachmentName,
+      payload.attachmentUrl,
+      payload.attachmentMimeType,
+      payload.attachmentSizeBytes ?? null,
+      context.authUserId,
+    ],
+  );
+}
+
+async function recordTicketAudit(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  action: string,
+  ticketId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  await db.query(
+    `
+    insert into public.support_ticket_events (
+      company_id,
+      ticket_id,
+      actor_user_id,
+      event_type,
+      metadata,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      ticketId,
       context.domainUserId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
     ],
   );
 
-  return jsonResponse({ ticket: result.rows[0] }, { status: 201 });
+  await db.query(
+    `
+    insert into public.audit_logs (
+      company_id,
+      actor_auth_user_id,
+      actor_user_id,
+      action,
+      resource_type,
+      resource_id,
+      metadata,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, $3, $4, 'support_ticket', $5, $6, $2, $2)
+    `,
+    [
+      context.companyId,
+      context.authUserId,
+      context.domainUserId,
+      action,
+      ticketId,
+      JSON.stringify(metadata),
+    ],
+  );
+
+  await db.query(
+    `
+    insert into public.activity_logs (
+      company_id,
+      actor_user_id,
+      entity_type,
+      entity_id,
+      action,
+      metadata,
+      created_by,
+      updated_by
+    )
+    values ($1, $2, 'support_ticket', $3, $4, $5, $6, $6)
+    `,
+    [
+      context.companyId,
+      context.domainUserId,
+      ticketId,
+      action,
+      JSON.stringify(metadata),
+      context.authUserId,
+    ],
+  );
 }
 
 function assertOwnResource(authUserId: string, currentUserId: string) {
@@ -2342,6 +2805,14 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "POST" && url.pathname === "/api/support/tickets") {
     return handleCreateTicket(request, auth.context);
+  }
+
+  if (request.method === "PATCH" && url.pathname === "/api/support/tickets") {
+    return handleUpdateTicket(request, auth.context);
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/support/tickets") {
+    return handleDeleteTicket(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/scheduled-calls") {

@@ -14,6 +14,9 @@
 
 ## Unreleased
 
+- Implementado modulo Suporte completo com criar, listar, visualizar, editar, atribuir, alterar prioridade/status, mensagens internas, resolver, reabrir, cancelar, soft delete, busca, filtro, paginacao, auditoria e activity log.
+- Criada migration `20260806030000_support_ticket_lifecycle.sql` para ciclo de vida de tickets, SLA, responsavel, tags, mensagens, eventos e anexos por metadados.
+- Finalizado endpoint protegido `/api/support/tickets` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `support.read`/`support.manage`.
 - Implementado modulo Agenda completo com criar, listar, visualizar, editar, reagendar, concluir, cancelar, soft delete, busca, filtro, paginacao, validacao RHF+Zod, auditoria e activity log.
 - Criada migration `20260806020000_scheduling_timezone_lifecycle.sql` para persistencia UTC em `start_at`/`end_at`, timezone original, responsavel, participantes, lembretes, cliente vinculado e indices operacionais.
 - Finalizado endpoint protegido `/api/scheduled-calls` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `schedule.read`/`schedule.manage`.

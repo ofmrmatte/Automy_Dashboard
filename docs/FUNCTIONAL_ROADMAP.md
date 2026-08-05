@@ -253,16 +253,25 @@ Critério de pronto:
 
 Objetivo: completar operacao de tickets.
 
-Escopo:
+Status nesta branch: implementado como Fase 10 funcional inicial. Falta ativar storage binario, notificacoes/SLA automatizados e validacao por usuarios reais de cada role.
 
-- Editar ticket.
-- Alterar status.
-- Prioridade.
-- Responsavel.
-- Mensagens/comentarios.
-- Historico.
-- SLA.
-- Anexos.
+Escopo entregue:
+
+- Criar, visualizar, editar, atribuir e excluir logicamente.
+- Alterar prioridade e status.
+- Resolver, reabrir e cancelar ticket.
+- Mensagens internas.
+- Historico operacional em eventos.
+- SLA de primeira resposta e resolucao.
+- Anexos por URL/metadados, sem filesystem efemero.
+- Cliente e responsavel vinculados.
+- Audit logs e activity logs.
+
+Pendencias:
+
+- Storage oficial para upload binario.
+- Notificacoes/SLA automatizados.
+- Validacao por manager/operator/read_only.
 - Encerramento.
 - Permissoes por role.
 - Audit logs e activity logs.

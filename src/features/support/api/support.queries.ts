@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { supportService } from "@/features/support/services/support.service";
 
 export const supportQueryKeys = {
+  all: ["support"] as const,
   tickets: ["support", "tickets"] as const,
 };
 

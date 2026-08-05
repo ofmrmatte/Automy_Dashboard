@@ -97,8 +97,8 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Agenda        | Calendario e criacao                  | FUNCIONAL         | baixa      | admin/manager/operator        | endpoint real, cliente vinculado, RHF+Zod, audit/activity log                        | `schedule.manage`            | validar por role                              |
 | Agenda        | Timezone/UTC                          | FUNCIONAL         | baixa      | todos                         | armazena `start_at`/`end_at` em UTC e exibe no timezone do usuario                   | user_preferences             | validar com usuarios em fusos diferentes      |
 | Agenda        | Edicao/cancelamento/lembretes         | FUNCIONAL/PARCIAL | media      | operadores                    | editar/reagendar/concluir/cancelar existem; disparo de lembrete depende scheduler    | workflow agenda              | integrar notificacoes reais                   |
-| Suporte       | Listagem/criacao                      | PARCIAL           | media      | admin/manager/operator        | endpoint real e form basico                                                          | `support.manage`             | manter e testar                               |
-| Suporte       | Mensagens/SLA/anexos/encerramento     | NAO IMPLEMENTADA  | alta       | suporte                       | sem UI/endpoint                                                                      | modelo ticket completo       | implementar sprint 8                          |
+| Suporte       | Listagem/criacao                      | FUNCIONAL         | baixa      | admin/manager/operator        | endpoint real, cliente vinculado, RHF+Zod, audit/activity log                        | `support.manage`             | validar por role                              |
+| Suporte       | Mensagens/SLA/anexos/encerramento     | FUNCIONAL/PARCIAL | media      | suporte                       | mensagens, SLA e anexos por metadados existem; automacoes dependem de scheduler      | modelo ticket completo       | integrar notificacoes/storage                 |
 | Relatorios    | CSV                                   | PARCIAL           | media      | usuarios autorizados pela API | exporta endpoints reais em CSV                                                       | sessao e APIs                | manter                                        |
 | Relatorios    | PDF/XLSX                              | SOMENTE VISUAL    | media      | todos                         | toast informa futuro                                                                 | exportador                   | implementar depois                            |
 | Relatorios    | Filtros por periodo                   | SOMENTE VISUAL    | media      | todos                         | select nao altera query                                                              | parametros API               | implementar filtros reais                     |
@@ -218,7 +218,7 @@ Persistencia real implementada:
 - clientes: criar/listar/detalhar basico;
 - produtos: criar/listar/visualizar/editar/ativar/inativar/soft delete;
 - contratos: criar/listar/visualizar/editar/ciclo de vida/soft delete;
-- suporte: criar/listar tickets basicos;
+- suporte: criar/listar/visualizar/editar/atribuir/resolver/reabrir/cancelar/excluir tickets;
 - agenda: criar/listar/visualizar/editar/reagendar/concluir/cancelar/excluir calls;
 - financeiro: criar/listar/visualizar/editar/baixar/cancelar/excluir charges e receber webhook Mercado Pago;
 - perfil/preferencias: salvar em `user_profiles` e `user_preferences`.
@@ -228,7 +228,7 @@ Persistencia ausente ou incompleta:
 - documentos/anexos de clientes;
 - ciclo completo de contratos;
 - geracao externa de pagamentos Mercado Pago;
-- ticket messages/SLA/anexos;
+- automacoes de SLA/notificacao e upload binario de anexos;
 - notificacoes reais de lembrete da agenda;
 - auditoria automatica em CRUDs ainda nao finalizados.
 
@@ -284,8 +284,8 @@ Motivo: ausencia de credenciais seguras de teste e ausencia de usuarios manager/
 
 ## 14. Ordem recomendada de implementacao
 
-1. Suporte completo.
+1. Relatorios completos.
 2. Suite de usuarios de teste por role, com credenciais em ambiente seguro.
-3. Testes autenticados por role para Usuarios, Clientes, Produtos, Contratos, Financeiro e Agenda.
+3. Testes autenticados por role para Usuarios, Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
 4. Auditoria administrativa e activity logs dos modulos restantes.
-5. Relatorios e configuracoes avancadas.
+5. Busca, notificacoes e configuracoes avancadas.

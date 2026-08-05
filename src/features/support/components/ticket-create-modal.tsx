@@ -1,92 +1,189 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { supportQueryKeys } from "@/features/support/api/support.queries";
-import { supportService } from "@/features/support/services/support.service";
-import type { TicketPriority, TicketStatus } from "@/features/support/types";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import type { Client } from "@/features/clients/types";
+import type { Ticket } from "@/features/support/types";
+import {
+  ticketFormSchema,
+  ticketPriorities,
+  ticketStatuses,
+  type TicketFormValues,
+} from "@/features/support/validation";
+import type { ManagedUser } from "@/features/users/types";
 import { Button, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
-import { toast } from "@/shared/components/toast";
 
-export function TicketCreateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const [saving, setSaving] = useState(false);
+const defaultValues: TicketFormValues = {
+  id: "",
+  clientId: "",
+  ownerUserId: "",
+  title: "",
+  description: "",
+  category: "Operacional",
+  priority: "Média",
+  status: "Aberto",
+  firstResponseDueAt: "",
+  resolutionDueAt: "",
+  tags: "",
+  initialMessage: "",
+};
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+function ticketToFormValues(ticket: Ticket | null | undefined): TicketFormValues {
+  if (!ticket) return defaultValues;
 
-    try {
-      setSaving(true);
-      await supportService.createTicket({
-        clientName: String(formData.get("clientName") || "").trim(),
-        title: String(formData.get("title") || "").trim(),
-        description: String(formData.get("description") || "").trim(),
-        priority: String(formData.get("priority") || "Média") as TicketPriority,
-        owner: String(formData.get("owner") || "Automy").trim(),
-        status: String(formData.get("status") || "Aberto") as TicketStatus,
-      });
-      await queryClient.invalidateQueries({ queryKey: supportQueryKeys.tickets });
-      toast.success("Ticket salvo no banco da Railway.");
-      onClose();
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível salvar o ticket.");
-    } finally {
-      setSaving(false);
-    }
+  return {
+    id: ticket.id,
+    clientId: ticket.clientId,
+    ownerUserId: ticket.ownerUserId,
+    title: ticket.title,
+    description: ticket.description,
+    category: ticket.category,
+    priority: ticket.priority,
+    status: ticket.status,
+    firstResponseDueAt: ticket.firstResponseDueAt?.slice(0, 16) ?? "",
+    resolutionDueAt: ticket.resolutionDueAt?.slice(0, 16) ?? "",
+    tags: ticket.tags.join(", "),
+    initialMessage: "",
+  };
+}
+
+export function TicketCreateModal({
+  open,
+  ticket,
+  clients,
+  users,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  ticket?: Ticket | null;
+  clients: Client[];
+  users: ManagedUser[];
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (values: TicketFormValues) => Promise<unknown>;
+}) {
+  const isEditing = Boolean(ticket);
+  const form = useForm<TicketFormValues>({
+    resolver: zodResolver(ticketFormSchema),
+    defaultValues: ticketToFormValues(ticket),
+  });
+
+  useEffect(() => {
+    form.reset(ticketToFormValues(ticket));
+  }, [form, open, ticket]);
+
+  async function handleSubmit(values: TicketFormValues) {
+    await onSubmit(values);
+    if (!isEditing) form.reset(defaultValues);
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Novo ticket"
-      description="Registre o chamado e acompanhe pela área de suporte."
+      title={isEditing ? "Editar ticket" : "Novo ticket"}
+      description="Registre o chamado com cliente, responsável, SLA e histórico operacional."
       size="lg"
     >
-      <form className="grid gap-4" onSubmit={handleSubmit}>
+      <form className="grid gap-5" onSubmit={form.handleSubmit(handleSubmit)}>
+        <input type="hidden" {...form.register("id")} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Cliente">
-            <Input name="clientName" required placeholder="Empresa ou contato" />
+            <Select {...form.register("clientId")}>
+              <option value="">Selecione um cliente</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </Select>
+            <FormError message={form.formState.errors.clientId?.message} />
           </Field>
           <Field label="Responsável">
-            <Input name="owner" defaultValue="Automy" />
+            <Select {...form.register("ownerUserId")}>
+              <option value="">Sem responsável definido</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </Select>
+            <FormError message={form.formState.errors.ownerUserId?.message} />
           </Field>
           <Field label="Título">
-            <Input name="title" required placeholder="Resumo do chamado" />
+            <Input placeholder="Resumo do chamado" {...form.register("title")} />
+            <FormError message={form.formState.errors.title?.message} />
+          </Field>
+          <Field label="Categoria">
+            <Input placeholder="Operacional" {...form.register("category")} />
+            <FormError message={form.formState.errors.category?.message} />
           </Field>
           <Field label="Prioridade">
-            <Select name="priority" defaultValue="Média">
-              <option>Crítica</option>
-              <option>Alta</option>
-              <option>Média</option>
-              <option>Baixa</option>
+            <Select {...form.register("priority")}>
+              {ticketPriorities.map((priority) => (
+                <option key={priority} value={priority}>
+                  {priority}
+                </option>
+              ))}
             </Select>
+            <FormError message={form.formState.errors.priority?.message} />
           </Field>
           <Field label="Status">
-            <Select name="status" defaultValue="Aberto">
-              <option>Aberto</option>
-              <option>Em andamento</option>
-              <option>Aguardando</option>
-              <option>Resolvido</option>
+            <Select {...form.register("status")}>
+              {ticketStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </Select>
+            <FormError message={form.formState.errors.status?.message} />
+          </Field>
+          <Field label="Primeira resposta">
+            <Input type="datetime-local" {...form.register("firstResponseDueAt")} />
+            <FormError message={form.formState.errors.firstResponseDueAt?.message} />
+          </Field>
+          <Field label="Resolução">
+            <Input type="datetime-local" {...form.register("resolutionDueAt")} />
+            <FormError message={form.formState.errors.resolutionDueAt?.message} />
           </Field>
         </div>
+        <Field label="Tags">
+          <Input placeholder="Separe por vírgula" {...form.register("tags")} />
+          <FormError message={form.formState.errors.tags?.message} />
+        </Field>
         <Field label="Descrição">
           <Textarea
-            name="description"
             placeholder="Detalhes do problema, impacto e próximos passos."
+            {...form.register("description")}
           />
+          <FormError message={form.formState.errors.description?.message} />
         </Field>
+        {!isEditing && (
+          <Field label="Mensagem inicial">
+            <Textarea
+              placeholder="Registro interno inicial do atendimento."
+              {...form.register("initialMessage")}
+            />
+            <FormError message={form.formState.errors.initialMessage?.message} />
+          </Field>
+        )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button loading={saving}>
+          <Button type="submit" loading={saving}>
             <Save className="size-4" />
-            Salvar ticket
+            {isEditing ? "Salvar alterações" : "Salvar ticket"}
           </Button>
         </div>
       </form>
     </Modal>
   );
+}
+
+function FormError({ message }: { message: string | undefined }) {
+  if (!message) return null;
+  return <span className="text-xs font-normal text-destructive">{message}</span>;
 }

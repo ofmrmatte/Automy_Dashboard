@@ -830,6 +830,150 @@ export type Database = {
         };
         Relationships: [];
       };
+      support_tickets: {
+        Row: AuditColumns & {
+          company_id: string;
+          client_id: string | null;
+          client_name: string;
+          ticket_number: string;
+          title: string;
+          description: string | null;
+          category: string;
+          priority: "Crítica" | "Alta" | "Média" | "Baixa";
+          owner_user_id: string | null;
+          owner: string | null;
+          status: "Aberto" | "Em andamento" | "Aguardando" | "Resolvido" | "Fechado" | "Cancelado";
+          source: string;
+          tags: Json;
+          first_response_due_at: string | null;
+          resolution_due_at: string | null;
+          first_responded_at: string | null;
+          resolved_at: string | null;
+          closed_at: string | null;
+          reopened_at: string | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          client_id?: string | null;
+          client_name: string;
+          ticket_number?: string;
+          title: string;
+          description?: string | null;
+          category?: string;
+          priority?: "Crítica" | "Alta" | "Média" | "Baixa";
+          owner_user_id?: string | null;
+          owner?: string | null;
+          status?: "Aberto" | "Em andamento" | "Aguardando" | "Resolvido" | "Fechado" | "Cancelado";
+          source?: string;
+          tags?: Json;
+          first_response_due_at?: string | null;
+          resolution_due_at?: string | null;
+          first_responded_at?: string | null;
+          resolved_at?: string | null;
+          closed_at?: string | null;
+          reopened_at?: string | null;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          client_id?: string | null;
+          client_name?: string;
+          ticket_number?: string;
+          title?: string;
+          description?: string | null;
+          category?: string;
+          priority?: "Crítica" | "Alta" | "Média" | "Baixa";
+          owner_user_id?: string | null;
+          owner?: string | null;
+          status?: "Aberto" | "Em andamento" | "Aguardando" | "Resolvido" | "Fechado" | "Cancelado";
+          source?: string;
+          tags?: Json;
+          first_response_due_at?: string | null;
+          resolution_due_at?: string | null;
+          first_responded_at?: string | null;
+          resolved_at?: string | null;
+          closed_at?: string | null;
+          reopened_at?: string | null;
+        };
+        Relationships: [];
+      };
+      support_ticket_messages: {
+        Row: AuditColumns & {
+          company_id: string;
+          ticket_id: string;
+          author_user_id: string | null;
+          author_name: string;
+          body: string;
+          visibility: "internal" | "client";
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          ticket_id: string;
+          author_user_id?: string | null;
+          author_name: string;
+          body: string;
+          visibility?: "internal" | "client";
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          ticket_id?: string;
+          author_user_id?: string | null;
+          author_name?: string;
+          body?: string;
+          visibility?: "internal" | "client";
+        };
+        Relationships: [];
+      };
+      support_ticket_events: {
+        Row: AuditColumns & {
+          company_id: string;
+          ticket_id: string;
+          actor_user_id: string | null;
+          event_type: string;
+          metadata: Json;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          ticket_id: string;
+          actor_user_id?: string | null;
+          event_type: string;
+          metadata?: Json;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          ticket_id?: string;
+          actor_user_id?: string | null;
+          event_type?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
+      support_ticket_attachments: {
+        Row: AuditColumns & {
+          company_id: string;
+          ticket_id: string;
+          file_name: string;
+          file_url: string;
+          mime_type: string | null;
+          size_bytes: number | null;
+        };
+        Insert: AuditInsertColumns & {
+          company_id: string;
+          ticket_id: string;
+          file_name: string;
+          file_url: string;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+        };
+        Update: AuditUpdateColumns & {
+          company_id?: string;
+          ticket_id?: string;
+          file_name?: string;
+          file_url?: string;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+        };
+        Relationships: [];
+      };
       scheduled_calls: {
         Row: AuditColumns & {
           company_id: string;
