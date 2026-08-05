@@ -14,6 +14,7 @@
     "db:seed": "node scripts/db/run-sql-directory.mjs seeds",
     "db:validate": "node scripts/db/validate-connection.mjs",
     "db:inspect": "node scripts/db/inspect-foundation.mjs",
+    "security:verify": "node scripts/security/verify-critical-auth.mjs",
     "auth:bootstrap-admin": "node scripts/auth/bootstrap-admin.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."

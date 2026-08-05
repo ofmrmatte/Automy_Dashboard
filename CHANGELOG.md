@@ -2,7 +2,8 @@
 
 ## Current Project Status
 
-- Baseline oficial: `v1.0.0-rc3`.
+- Baseline oficial publicada: `v1.0.0-rc3`.
+- Correcoes criticas em preparacao para `v1.0.0-rc4`.
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
 - Arquitetura Feature First consolidada.
@@ -10,6 +11,16 @@
 - Vercel conectado ao GitHub e configurado com variaveis da nova foundation.
 - TCP Proxy Railway configurado para acesso local/Vercel.
 - Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
+
+## Unreleased
+
+- Protegida a rota `/api/finance/charges` com sessao Better Auth antes de qualquer consulta financeira.
+- Aplicado RBAC server-side minimo nas APIs internas existentes.
+- Derivado `company_id` pelo usuario autenticado, sem aceitar empresa enviada pelo cliente.
+- Centralizada a resolucao de URL canonica e origens confiaveis para Better Auth.
+- Ajustado Railway para ser runtime canonico via `BETTER_AUTH_URL`.
+- Adicionado script `npm run security:verify` para validar protecoes criticas sem credenciais hardcoded.
+- Documentado que `v1.0.0-rc3` nao foi movida e que `v1.0.0-rc4` devera representar a correcao critica.
 
 # BASELINE v1.0.0-RC3
 

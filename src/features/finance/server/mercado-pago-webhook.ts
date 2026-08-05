@@ -1,5 +1,6 @@
 import { listFinanceCharges, upsertMercadoPagoCharge } from "@/features/finance/server/finance-db";
 import type { Charge } from "@/features/finance/types";
+import { jsonResponse, requireAuthenticatedUser, requirePermission } from "@/shared/server/authz";
 
 type MercadoPagoNotification = {
   id?: string | number;
@@ -32,16 +33,6 @@ type MercadoPagoResource = {
 
 const MERCADO_PAGO_WEBHOOK_PATH = "/api/webhooks/mercado-pago";
 const FINANCE_CHARGES_PATH = "/api/finance/charges";
-
-function jsonResponse(payload: unknown, init?: ResponseInit) {
-  return new Response(JSON.stringify(payload), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...init?.headers,
-    },
-  });
-}
 
 function parseSignatureHeader(header: string | null) {
   if (!header) return null;
@@ -220,15 +211,28 @@ async function handleMercadoPagoWebhook(request: Request) {
 }
 
 async function handleFinanceCharges(request: Request) {
+  const auth = await requireAuthenticatedUser(request);
+  if (auth.error) return auth.error;
+
+  const permissionError = requirePermission(
+    auth.context,
+    request.method === "GET" ? "finance.read" : "finance.manage",
+  );
+  if (permissionError) return permissionError;
+
+  if (!["GET", "POST", "PATCH", "PUT", "DELETE"].includes(request.method)) {
+    return jsonResponse({ error: "Método não permitido." }, { status: 405 });
+  }
+
   if (request.method !== "GET") {
     return jsonResponse({ error: "Método não permitido." }, { status: 405 });
   }
 
   try {
-    return jsonResponse({ charges: await listFinanceCharges() });
+    return jsonResponse({ charges: await listFinanceCharges(auth.context.companyId) });
   } catch (error) {
     console.error(error);
-    return jsonResponse({ charges: [] });
+    return jsonResponse({ error: "Erro ao acessar dados financeiros." }, { status: 500 });
   }
 }
 
