@@ -64,12 +64,13 @@ function mapCharge(row: ChargeRow): Charge {
   };
 }
 
-export async function listFinanceCharges() {
+export async function listFinanceCharges(companyId: string) {
   if (!isFinanceDatabaseConfigured()) return [];
 
   await ensureFinanceSchema();
   const db = await getRailwayPostgresPool();
-  const result = await db.query<ChargeRow>(`
+  const result = await db.query<ChargeRow>(
+    `
     select
       id,
       invoice,
@@ -85,9 +86,12 @@ export async function listFinanceCharges() {
       updated_by
     from public.charges
     where deleted_at is null
+      and company_id = $1
     order by due_date nulls last, last_notification_at desc
     limit 200
-  `);
+  `,
+    [companyId],
+  );
 
   return result.rows.map(mapCharge);
 }

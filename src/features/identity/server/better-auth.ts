@@ -4,6 +4,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { APP_NAME } from "@/shared/constants/app";
+import { resolveBetterAuthBaseURL, resolveTrustedAppOrigins } from "@/shared/server/app-urls";
 import { loadLocalServerEnv } from "@/shared/server/env";
 
 const BETTER_AUTH_PATH = "/api/auth";
@@ -32,8 +33,6 @@ function createPgPool() {
 
 function createAutomyAuth() {
   const pool = createPgPool();
-  const baseURL = process.env["BETTER_AUTH_URL"];
-  const vercelURL = process.env["VERCEL_URL"] ? `https://${process.env["VERCEL_URL"]}` : undefined;
   const plugins: BetterAuthPlugin[] = [];
   const betterAuthApiKey = process.env["BETTER_AUTH_API_KEY"];
 
@@ -53,7 +52,7 @@ function createAutomyAuth() {
 
   return betterAuth({
     appName: APP_NAME,
-    baseURL,
+    baseURL: resolveBetterAuthBaseURL(),
     basePath: BETTER_AUTH_PATH,
     secret: process.env["BETTER_AUTH_SECRET"],
     database: {
@@ -61,7 +60,7 @@ function createAutomyAuth() {
       type: "postgres",
       casing: "snake",
     },
-    trustedOrigins: [baseURL, vercelURL].filter(Boolean) as string[],
+    trustedOrigins: resolveTrustedAppOrigins(),
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,

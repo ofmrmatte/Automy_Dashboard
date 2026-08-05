@@ -1,5 +1,11 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
-import { getBetterAuthSessionFromRequest } from "@/features/identity/server/better-auth";
+import {
+  jsonResponse,
+  requireAuthenticatedUser,
+  requirePermission,
+  type AuthenticatedUserContext,
+  type PermissionKey,
+} from "@/shared/server/authz";
 import type { QueryResultRow } from "pg";
 
 const APP_DATA_PATHS = new Set([
@@ -14,16 +20,6 @@ const APP_DATA_PATHS = new Set([
   "/api/dashboard/activity",
 ]);
 
-function jsonResponse(payload: unknown, init?: ResponseInit) {
-  return new Response(JSON.stringify(payload), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...init?.headers,
-    },
-  });
-}
-
 function isMissingTableError(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "42P01";
 }
@@ -34,37 +30,6 @@ async function ensureBusinessSchema() {
   const db = await getRailwayPostgresPool();
   await db.query("select 1 from public.companies limit 1");
 }
-async function getAutomyCompanyId() {
-  await ensureBusinessSchema();
-
-  const db = await getRailwayPostgresPool();
-  const existing = await db.query<{ id: string }>(`
-    select id
-    from public.companies
-    where trade_name = 'Automy'
-      and deleted_at is null
-    order by created_at asc
-    limit 1
-  `);
-
-  if (existing.rows[0]) {
-    return existing.rows[0].id;
-  }
-
-  const created = await db.query<{ id: string }>(`
-    insert into public.companies (legal_name, trade_name, status)
-    values ('Automy Tecnologia e Automação', 'Automy', 'active')
-    returning id
-  `);
-
-  const company = created.rows[0];
-  if (!company) {
-    throw new Error("Não foi possível criar a empresa padrão da Automy.");
-  }
-
-  return company.id;
-}
-
 async function queryRows<T extends QueryResultRow>(sql: string, values: unknown[] = []) {
   if (!isRailwayPostgresConfigured()) return [];
 
@@ -78,7 +43,7 @@ async function queryRows<T extends QueryResultRow>(sql: string, values: unknown[
   }
 }
 
-async function handleClients(url: URL) {
+async function handleClients(url: URL, context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
   const id = url.searchParams.get("id");
@@ -87,17 +52,18 @@ async function handleClients(url: URL) {
       select *
       from public.clients
       where deleted_at is null
+        and company_id = $2
         and ($1::uuid is null or id = $1::uuid)
       order by created_at desc
       limit 200
     `,
-    [id],
+    [id, context.companyId],
   );
 
   return jsonResponse(id ? { client: rows[0] ?? null } : { clients: rows });
 }
 
-async function handleCreateClient(request: Request) {
+async function handleCreateClient(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -123,7 +89,6 @@ async function handleCreateClient(request: Request) {
     return jsonResponse({ error: "Nome fantasia e CNPJ são obrigatórios." }, { status: 400 });
   }
 
-  const companyId = await getAutomyCompanyId();
   const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
@@ -136,14 +101,16 @@ async function handleCreateClient(request: Request) {
         state,
         owner_name,
         plan_name,
-        status
+        status,
+        created_by,
+        updated_by
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
       on conflict do nothing
       returning *
     `,
     [
-      companyId,
+      context.companyId,
       legalName,
       tradeName,
       document,
@@ -152,6 +119,7 @@ async function handleCreateClient(request: Request) {
       typeof payload.owner === "string" ? payload.owner : "",
       typeof payload.plan === "string" ? payload.plan : "",
       mapClientStatusToDatabase(typeof payload.status === "string" ? payload.status : "pending"),
+      context.domainUserId,
     ],
   );
 
@@ -168,10 +136,11 @@ function mapClientStatusToDatabase(status: string) {
   return "pending";
 }
 
-async function handleContracts() {
+async function handleContracts(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
-  const contracts = await queryRows(`
+  const contracts = await queryRows(
+    `
     select
       contracts.*,
       clients.trade_name as client_trade_name,
@@ -181,34 +150,42 @@ async function handleContracts() {
     left join public.clients on clients.id = contracts.client_id
     left join public.products on products.id = contracts.product_id
     where contracts.deleted_at is null
+      and contracts.company_id = $1
     order by contracts.created_at desc
     limit 200
-  `);
+  `,
+    [context.companyId],
+  );
 
   return jsonResponse({ contracts });
 }
 
-async function handleProducts() {
+async function handleProducts(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
-  const products = await queryRows(`
+  const products = await queryRows(
+    `
     select
       products.*,
       count(contracts.id)::int as clients
     from public.products
     left join public.contracts
       on contracts.product_id = products.id
+      and contracts.company_id = $1
       and contracts.deleted_at is null
     where products.deleted_at is null
+      and products.company_id = $1
     group by products.id
     order by products.created_at desc
     limit 200
-  `);
+  `,
+    [context.companyId],
+  );
 
   return jsonResponse({ products });
 }
 
-async function handleCreateProduct(request: Request) {
+async function handleCreateProduct(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -224,7 +201,6 @@ async function handleCreateProduct(request: Request) {
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   if (!name) return jsonResponse({ error: "Nome do produto é obrigatório." }, { status: 400 });
 
-  const companyId = await getAutomyCompanyId();
   const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
@@ -236,20 +212,23 @@ async function handleCreateProduct(request: Request) {
         description,
         status,
         commercial_terms,
-        contract_template
+        contract_template,
+        created_by,
+        updated_by
       )
-      values ($1, $2, $3, $4, $5, 'active', $6, $7)
+      values ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $8)
       on conflict do nothing
       returning *, 0::int as clients
     `,
     [
-      companyId,
+      context.companyId,
       name,
       typeof payload.category === "string" ? payload.category : "Automação",
       typeof payload.version === "string" ? payload.version : "1.0",
       typeof payload.description === "string" ? payload.description : "",
       JSON.stringify(payload.commercialTerms ?? {}),
       typeof payload.contractTemplate === "string" ? payload.contractTemplate : "",
+      context.domainUserId,
     ],
   );
 
@@ -260,7 +239,7 @@ async function handleCreateProduct(request: Request) {
   return jsonResponse({ product: result.rows[0] }, { status: 201 });
 }
 
-async function handleUpdateProduct(request: Request) {
+async function handleUpdateProduct(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -281,21 +260,25 @@ async function handleUpdateProduct(request: Request) {
     `
       update public.products
       set
-        name = coalesce(nullif($2, ''), name),
-        category = coalesce(nullif($3, ''), category),
-        version = coalesce(nullif($4, ''), version),
-        status = coalesce(nullif($5, ''), status),
+        name = coalesce(nullif($3, ''), name),
+        category = coalesce(nullif($4, ''), category),
+        version = coalesce(nullif($5, ''), version),
+        status = coalesce(nullif($6, ''), status),
+        updated_by = $7,
         updated_at = now()
       where id = $1
+        and company_id = $2
         and deleted_at is null
       returning *, 0::int as clients
     `,
     [
       id,
+      context.companyId,
       typeof payload.name === "string" ? payload.name.trim() : "",
       typeof payload.category === "string" ? payload.category.trim() : "",
       typeof payload.version === "string" ? payload.version.trim() : "",
       mapProductStatusToDatabase(typeof payload.status === "string" ? payload.status : ""),
+      context.domainUserId,
     ],
   );
 
@@ -306,7 +289,7 @@ async function handleUpdateProduct(request: Request) {
   return jsonResponse({ product: result.rows[0] });
 }
 
-async function handleDeleteProduct(request: Request) {
+async function handleDeleteProduct(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -320,12 +303,13 @@ async function handleDeleteProduct(request: Request) {
   const result = await db.query(
     `
       update public.products
-      set deleted_at = now(), updated_at = now()
+      set deleted_at = now(), updated_at = now(), updated_by = $3
       where id = $1
+        and company_id = $2
         and deleted_at is null
       returning id
     `,
-    [id],
+    [id, context.companyId, context.domainUserId],
   );
 
   if (!result.rows[0]) {
@@ -342,7 +326,7 @@ function mapProductStatusToDatabase(status: string) {
   return "";
 }
 
-async function handleCreateContract(request: Request) {
+async function handleCreateContract(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -371,16 +355,23 @@ async function handleCreateContract(request: Request) {
     );
   }
 
-  const companyId = await getAutomyCompanyId();
   const db = await getRailwayPostgresPool();
 
   const clientResult = await db.query<{ id: string }>(
     `
-      insert into public.clients (company_id, legal_name, trade_name, document, status)
-      values ($1, $2, $2, $3, 'active')
+      insert into public.clients (
+        company_id,
+        legal_name,
+        trade_name,
+        document,
+        status,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $2, $3, 'active', $4, $4)
       on conflict do nothing;
     `,
-    [companyId, companyName, document],
+    [context.companyId, companyName, document, context.domainUserId],
   );
 
   const client = await db.query<{ id: string }>(
@@ -393,7 +384,7 @@ async function handleCreateContract(request: Request) {
       order by created_at desc
       limit 1
     `,
-    [companyId, document],
+    [context.companyId, document],
   );
 
   const clientId = client.rows[0]?.id ?? clientResult.rows[0]?.id;
@@ -414,7 +405,9 @@ async function handleCreateContract(request: Request) {
         status,
         signer_name,
         witness_name,
-        contract_text
+        contract_text,
+        created_by,
+        updated_by
       )
       select
         $1,
@@ -427,16 +420,29 @@ async function handleCreateContract(request: Request) {
         'pending',
         $4,
         nullif($5, ''),
-        $6
+        $6,
+        $8,
+        $8
       from public.products
       where products.id = $3
+        and products.company_id = $1
+        and products.deleted_at is null
       returning
         contracts.*,
         $7::text as client_trade_name,
         $7::text as client_legal_name,
         (select name from public.products where id = $3) as product_name
     `,
-    [companyId, clientId, productId, signerName, witnessName, contractText, companyName],
+    [
+      context.companyId,
+      clientId,
+      productId,
+      signerName,
+      witnessName,
+      contractText,
+      companyName,
+      context.domainUserId,
+    ],
   );
 
   if (!result.rows[0]) {
@@ -446,64 +452,84 @@ async function handleCreateContract(request: Request) {
   return jsonResponse({ contract: result.rows[0] }, { status: 201 });
 }
 
-async function handleDashboardSummary() {
+async function handleDashboardSummary(context: AuthenticatedUserContext) {
   const [clients, contracts] = await Promise.all([
-    queryRows<{ status: string }>(`
+    queryRows<{ status: string }>(
+      `
       select status
       from public.clients
       where deleted_at is null
-    `),
-    queryRows<{ monthly_value: string | number | null; ends_at: string | null }>(`
+        and company_id = $1
+    `,
+      [context.companyId],
+    ),
+    queryRows<{ monthly_value: string | number | null; ends_at: string | null }>(
+      `
       select monthly_value, ends_at
       from public.contracts
       where deleted_at is null
-    `),
+        and company_id = $1
+    `,
+      [context.companyId],
+    ),
   ]);
 
   return jsonResponse({ clients, contracts });
 }
 
-async function handleDashboardActivity() {
-  const activities = await queryRows(`
+async function handleDashboardActivity(context: AuthenticatedUserContext) {
+  const activities = await queryRows(
+    `
     select *
     from public.activity_logs
     where deleted_at is null
+      and company_id = $1
     order by created_at desc
     limit 5
-  `);
+  `,
+    [context.companyId],
+  );
 
   return jsonResponse({ activities });
 }
 
-async function handleTickets() {
+async function handleTickets(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
-  const tickets = await queryRows(`
+  const tickets = await queryRows(
+    `
     select *
     from public.support_tickets
     where deleted_at is null
+      and company_id = $1
     order by created_at desc
     limit 200
-  `);
+  `,
+    [context.companyId],
+  );
 
   return jsonResponse({ tickets });
 }
 
-async function handleScheduledCalls() {
+async function handleScheduledCalls(context: AuthenticatedUserContext) {
   await ensureBusinessSchema();
 
-  const calls = await queryRows(`
+  const calls = await queryRows(
+    `
     select *
     from public.scheduled_calls
     where deleted_at is null
+      and company_id = $1
     order by scheduled_date asc, scheduled_time asc
     limit 500
-  `);
+  `,
+    [context.companyId],
+  );
 
   return jsonResponse({ calls });
 }
 
-async function handleCreateScheduledCall(request: Request) {
+async function handleCreateScheduledCall(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -534,7 +560,6 @@ async function handleCreateScheduledCall(request: Request) {
     );
   }
 
-  const companyId = await getAutomyCompanyId();
   const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
@@ -549,13 +574,15 @@ async function handleCreateScheduledCall(request: Request) {
         contact_phone,
         meeting_link,
         notes,
-        status
+        status,
+        created_by,
+        updated_by
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
       returning *
     `,
     [
-      companyId,
+      context.companyId,
       scheduledDate,
       scheduledTime,
       title,
@@ -566,13 +593,14 @@ async function handleCreateScheduledCall(request: Request) {
       typeof payload.meetingLink === "string" ? payload.meetingLink : "",
       typeof payload.notes === "string" ? payload.notes : "",
       typeof payload.status === "string" ? payload.status : "Agendada",
+      context.domainUserId,
     ],
   );
 
   return jsonResponse({ call: result.rows[0] }, { status: 201 });
 }
 
-async function handleCreateTicket(request: Request) {
+async function handleCreateTicket(request: Request, context: AuthenticatedUserContext) {
   if (!isRailwayPostgresConfigured()) {
     return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
   }
@@ -592,7 +620,6 @@ async function handleCreateTicket(request: Request) {
     return jsonResponse({ error: "Cliente e título são obrigatórios." }, { status: 400 });
   }
 
-  const companyId = await getAutomyCompanyId();
   const db = await getRailwayPostgresPool();
   const result = await db.query(
     `
@@ -603,38 +630,46 @@ async function handleCreateTicket(request: Request) {
         description,
         priority,
         owner,
-        status
+        status,
+        created_by,
+        updated_by
       )
-      values ($1, $2, $3, $4, $5, $6, $7)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $8)
       returning *
     `,
     [
-      companyId,
+      context.companyId,
       clientName,
       title,
       typeof payload.description === "string" ? payload.description : "",
       typeof payload.priority === "string" ? payload.priority : "Média",
       typeof payload.owner === "string" ? payload.owner : "Automy",
       typeof payload.status === "string" ? payload.status : "Aberto",
+      context.domainUserId,
     ],
   );
 
   return jsonResponse({ ticket: result.rows[0] }, { status: 201 });
 }
 
-async function requireAuthenticatedUser(request: Request) {
-  const session = await getBetterAuthSessionFromRequest(request);
-  const userId = session?.user.id;
-
-  if (!userId) {
-    return { error: jsonResponse({ error: "Sessão inválida ou expirada." }, { status: 401 }) };
-  }
-
-  return { userId };
-}
-
 function assertOwnResource(authUserId: string, currentUserId: string) {
   return authUserId === currentUserId;
+}
+
+function requiredPermissionForRequest(pathname: string, method: string): PermissionKey | null {
+  const isRead = method === "GET";
+
+  if (pathname === "/api/clients") return isRead ? "clients.read" : "clients.manage";
+  if (pathname === "/api/contracts") return isRead ? "contracts.read" : "contracts.manage";
+  if (pathname === "/api/products") return isRead ? "products.read" : "products.manage";
+  if (pathname === "/api/support/tickets") return isRead ? "support.read" : "support.manage";
+  if (pathname === "/api/scheduled-calls") return isRead ? "schedule.read" : "schedule.manage";
+  if (pathname === "/api/dashboard/summary") return "clients.read";
+  if (pathname === "/api/dashboard/activity") return "audit.read";
+  if (pathname === "/api/settings/profile") return isRead ? "settings.read" : "settings.manage";
+  if (pathname === "/api/settings/preferences") return isRead ? "settings.read" : "settings.manage";
+
+  return null;
 }
 
 async function handleSetting(request: Request, url: URL, keyPrefix: string, currentUserId: string) {
@@ -699,59 +734,65 @@ export async function handleAppDataApiRequest(request: Request) {
   if (!APP_DATA_PATHS.has(url.pathname)) return null;
 
   const auth = await requireAuthenticatedUser(request);
-  if ("error" in auth) return auth.error;
+  if (auth.error) return auth.error;
+
+  const requiredPermission = requiredPermissionForRequest(url.pathname, request.method);
+  if (requiredPermission) {
+    const permissionError = requirePermission(auth.context, requiredPermission);
+    if (permissionError) return permissionError;
+  }
 
   if (request.method === "POST" && url.pathname === "/api/products") {
-    return handleCreateProduct(request);
+    return handleCreateProduct(request, auth.context);
   }
 
   if (request.method === "PATCH" && url.pathname === "/api/products") {
-    return handleUpdateProduct(request);
+    return handleUpdateProduct(request, auth.context);
   }
 
   if (request.method === "DELETE" && url.pathname === "/api/products") {
-    return handleDeleteProduct(request);
+    return handleDeleteProduct(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/clients") {
-    return handleCreateClient(request);
+    return handleCreateClient(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/contracts") {
-    return handleCreateContract(request);
+    return handleCreateContract(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/support/tickets") {
-    return handleCreateTicket(request);
+    return handleCreateTicket(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/scheduled-calls") {
-    return handleCreateScheduledCall(request);
+    return handleCreateScheduledCall(request, auth.context);
   }
 
   if (request.method === "PUT" && url.pathname === "/api/settings/profile") {
-    return handleUpdateSetting(request, "profile", auth.userId);
+    return handleUpdateSetting(request, "profile", auth.context.authUserId);
   }
 
   if (request.method === "PUT" && url.pathname === "/api/settings/preferences") {
-    return handleUpdateSetting(request, "preferences", auth.userId);
+    return handleUpdateSetting(request, "preferences", auth.context.authUserId);
   }
 
   if (request.method !== "GET") {
     return jsonResponse({ error: "Método não permitido." }, { status: 405 });
   }
 
-  if (url.pathname === "/api/clients") return handleClients(url);
-  if (url.pathname === "/api/contracts") return handleContracts();
-  if (url.pathname === "/api/products") return handleProducts();
-  if (url.pathname === "/api/support/tickets") return handleTickets();
-  if (url.pathname === "/api/scheduled-calls") return handleScheduledCalls();
+  if (url.pathname === "/api/clients") return handleClients(url, auth.context);
+  if (url.pathname === "/api/contracts") return handleContracts(auth.context);
+  if (url.pathname === "/api/products") return handleProducts(auth.context);
+  if (url.pathname === "/api/support/tickets") return handleTickets(auth.context);
+  if (url.pathname === "/api/scheduled-calls") return handleScheduledCalls(auth.context);
   if (url.pathname === "/api/settings/profile") {
-    return handleSetting(request, url, "profile", auth.userId);
+    return handleSetting(request, url, "profile", auth.context.authUserId);
   }
   if (url.pathname === "/api/settings/preferences") {
-    return handleSetting(request, url, "preferences", auth.userId);
+    return handleSetting(request, url, "preferences", auth.context.authUserId);
   }
-  if (url.pathname === "/api/dashboard/summary") return handleDashboardSummary();
-  return handleDashboardActivity();
+  if (url.pathname === "/api/dashboard/summary") return handleDashboardSummary(auth.context);
+  return handleDashboardActivity(auth.context);
 }

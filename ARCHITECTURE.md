@@ -6,10 +6,12 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 
 ## Current Project Status
 
-- Baseline oficial congelada em `v1.0.0-rc3`.
+- Baseline oficial congelada em `v1.0.0-rc3`; a tag nao foi movida.
+- `v1.0.0-rc4` deve consolidar as correcoes criticas de seguranca e origem Railway.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
+- Railway e o runtime oficial. Vercel permanece somente como rollback temporario ate o cutover final.
 - Better Auth e o provedor oficial de autenticacao.
 - O projeto Vercel `automy-dashboard` esta conectado ao GitHub e configurado com as variaveis da nova foundation.
 - A persistencia real em Railway PostgreSQL foi validada por TCP Proxy fora da rede Railway e por runtime interno Railway.
@@ -47,6 +49,8 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/features/*/repositories`: acesso a persistencia.
 - `src/features/*/types.ts`: tipos do dominio.
 - `src/shared`: componentes, tokens, constantes, utilitarios e infraestrutura compartilhada.
+- `src/shared/server/authz.ts`: sessao Better Auth, RBAC minimo e contexto de empresa para APIs internas.
+- `src/shared/server/app-urls.ts`: URL canonica e origens confiaveis do Better Auth.
 - `railway/migrations`: schema versionado da foundation oficial.
 - `railway/seeds`: configuracoes iniciais de sistema, sem dados ficticios.
 
@@ -55,6 +59,26 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL
 
 Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
+
+## Seguranca das APIs Internas
+
+Todas as APIs internas conhecidas passam por sessao Better Auth antes de qualquer consulta de dominio.
+
+O contexto server-side deriva:
+
+- `authUserId` da sessao Better Auth.
+- `domainUserId` e `companyId` da tabela `users`.
+- `role` da role de dominio, com fallback seguro para `read_only`.
+- `status`, bloqueando usuarios nao ativos.
+
+As regras minimas aplicadas nesta etapa sao:
+
+- `admin`: leitura e escrita.
+- `manager`: leitura e escrita nos modulos operacionais atuais, incluindo financeiro.
+- `operator`: leitura nos modulos liberados e escrita apenas onde a seed atual ja permite operacao.
+- `read_only`: somente leitura.
+
+Endpoints de negocio nao aceitam `company_id` vindo do cliente. Leituras e escritas usam o `companyId` vinculado ao usuario autenticado.
 
 ## Identidade
 
@@ -87,6 +111,7 @@ As migrations ativas da foundation sao:
 
 - `20260805010000_automy_foundation_schema.sql`
 - `20260805012000_align_better_auth_column_names.sql`
+- `20260805140000_align_rate_limit_primary_key.sql`
 
 A migration foundation cria:
 
@@ -114,6 +139,8 @@ A migration foundation cria:
 As entidades usam UUID, auditoria e soft delete. Como o acesso ao banco ocorre por API server-side propria, controles de permissao devem ser aplicados na camada de API/service. RLS pode ser adotado posteriormente caso o banco passe a ser exposto diretamente a clientes ou gateways externos.
 
 A migration de alinhamento Better Auth ajusta os nomes fisicos das colunas base exigidas pelo adapter PostgreSQL e mantem os campos adicionais Automy como extensoes de dominio.
+
+A migration de rate limit adiciona a coluna `id` exigida pelo adapter Better Auth para o armazenamento em banco das tentativas de autenticacao.
 
 ## Better Auth
 

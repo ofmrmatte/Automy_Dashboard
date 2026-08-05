@@ -3,6 +3,7 @@
 ## Current Project Status
 
 - `v1.0.0-rc3` congela a baseline oficial da Automy antes dos modulos reais.
+- `v1.0.0-rc4` deve ser criada apos merge das correcoes criticas de seguranca e origem Railway.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - Design System, Brand Kit e Login Premium estao congelados.
@@ -24,6 +25,7 @@
 
 ## Proxima Etapa
 
+- Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
 - Iniciar desenvolvimento dos modulos de negocio: Usuarios, Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
@@ -35,8 +37,8 @@
 
 ## Dados e Permissoes
 
-- Revisar autorizacao server-side com usuarios reais.
-- Criar matriz de permissoes por role.
+- Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
+- Formalizar a matriz de permissoes por role antes dos CRUDs reais.
 - Definir fluxo administrativo para permissions globais.
 - Adicionar auditoria automatica de `created_by` e `updated_by`.
 - Avaliar endpoint administrativo para auditoria completa de sessoes, caso o produto precise listar todos os dispositivos conectados.

@@ -8,6 +8,8 @@ Esta foundation reconstrói apenas a infraestrutura de dados da Automy. A aplica
 
 Railway PostgreSQL é o banco oficial da Automy.
 
+O runtime oficial passa a ser Railway. Vercel permanece apenas como origem antiga/rollback temporario ate a migracao operacional ser encerrada.
+
 O projeto não deve utilizar Supabase, bancos antigos, mocks ou dados fictícios como fonte da aplicação.
 
 ## Estrutura
@@ -16,6 +18,8 @@ O projeto não deve utilizar Supabase, bancos antigos, mocks ou dados fictícios
 - `railway/seeds`: seeds de configuração de sistema, sem dados de negócio fictícios.
 - `scripts/db/run-sql-directory.mjs`: executor local/CI para migrations e seeds.
 - `src/shared/server/postgres.ts`: adapter server-side para conexão PostgreSQL.
+- `src/shared/server/app-urls.ts`: resolucao centralizada de URL canonica e origens confiaveis.
+- `src/shared/server/authz.ts`: sessao, RBAC minimo e contexto de empresa para APIs internas.
 - `src/features/identity/server/better-auth.ts`: configuração oficial Better Auth.
 
 ## Migration Foundation
@@ -66,6 +70,9 @@ Better Auth é o provedor oficial de autenticação.
 - Recuperação de senha: estrutura pronta; envio depende de provedor transacional.
 - Verificação de e-mail: estrutura pronta; envio depende de provedor transacional.
 - Better Auth Infra: `dash()` habilitado somente quando `BETTER_AUTH_API_KEY` existir.
+- URL canonica atual: `https://automydashboard-production.up.railway.app`.
+- Dominio final planejado: `https://automy.dev.br`.
+- Rollback temporario: `https://automy-dashboard.vercel.app`.
 
 ## Variáveis por Ambiente
 
@@ -78,6 +85,7 @@ DATABASE_URL=
 PGSSLMODE=disable
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:5173
+AUTOMY_TRUSTED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
@@ -92,34 +100,37 @@ DATABASE_URL=
 PGSSLMODE=disable
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=https://preview-url.vercel.app
+AUTOMY_TRUSTED_ORIGINS=https://preview-url.vercel.app,https://automydashboard-production.up.railway.app
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
 ```
 
-### Production
+### Production Railway
 
-Usar a URL pública/TCP Proxy do Railway na Vercel. A URL interna `*.railway.internal` só deve ser usada quando a aplicação estiver rodando dentro da própria Railway.
-
-```bash
-DATABASE_URL=
-PGSSLMODE=disable
-BETTER_AUTH_SECRET=
-BETTER_AUTH_URL=https://production-url
-BETTER_AUTH_API_KEY=
-BETTER_AUTH_API_URL=
-BETTER_AUTH_KV_URL=
-```
-
-### Railway Runtime
-
-Dentro do serviço Railway, a aplicação pode usar a referência interna do plugin Postgres:
+Usar Railway como runtime canonico. A URL interna `*.railway.internal` só deve ser usada quando a aplicação estiver rodando dentro da própria Railway.
 
 ```bash
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 PGSSLMODE=require
 BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=https://automydashboard-production.up.railway.app
+AUTOMY_TRUSTED_ORIGINS=https://automydashboard-production.up.railway.app,https://automy-dashboard.vercel.app,https://automy.dev.br
+BETTER_AUTH_API_KEY=
+BETTER_AUTH_API_URL=
+BETTER_AUTH_KV_URL=
+```
+
+### Vercel Rollback Temporario
+
+Usar somente enquanto o rollback estiver ativo. A URL publica/TCP Proxy do Railway deve ser usada fora da rede privada Railway.
+
+```bash
+DATABASE_URL=
+PGSSLMODE=disable
+BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=https://automy-dashboard.vercel.app
+AUTOMY_TRUSTED_ORIGINS=https://automy-dashboard.vercel.app,https://automydashboard-production.up.railway.app,https://automy.dev.br
 BETTER_AUTH_API_KEY=
 ```
 
