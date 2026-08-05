@@ -91,6 +91,28 @@ Pendencias:
 - MFA real no Better Auth.
 - Eventos reais de notificacao gerados pelos modulos de negocio.
 
+## Sprint 2.2 - Dashboard real
+
+Objetivo: transformar o Dashboard em leitura operacional real sobre Railway PostgreSQL.
+
+Status nesta branch: implementado.
+
+Escopo entregue:
+
+- Metricas reais agregadas server-side por `company_id` e `deleted_at`.
+- Cards para clientes ativos, em implantacao e inativos.
+- Cards para contratos ativos, vencimento em 30/60 dias, MRR e ARR.
+- Cards para cobrancas pendentes/vencidas, chamados abertos/criticos, agendamentos futuros e usuarios ativos.
+- Graficos reais para crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- Clientes recentes via endpoint dedicado e atividades recentes via `activity_logs`.
+- Empty states reais quando nao houver dados de dominio.
+
+Pendencias:
+
+- Gerar `activity_logs` em todos os CRUDs dos modulos seguintes.
+- Validar o Dashboard com usuarios reais manager/operator/read_only.
+- Evoluir filtros por periodo quando os modulos de negocio estiverem completos.
+
 ## Sprint 3 - Clientes
 
 Objetivo: completar o cadastro e relacionamento de clientes.

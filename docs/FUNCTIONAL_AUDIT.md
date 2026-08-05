@@ -72,11 +72,11 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Modulo        | Funcionalidade                          | Status            | Severidade | Perfil afetado                | Causa provavel                                                                       | Dependencia                  | Acao recomendada                              |
 | ------------- | --------------------------------------- | ----------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------------------ | ---------------------------- | --------------------------------------------- |
 | Dashboard     | Rota abre                               | FUNCIONAL         | baixa      | todos autenticados            | rota existe                                                                          | sessao Better Auth           | manter                                        |
-| Dashboard     | Metricas principais                     | PARCIAL           | media      | todos                         | calcula clientes/contratos reais, mas chamados abertos e graficos ficam vazios       | dados reais por modulo       | implementar agregacoes reais por dominio      |
+| Dashboard     | Metricas principais                     | FUNCIONAL         | baixa      | todos autenticados            | agregacoes server-side por `company_id`, permissoes e soft delete                    | dados reais por modulo       | validar com massa controlada                  |
 | Dashboard     | Saudacao dinamica                       | FUNCIONAL         | baixa      | todos                         | usa primeiro nome, idioma e timezone resolvido                                       | perfil/preferencias/timezone | validar autenticado em ambiente real          |
 | Dashboard     | Fuso horario no header                  | FUNCIONAL         | baixa      | todos                         | datas principais usam helpers regionais com timezone do usuario                      | user_preferences             | expandir para Agenda em sprint dedicado       |
-| Dashboard     | Graficos                                | SOMENTE VISUAL    | media      | todos                         | repositorios retornam arrays vazios                                                  | historico real               | criar queries agregadas                       |
-| Dashboard     | Atividades recentes                     | PARCIAL           | media      | todos                         | le `activity_logs`, mas a tabela esta vazia e CRUDs nao geram logs                   | eventos de dominio           | registrar activity_logs em operacoes reais    |
+| Dashboard     | Graficos                                | FUNCIONAL         | baixa      | todos autenticados            | usa `/api/dashboard/charts` com dados reais e empty states                           | historico real               | validar com massa controlada                  |
+| Dashboard     | Atividades recentes                     | PARCIAL           | media      | todos                         | le `activity_logs`, mas CRUDs antigos ainda nao geram logs em todos os modulos       | eventos de dominio           | registrar activity_logs nos proximos CRUDs    |
 | Clientes      | Listagem                                | PARCIAL           | media      | roles com `clients.read`      | endpoint real, base vazia                                                            | sessao e company_id          | manter e testar com massa controlada          |
 | Clientes      | Busca/filtro                            | FUNCIONAL         | baixa      | frontend                      | filtro client-side sobre dados carregados                                            | dados carregados             | manter                                        |
 | Clientes      | Criacao                                 | PARCIAL           | media      | admin/manager                 | endpoint POST existe e persiste cliente basico                                       | `clients.manage`             | adicionar validacao RHF/Zod e testes          |
@@ -91,7 +91,7 @@ Observacao: nesta branch, perfil e preferencias passam a usar `user_profiles` e 
 | Contratos     | Criacao                                 | PARCIAL           | alta       | admin/manager                 | cria cliente se necessario e contrato pendente                                       | produto existente            | validar constraints e auditoria               |
 | Contratos     | Edicao/renovacao/cancelamento           | NAO IMPLEMENTADA  | alta       | admin/manager                 | sem endpoints e sem UI                                                               | ciclo de vida de contrato    | implementar no sprint de Contratos            |
 | Financeiro    | Listagem de cobrancas                   | PARCIAL           | alta       | roles com `finance.read`      | endpoint protegido e company_id aplicado                                             | charges reais                | manter                                        |
-| Financeiro    | Metricas da tela                        | SOMENTE VISUAL    | alta       | todos                         | `formatCurrency(0)` hardcoded                                                        | agregacao financeira         | conectar a `charges`/contratos                |
+| Financeiro    | Metricas no Dashboard                   | FUNCIONAL         | baixa      | roles com `finance.read`      | Dashboard agrega `charges` e contratos reais quando permitido                        | charges/contratos reais      | completar CRUD financeiro                     |
 | Financeiro    | Criacao/edicao/baixa/cancelamento       | NAO IMPLEMENTADA  | alta       | admin                         | endpoint rejeita metodos nao GET                                                     | CRUD financeiro              | implementar depois da modelagem               |
 | Financeiro    | Mercado Pago webhook                    | PARCIAL           | media      | sistema                       | webhook existe e valida assinatura quando secret configurado                         | env Mercado Pago             | validar end-to-end com sandbox                |
 | Agenda        | Calendario e criacao                    | PARCIAL           | media      | admin/manager/operator        | endpoint POST e listagem existem                                                     | `schedule.manage`            | manter e testar                               |
@@ -151,13 +151,25 @@ Fluxos ausentes:
 | ----------------------- | ----------------------------------------------------------- | -------------------------------- |
 | clientes ativos         | `clients.status = active` filtrado por `company_id`         | real, mas base vazia             |
 | clientes em implantacao | `clients.status = onboarding` filtrado por `company_id`     | real, mas base vazia             |
+| clientes inativos       | `clients.status = inactive` filtrado por `company_id`       | real, mas base vazia             |
+| contratos ativos        | `contracts.status = active` filtrado por `company_id`       | real, mas depende de contratos   |
+| contratos a vencer 30d  | `contracts.ends_at` nos proximos 30 dias                    | real, mas depende de contratos   |
+| contratos a vencer 60d  | `contracts.ends_at` nos proximos 60 dias                    | real, mas depende de contratos   |
 | receita mensal          | soma de `contracts.monthly_value` filtrada por `company_id` | real, mas depende de contratos   |
 | receita anual           | receita mensal * 12                                         | derivado                         |
-| chamados abertos        | hardcoded `0` no repository                                 | quebrado/incompleto              |
-| contratos a vencer      | `contracts.ends_at` nos proximos 60 dias                    | real, mas depende de contratos   |
-| crescimento de clientes | repository retorna `[]`                                     | somente visual                   |
-| receita recorrente      | repository retorna `[]`                                     | somente visual                   |
-| clientes recentes       | lista `/api/clients`, slice 4                               | real, mas base vazia             |
+| cobrancas pendentes     | `charges.status = Pendente` conforme permissao              | real, mas depende de cobrancas   |
+| cobrancas vencidas      | `charges.status = Atrasado` ou pendente vencida             | real, mas depende de cobrancas   |
+| chamados abertos        | `support_tickets.status` nao resolvido                      | real, mas depende de tickets     |
+| chamados criticos       | `support_tickets.priority = Critica/Critica` aberto         | real, mas depende de tickets     |
+| agendamentos futuros    | `scheduled_calls` agendadas a partir da data atual          | real, mas depende de agenda      |
+| usuarios ativos         | `users.status = active` conforme permissao                  | real                             |
+| crescimento de clientes | `/api/dashboard/charts`                                     | real, com empty state            |
+| receita recorrente      | `/api/dashboard/charts`                                     | real, com empty state            |
+| contratos por status    | `/api/dashboard/charts`                                     | real, com empty state            |
+| tickets por prioridade  | `/api/dashboard/charts`                                     | real, com empty state            |
+| produtos por utilizacao | `/api/dashboard/charts`                                     | real, com empty state            |
+| cobrancas por status    | `/api/dashboard/charts`                                     | real, com empty state            |
+| clientes recentes       | `/api/dashboard/recent-clients`                             | real, mas base vazia             |
 | atividades recentes     | `activity_logs` por `company_id`                            | real, mas sem escrita automatica |
 
 ## 8. Personalizacao, saudacao, timezone e localizacao
@@ -256,7 +268,7 @@ Persistencia ausente ou incompleta:
 ### Medias
 
 - Activity logs nao sao gerados pelos CRUDs.
-- Graficos do Dashboard retornam arrays vazios.
+- Graficos do Dashboard usam dados reais, mas dependem de massa operacional para exibicao.
 - Relatorios PDF/XLSX e filtros sao apenas visuais.
 - Produtos usa `window.confirm`.
 

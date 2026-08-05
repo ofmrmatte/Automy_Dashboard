@@ -123,6 +123,16 @@ Regras:
 - Secrets de integracoes nao sao retornados ao frontend; o status usa metadados seguros e presenca de variaveis de ambiente.
 - Alteracoes relevantes geram `audit_logs`.
 
+## Dashboard
+
+O modulo `src/features/dashboard` consome apenas dados reais agregados pela API interna. A pagina segue React Query -> Service -> Repository -> `/api/dashboard/*`; as agregacoes server-side derivam `company_id` da sessao Better Auth e aplicam soft delete.
+
+- `GET /api/dashboard/summary`: clientes, contratos, MRR/ARR, cobrancas, tickets, agendamentos e usuarios ativos conforme permissoes.
+- `GET /api/dashboard/charts`: crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- `GET /api/dashboard/recent-clients`: ultimos clientes cadastrados da empresa autenticada.
+- `GET /api/dashboard/activity`: eventos recentes em `activity_logs`.
+- Series mensais usam `user_preferences.time_zone` com fallback `America/Sao_Paulo`.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:

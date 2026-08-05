@@ -50,6 +50,8 @@ async function verifyAnonymousApiProtection() {
     "/api/scheduled-calls",
     "/api/settings/profile?authUserId=test",
     "/api/dashboard/summary",
+    "/api/dashboard/charts",
+    "/api/dashboard/recent-clients",
     "/api/dashboard/activity",
     "/api/finance/charges",
     "/api/identity/profile",

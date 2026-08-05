@@ -3,8 +3,8 @@ import { dashboardService } from "@/features/dashboard/services/dashboard.servic
 
 export const dashboardQueryKeys = {
   summary: ["dashboard", "summary"] as const,
-  clientGrowth: ["dashboard", "client-growth"] as const,
-  revenueGrowth: ["dashboard", "revenue-growth"] as const,
+  charts: ["dashboard", "charts"] as const,
+  recentClients: ["dashboard", "recent-clients"] as const,
   recentActivities: ["dashboard", "recent-activities"] as const,
 };
 
@@ -16,18 +16,18 @@ export function dashboardSummaryQueryOptions() {
   });
 }
 
-export function clientGrowthQueryOptions() {
+export function dashboardChartsQueryOptions() {
   return queryOptions({
-    queryKey: dashboardQueryKeys.clientGrowth,
-    queryFn: () => dashboardService.getClientGrowth(),
+    queryKey: dashboardQueryKeys.charts,
+    queryFn: () => dashboardService.getCharts(),
     enabled: typeof window !== "undefined",
   });
 }
 
-export function revenueGrowthQueryOptions() {
+export function dashboardRecentClientsQueryOptions() {
   return queryOptions({
-    queryKey: dashboardQueryKeys.revenueGrowth,
-    queryFn: () => dashboardService.getRevenueGrowth(),
+    queryKey: dashboardQueryKeys.recentClients,
+    queryFn: () => dashboardService.getRecentClients(),
     enabled: typeof window !== "undefined",
   });
 }

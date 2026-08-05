@@ -1,6 +1,7 @@
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import {
   jsonResponse,
+  hasPermission,
   requireAuthenticatedUser,
   requirePermission,
   type AuthenticatedUserContext,
@@ -17,6 +18,8 @@ const APP_DATA_PATHS = new Set([
   "/api/settings/profile",
   "/api/settings/preferences",
   "/api/dashboard/summary",
+  "/api/dashboard/charts",
+  "/api/dashboard/recent-clients",
   "/api/dashboard/activity",
 ]);
 
@@ -453,28 +456,321 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
 }
 
 async function handleDashboardSummary(context: AuthenticatedUserContext) {
-  const [clients, contracts] = await Promise.all([
-    queryRows<{ status: string }>(
+  await ensureBusinessSchema();
+
+  const canReadContracts = hasPermission(context, "contracts.read");
+  const canReadFinance = hasPermission(context, "finance.read");
+  const canReadSupport = hasPermission(context, "support.read");
+  const canReadSchedule = hasPermission(context, "schedule.read");
+  const canReadUsers = hasPermission(context, "users.read");
+
+  const [clients, contracts, charges, tickets, calls, users] = await Promise.all([
+    queryRows<{
+      active_clients: number;
+      onboarding_clients: number;
+      inactive_clients: number;
+    }>(
       `
-      select status
+      select
+        count(*) filter (where status = 'active')::int as active_clients,
+        count(*) filter (where status = 'onboarding')::int as onboarding_clients,
+        count(*) filter (where status = 'inactive')::int as inactive_clients
       from public.clients
       where deleted_at is null
         and company_id = $1
     `,
       [context.companyId],
     ),
-    queryRows<{ monthly_value: string | number | null; ends_at: string | null }>(
-      `
-      select monthly_value, ends_at
-      from public.contracts
-      where deleted_at is null
-        and company_id = $1
-    `,
-      [context.companyId],
-    ),
+    canReadContracts
+      ? queryRows<{
+          active_contracts: number;
+          expiring_contracts_30: number;
+          expiring_contracts_60: number;
+          monthly_revenue: string | number | null;
+        }>(
+          `
+          select
+            count(*) filter (where status = 'active')::int as active_contracts,
+            count(*) filter (
+              where status in ('active', 'onboarding', 'renewal')
+                and ends_at >= current_date
+                and ends_at <= current_date + interval '30 days'
+            )::int as expiring_contracts_30,
+            count(*) filter (
+              where status in ('active', 'onboarding', 'renewal')
+                and ends_at >= current_date
+                and ends_at <= current_date + interval '60 days'
+            )::int as expiring_contracts_60,
+            coalesce(sum(monthly_value) filter (where status = 'active'), 0) as monthly_revenue
+          from public.contracts
+          where deleted_at is null
+            and company_id = $1
+        `,
+          [context.companyId],
+        )
+      : [],
+    canReadFinance
+      ? queryRows<{ pending_charges: number; overdue_charges: number }>(
+          `
+          select
+            count(*) filter (where status = 'Pendente')::int as pending_charges,
+            count(*) filter (
+              where status = 'Atrasado'
+                or (status = 'Pendente' and due_date is not null and due_date < current_date)
+            )::int as overdue_charges
+          from public.charges
+          where deleted_at is null
+            and company_id = $1
+        `,
+          [context.companyId],
+        )
+      : [],
+    canReadSupport
+      ? queryRows<{ open_tickets: number; critical_tickets: number }>(
+          `
+          select
+            count(*) filter (where status not in ('Resolvido', 'Fechado', 'Cancelado'))::int as open_tickets,
+            count(*) filter (
+              where priority in ('Crítica', 'Critica')
+                and status not in ('Resolvido', 'Fechado', 'Cancelado')
+            )::int as critical_tickets
+          from public.support_tickets
+          where deleted_at is null
+            and company_id = $1
+        `,
+          [context.companyId],
+        )
+      : [],
+    canReadSchedule
+      ? queryRows<{ future_scheduled_calls: number }>(
+          `
+          select count(*)::int as future_scheduled_calls
+          from public.scheduled_calls
+          where deleted_at is null
+            and company_id = $1
+            and status = 'Agendada'
+            and scheduled_date >= current_date
+        `,
+          [context.companyId],
+        )
+      : [],
+    canReadUsers
+      ? queryRows<{ active_users: number }>(
+          `
+          select count(*)::int as active_users
+          from public.users
+          where deleted_at is null
+            and company_id = $1
+            and status = 'active'
+        `,
+          [context.companyId],
+        )
+      : [],
   ]);
 
-  return jsonResponse({ clients, contracts });
+  const clientTotals = clients[0];
+  const contractTotals = contracts[0];
+  const chargeTotals = charges[0];
+  const ticketTotals = tickets[0];
+  const callTotals = calls[0];
+  const userTotals = users[0];
+  const monthlyRevenue = Number(contractTotals?.monthly_revenue ?? 0);
+
+  return jsonResponse({
+    summary: {
+      activeClients: Number(clientTotals?.active_clients ?? 0),
+      onboardingClients: Number(clientTotals?.onboarding_clients ?? 0),
+      inactiveClients: Number(clientTotals?.inactive_clients ?? 0),
+      activeContracts: Number(contractTotals?.active_contracts ?? 0),
+      expiringContracts30: Number(contractTotals?.expiring_contracts_30 ?? 0),
+      expiringContracts60: Number(contractTotals?.expiring_contracts_60 ?? 0),
+      expiringContracts: Number(contractTotals?.expiring_contracts_60 ?? 0),
+      monthlyRevenue,
+      annualRevenue: monthlyRevenue * 12,
+      pendingCharges: Number(chargeTotals?.pending_charges ?? 0),
+      overdueCharges: Number(chargeTotals?.overdue_charges ?? 0),
+      openTickets: Number(ticketTotals?.open_tickets ?? 0),
+      criticalTickets: Number(ticketTotals?.critical_tickets ?? 0),
+      futureScheduledCalls: Number(callTotals?.future_scheduled_calls ?? 0),
+      activeUsers: Number(userTotals?.active_users ?? 0),
+    },
+  });
+}
+
+async function handleDashboardRecentClients(context: AuthenticatedUserContext) {
+  await ensureBusinessSchema();
+
+  const clients = await queryRows(
+    `
+    select
+      id,
+      trade_name,
+      legal_name,
+      city,
+      state,
+      status,
+      created_at,
+      updated_at,
+      deleted_at,
+      created_by,
+      updated_by
+    from public.clients
+    where deleted_at is null
+      and company_id = $1
+    order by created_at desc
+    limit 4
+  `,
+    [context.companyId],
+  );
+
+  return jsonResponse({ clients });
+}
+
+async function handleDashboardCharts(context: AuthenticatedUserContext) {
+  await ensureBusinessSchema();
+
+  const canReadContracts = hasPermission(context, "contracts.read");
+  const canReadFinance = hasPermission(context, "finance.read");
+  const canReadSupport = hasPermission(context, "support.read");
+  const timezone = await resolveUserTimezone(context);
+
+  const [
+    clientGrowth,
+    revenueGrowth,
+    contractsByStatus,
+    ticketsByPriority,
+    productsByUsage,
+    chargesByStatus,
+  ] = await Promise.all([
+    queryRows<{ month: string; active: number; onboarding: number }>(
+      `
+        with months as (
+          select generate_series(
+            date_trunc('month', timezone($2, now())) - interval '5 months',
+            date_trunc('month', timezone($2, now())),
+            interval '1 month'
+          ) as month_start
+        )
+        select
+          to_char(months.month_start, 'MM/YYYY') as month,
+          count(clients.id) filter (where clients.status = 'active')::int as active,
+          count(clients.id) filter (where clients.status = 'onboarding')::int as onboarding
+        from months
+        left join public.clients
+          on date_trunc('month', timezone($2, clients.created_at)) = months.month_start
+          and clients.company_id = $1
+          and clients.deleted_at is null
+        group by months.month_start
+        order by months.month_start
+      `,
+      [context.companyId, timezone],
+    ),
+    canReadContracts
+      ? queryRows<{ month: string; revenue: string | number | null }>(
+          `
+            with months as (
+              select generate_series(
+                date_trunc('month', timezone($2, now())) - interval '5 months',
+                date_trunc('month', timezone($2, now())),
+                interval '1 month'
+              )::date as month_start
+            )
+            select
+              to_char(months.month_start, 'MM/YYYY') as month,
+              coalesce(sum(contracts.monthly_value), 0) as revenue
+            from months
+            left join public.contracts
+              on contracts.company_id = $1
+              and contracts.deleted_at is null
+              and contracts.status = 'active'
+              and (contracts.starts_at is null or contracts.starts_at <= (months.month_start + interval '1 month - 1 day')::date)
+              and (contracts.ends_at is null or contracts.ends_at >= months.month_start)
+            group by months.month_start
+            order by months.month_start
+          `,
+          [context.companyId, timezone],
+        )
+      : [],
+    canReadContracts
+      ? queryRows<{ name: string; value: number }>(
+          `
+            select status as name, count(*)::int as value
+            from public.contracts
+            where deleted_at is null
+              and company_id = $1
+            group by status
+            order by value desc, status asc
+          `,
+          [context.companyId],
+        )
+      : [],
+    canReadSupport
+      ? queryRows<{ name: string; value: number }>(
+          `
+            select priority as name, count(*)::int as value
+            from public.support_tickets
+            where deleted_at is null
+              and company_id = $1
+            group by priority
+            order by value desc, priority asc
+          `,
+          [context.companyId],
+        )
+      : [],
+    canReadContracts
+      ? queryRows<{ name: string; clients: number }>(
+          `
+            select
+              products.name,
+              count(distinct contracts.client_id)::int as clients
+            from public.products
+            left join public.contracts
+              on contracts.product_id = products.id
+              and contracts.company_id = $1
+              and contracts.deleted_at is null
+              and contracts.status in ('active', 'onboarding', 'renewal')
+            where products.deleted_at is null
+              and products.company_id = $1
+            group by products.id, products.name
+            order by clients desc, products.name asc
+            limit 8
+          `,
+          [context.companyId],
+        )
+      : [],
+    canReadFinance
+      ? queryRows<{ name: string; value: number }>(
+          `
+            select
+              case
+                when status = 'Pendente' and due_date is not null and due_date < current_date then 'Atrasado'
+                else status
+              end as name,
+              count(*)::int as value
+            from public.charges
+            where deleted_at is null
+              and company_id = $1
+            group by name
+            order by value desc, name asc
+          `,
+          [context.companyId],
+        )
+      : [],
+  ]);
+
+  return jsonResponse({
+    charts: {
+      clientGrowth,
+      revenueGrowth: revenueGrowth.map((point) => ({
+        month: point.month,
+        revenue: Number(point.revenue ?? 0),
+      })),
+      contractsByStatus,
+      ticketsByPriority,
+      productsByUsage,
+      chargesByStatus,
+    },
+  });
 }
 
 async function handleDashboardActivity(context: AuthenticatedUserContext) {
@@ -491,6 +787,21 @@ async function handleDashboardActivity(context: AuthenticatedUserContext) {
   );
 
   return jsonResponse({ activities });
+}
+
+async function resolveUserTimezone(context: AuthenticatedUserContext) {
+  const preferences = await queryRows<{ time_zone: string }>(
+    `
+    select time_zone
+    from public.user_preferences
+    where auth_user_id = $1
+      and deleted_at is null
+    limit 1
+  `,
+    [context.authUserId],
+  );
+
+  return preferences[0]?.time_zone || "America/Sao_Paulo";
 }
 
 async function handleTickets(context: AuthenticatedUserContext) {
@@ -665,6 +976,8 @@ function requiredPermissionForRequest(pathname: string, method: string): Permiss
   if (pathname === "/api/support/tickets") return isRead ? "support.read" : "support.manage";
   if (pathname === "/api/scheduled-calls") return isRead ? "schedule.read" : "schedule.manage";
   if (pathname === "/api/dashboard/summary") return "clients.read";
+  if (pathname === "/api/dashboard/charts") return "clients.read";
+  if (pathname === "/api/dashboard/recent-clients") return "clients.read";
   if (pathname === "/api/dashboard/activity") return "audit.read";
   if (pathname === "/api/settings/profile") return isRead ? "settings.read" : "settings.manage";
   if (pathname === "/api/settings/preferences") return isRead ? "settings.read" : "settings.manage";
@@ -794,5 +1107,9 @@ export async function handleAppDataApiRequest(request: Request) {
     return handleSetting(request, url, "preferences", auth.context.authUserId);
   }
   if (url.pathname === "/api/dashboard/summary") return handleDashboardSummary(auth.context);
+  if (url.pathname === "/api/dashboard/charts") return handleDashboardCharts(auth.context);
+  if (url.pathname === "/api/dashboard/recent-clients") {
+    return handleDashboardRecentClients(auth.context);
+  }
   return handleDashboardActivity(auth.context);
 }

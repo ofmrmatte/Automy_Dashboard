@@ -25,8 +25,9 @@
 
 ## Proxima Etapa
 
+- Validar Fase 4 autenticada em producao apos deploy da branch.
+- Seguir para Clientes completo sem reintroduzir mocks.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
-- Seguir para Dashboard real e modulos de negocio sem reintroduzir mocks.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
@@ -67,6 +68,14 @@
 - Implementada aba Notificacoes com preferencias individuais em `notification_preferences`, regras da empresa em `company_notification_settings` e centro in-app em `notifications`.
 - Implementado RBAC server-side: admin edita tudo; manager/read_only visualizam conforme `settings.read`; acoes sensiveis exigem `settings.manage`.
 - Pendencias: provider transacional de e-mail, storage binario oficial, MFA real e eventos de notificacao gerados pelos modulos de negocio.
+
+## Fase 4 - Dashboard real
+
+- Implementadas metricas reais via Railway PostgreSQL para clientes ativos/em implantacao/inativos, contratos ativos/a vencer, MRR, ARR, cobrancas pendentes/vencidas, chamados abertos/criticos, agendamentos futuros e usuarios ativos.
+- Implementados graficos reais para crescimento de clientes, evolucao de receita, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- Criados endpoints protegidos `/api/dashboard/summary`, `/api/dashboard/charts`, `/api/dashboard/recent-clients` e `/api/dashboard/activity` com `company_id` derivado da sessao.
+- Mantidos empty states quando a empresa ainda nao possui dados reais.
+- Pendencias: gerar `activity_logs` em todos os CRUDs dos proximos modulos e validar RBAC com usuarios reais por role.
 
 ## Dados e Permissoes
 

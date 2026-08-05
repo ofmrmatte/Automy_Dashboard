@@ -2,7 +2,7 @@ import { dashboardRepository } from "@/features/dashboard/repositories/dashboard
 
 export const dashboardService = {
   getSummary: () => dashboardRepository.getSummary(),
-  getClientGrowth: () => dashboardRepository.getClientGrowth(),
-  getRevenueGrowth: () => dashboardRepository.getRevenueGrowth(),
+  getCharts: () => dashboardRepository.getCharts(),
+  getRecentClients: () => dashboardRepository.getRecentClients(),
   getRecentActivities: () => dashboardRepository.getRecentActivities(),
 };

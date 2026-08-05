@@ -14,6 +14,10 @@
 
 ## Unreleased
 
+- Implementada Fase 4 do Dashboard real com agregacoes server-side no Railway PostgreSQL.
+- Adicionados endpoints protegidos `/api/dashboard/charts` e `/api/dashboard/recent-clients`.
+- Dashboard passou a exibir metricas reais de clientes, contratos, receita, cobrancas, tickets, agendamentos e usuarios ativos conforme permissoes do usuario autenticado.
+- Graficos de crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status passaram a usar dados reais com empty states.
 - Implementada Fase 3 das Configuracoes: Empresa, Seguranca, Integracoes e Notificacoes.
 - Criada migration `20260805213000_settings_foundation.sql` com colunas corporativas em `companies` e tabelas dedicadas para seguranca, integracoes, preferencias e notificacoes.
 - Adicionados endpoints protegidos `/api/settings/company`, `/api/settings/security`, `/api/settings/integrations`, `/api/settings/notifications` e `/api/notifications`.
