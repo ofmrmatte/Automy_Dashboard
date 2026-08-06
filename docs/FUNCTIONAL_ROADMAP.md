@@ -11,6 +11,13 @@ Este roadmap parte da baseline `v1.0.0-rc6`. O objetivo e continuar a evolucao d
 - Storage privado Railway preparado para avatares e proximos anexos.
 - Proximas etapas: validar dominio da Landing, CAPTCHA oficial, testes por role e automacoes de notificacao/atribuicao.
 
+## Atualizacao hotfix pos-RC9
+
+- CNPJ.ws passa a ser o provider oficial de consulta cadastral em `/api/company-lookup/cnpj`.
+- Cache e rate limit de consulta cadastral foram persistidos no Railway PostgreSQL.
+- PDF de contratos voltou a funcionar no runtime Vercel para preview e download autenticados.
+- Proximas etapas: validar volume real de consultas CNPJ.ws, decidir modo comercial com token se necessario e ampliar testes autenticados por role.
+
 ## Sprint RC6 - Manutencao de Producao
 
 Status: implementado como consolidacao tecnica.

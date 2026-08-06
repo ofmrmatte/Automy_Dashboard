@@ -61,6 +61,11 @@ function mapContract(row: ContractRow): Contract {
   };
 }
 
+function filenameFromDisposition(disposition: string | null) {
+  const match = disposition?.match(/filename="([^"]+)"/i);
+  return match?.[1] ?? "contrato-automy.pdf";
+}
+
 export const contractRepository = {
   list: async () => {
     const response = await fetch("/api/contracts");
@@ -149,5 +154,29 @@ export const contractRepository = {
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new RepositoryError(result?.error ?? "Não foi possível enviar para assinatura.");
     }
+  },
+  getPdf: async (contractId: string, download = false) => {
+    const params = new URLSearchParams({ id: contractId });
+    if (download) params.set("download", "1");
+
+    const response = await fetch(`/api/contracts/pdf?${params.toString()}`, {
+      credentials: "include",
+      headers: { accept: "application/pdf" },
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível gerar o contrato.");
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/pdf")) {
+      throw new RepositoryError("Não foi possível gerar o contrato.");
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: filenameFromDisposition(response.headers.get("content-disposition")),
+    };
   },
 };

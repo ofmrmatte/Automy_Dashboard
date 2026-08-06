@@ -29,6 +29,7 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Release Candidate atual em consolidacao: `v1.0.0-rc9`.
 - Fases funcionais consolidadas na `main`: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app.
 - Sprint RC9 finaliza a separacao de dominios entre Landing e ERP sem alterar Design System, Brand Kit, Login Premium ou regras de negocio.
+- Hotfix pos-RC9 corrige consulta CNPJ com provider CNPJ.ws server-side e restaura preview/download autenticado de PDF de contratos.
 - Proximo modulo operacional: Auditoria administrativa.
 
 # BASELINE v1.0.0-RC3
@@ -109,6 +110,40 @@ A aplicação segue organização feature-first em `src/features`, com component
 ## Railway PostgreSQL
 
 Railway PostgreSQL e a fonte oficial de dados da Automy.
+
+## Consulta CNPJ
+
+A consulta de CNPJ usa endpoint interno protegido em `/api/company-lookup/cnpj`.
+
+- Provider oficial: CNPJ.ws.
+- Modo padrao: API publica `https://publica.cnpj.ws`.
+- O frontend nunca consulta o provider externo diretamente.
+- O backend valida CNPJ, aplica RBAC `clients.manage`, cache persistente e rate limit por empresa/usuario/documento.
+- Cache e rate limit ficam em `company_registry_cache` e `company_registry_rate_limits`.
+
+Variaveis:
+
+```bash
+CNPJ_PROVIDER=cnpj_ws
+CNPJ_WS_MODE=public
+CNPJ_WS_API_URL=https://publica.cnpj.ws
+CNPJ_WS_API_TOKEN=
+CNPJ_LOOKUP_CACHE_MS=86400000
+CNPJ_LOOKUP_RATE_LIMIT=3
+CNPJ_LOOKUP_TIMEOUT_MS=8000
+```
+
+Para modo comercial futuro, usar `CNPJ_WS_MODE=commercial`, URL comercial e token oficial em `CNPJ_WS_API_TOKEN`.
+
+## PDF de Contratos
+
+Contratos geram PDF sob demanda pelo backend em `/api/contracts/pdf`.
+
+- A rota exige sessao Better Auth e permissao `contracts.read`.
+- Preview usa `Content-Disposition: inline`.
+- Download usa `Content-Disposition: attachment`.
+- Respostas de erro retornam JSON seguro; o frontend exibe toast sem abrir aba quebrada.
+- O PDF usa snapshot, versao, hash, cliente, produto, valores, datas e itens reais do Railway PostgreSQL.
 
 ## Landing e CRM Leads
 

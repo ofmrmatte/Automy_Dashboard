@@ -51,6 +51,12 @@ Migration RC7:
 
 Ela cria `leads` e `file_assets`, adiciona indices operacionais, triggers de `updated_at` e permite `railway_s3` em `avatar_assets.provider`.
 
+Migration hotfix pos-RC9:
+
+- `railway/migrations/20260806193000_company_registry_cache.sql`
+
+Ela cria `company_registry_cache` e `company_registry_rate_limits` para consultas CNPJ server-side com cache persistente, rate limit por empresa/usuario/documento, soft delete, timestamps, foreign keys e triggers de `updated_at`.
+
 ## Seeds
 
 Seed ativa:
@@ -135,6 +141,13 @@ STORAGE_REGION=
 STORAGE_ACCESS_KEY_ID=
 STORAGE_SECRET_ACCESS_KEY=
 AUTOMY_PUBLIC_LEAD_ORIGINS=https://automy.dev.br,https://www.automy.dev.br
+CNPJ_PROVIDER=cnpj_ws
+CNPJ_WS_MODE=public
+CNPJ_WS_API_URL=https://publica.cnpj.ws
+CNPJ_WS_API_TOKEN=
+CNPJ_LOOKUP_CACHE_MS=86400000
+CNPJ_LOOKUP_RATE_LIMIT=3
+CNPJ_LOOKUP_TIMEOUT_MS=8000
 ```
 
 ### Railway PostgreSQL
@@ -211,6 +224,10 @@ O script bloqueia nova execução quando já existe um administrador ativo. A se
 - Configurar `BETTER_AUTH_SECRET`.
 - Configurar `BETTER_AUTH_URL` com a URL canônica de produção.
 - Configurar `BETTER_AUTH_API_KEY` se Better Auth Infra estiver ativo.
+- Configurar `CNPJ_PROVIDER=cnpj_ws`.
+- Configurar `CNPJ_WS_MODE=public`.
+- Configurar `CNPJ_WS_API_URL=https://publica.cnpj.ws`.
+- Deixar `CNPJ_WS_API_TOKEN` ausente/vazio enquanto o modo publico estiver ativo.
 - Remover variáveis legadas de bancos antigos e Supabase.
 - Executar novo deploy.
 - Validar login, sessão persistente, logout e rotas protegidas.

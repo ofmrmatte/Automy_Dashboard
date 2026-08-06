@@ -8,6 +8,7 @@
 - `v1.0.0-rc6` consolida manutencao de producao: Vercel canonico, CNPJ, avatar storage e documentos contratuais.
 - `v1.0.0-rc8` consolida Landing separada, dominio `app.automy.dev.br`, CRM Leads, Railway Storage e resposta publica segura para validacao de Leads.
 - `v1.0.0-rc9` finaliza a migracao de dominios: Landing no apex `https://automy.dev.br` e ERP em `https://app.automy.dev.br`.
+- Hotfix pos-RC9 corrige CNPJ.ws em producao e restaura PDF de contratos autenticado no runtime Vercel.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - O dominio canonico do ERP e `https://app.automy.dev.br`.
@@ -67,6 +68,7 @@
 - Implementar provider real de storage em producao, preferencialmente Cloudflare R2 ou S3 compativel.
 - Evoluir `ElectronicSignatureProvider` de Noop para provedor oficial de assinatura.
 - Adicionar versionamento juridico detalhado com revisoes, aprovadores e anexos.
+- Avaliar modo comercial CNPJ.ws com token oficial se o limite publico de 3 consultas por minuto nao atender operacao.
 - Expandir testes autenticados por role para CNPJ, avatar e contratos PDF.
 
 ## Fase RC7 - Dominio, Landing, CRM Leads e Storage
@@ -108,6 +110,7 @@
 - Implementadas validacoes com React Hook Form + Zod, busca, filtro por status, paginação inicial e confirmaçao de exclusao.
 - Endpoints `/api/clients` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
 - Pendencias: documentos/anexos dependem de storage oficial e relacoes operacionais completas serao aprofundadas nos modulos Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Hotfix pos-RC9: consulta cadastral CNPJ.ws server-side restaurada com cache persistente, rate limit e preenchimento seguro dos campos vazios.
 
 ## Fase 6 - Produtos
 
@@ -126,6 +129,7 @@
 - Endpoints `/api/contracts` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
 - Dashboard passa a refletir contratos ativos, a vencer, MRR e ARR a partir do ciclo real de contratos.
 - Pendencias: assinatura digital, anexos e renovacao com versionamento juridico dependem de decisoes posteriores.
+- Hotfix pos-RC9: preview e download de PDF autenticados restaurados, com headers apropriados e erros tratados por toast.
 
 ## Fase 8 - Financeiro
 

@@ -26,7 +26,7 @@ A RC6 executa a Sprint de Manutencao de Producao da Automy. A aplicacao passa a 
 ## Clientes
 
 - Criado endpoint backend de consulta CNPJ.
-- Provider inicial: BrasilAPI, configuravel por env.
+- Provider inicial configuravel por env; provider vigente substituido por CNPJ.ws no hotfix pos-RC9.
 - Consulta protegida por sessao, RBAC, debounce no frontend, cache e rate limit no backend.
 - Clientes armazenam natureza juridica, CNAE, situacao cadastral, data de abertura e snapshot fiscal.
 

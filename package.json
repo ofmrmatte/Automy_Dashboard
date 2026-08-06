@@ -15,6 +15,7 @@
     "db:validate": "node scripts/db/validate-connection.mjs",
     "db:inspect": "node scripts/db/inspect-foundation.mjs",
     "security:verify": "node scripts/security/verify-critical-auth.mjs",
+    "test:hotfix": "tsx scripts/tests/hotfix-cnpj-pdf-test.mjs",
     "auth:bootstrap-admin": "node scripts/auth/bootstrap-admin.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -98,6 +99,7 @@
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
+    "tsx": "^4.23.9",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.1.5"
