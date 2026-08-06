@@ -25,14 +25,14 @@
 
 ## Proxima Etapa
 
-- Seguir para Notificacoes sem reintroduzir mocks.
+- Seguir para Auditoria administrativa sem reintroduzir mocks.
 - Validar Fase 7 autenticada em producao apos deploy da branch.
 - Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Relatorios, Busca, Notificacoes e Auditoria administrativa.
+- Continuar desenvolvimento dos modulos de negocio: Auditoria administrativa e validacoes autenticadas por role.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
@@ -67,7 +67,7 @@
 - Implementada aba Integracoes com providers reais/preparados, status seguro por variaveis de ambiente, teste controlado e tabela `company_integrations`.
 - Implementada aba Notificacoes com preferencias individuais em `notification_preferences`, regras da empresa em `company_notification_settings` e centro in-app em `notifications`.
 - Implementado RBAC server-side: admin edita tudo; manager/read_only visualizam conforme `settings.read`; acoes sensiveis exigem `settings.manage`.
-- Pendencias: provider transacional de e-mail, storage binario oficial, MFA real e eventos de notificacao gerados pelos modulos de negocio.
+- Pendencias: provider transacional de e-mail, storage binario oficial, MFA real e lembretes automatizados por scheduler.
 
 ## Fase 4 - Dashboard real
 
@@ -120,7 +120,7 @@
 - Datas sao armazenadas em UTC (`start_at`/`end_at`) e exibidas no timezone resolvido do usuario.
 - Endpoint `/api/scheduled-calls` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
 - Implementados busca, filtro por status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
-- Pendencias: notificacoes reais de lembrete dependem do modulo de Notificacoes/event scheduler e validacao por usuarios reais de cada role.
+- Pendencias: disparo agendado de lembretes depende de scheduler/event worker e validacao por usuarios reais de cada role.
 
 ## Fase 10 - Suporte
 
@@ -128,7 +128,7 @@
 - Persistidos cliente vinculado, responsavel, categoria, SLA de primeira resposta/resolucao, tags, mensagens, eventos e anexos por metadados.
 - Endpoint `/api/support/tickets` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
 - Implementados busca, filtros por prioridade/status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
-- Pendencias: storage oficial para anexos binarios, notificacoes/SLA automatizados e validacao por usuarios reais de cada role.
+- Pendencias: storage oficial para anexos binarios, automacoes de SLA e validacao por usuarios reais de cada role.
 
 ## Fase 11 - Relatorios
 
@@ -146,6 +146,14 @@
 - Fontes pesquisadas: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
 - Resultados respeitam RBAC de leitura por dominio e nao exibem dados de modulos sem permissao.
 - Pendencias: validacao por usuarios reais de cada role e refinamento futuro de relevancia/ranking com volume real.
+
+## Fase 13 - Notificacoes operacionais
+
+- Implementada emissao in-app real para eventos de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Notificacoes respeitam preferencias do usuario e regras da empresa.
+- Centro de notificacoes permite listar, marcar como lida, marcar todas e arquivar.
+- Persistencia usa `notifications` e `notification_deliveries`.
+- Pendencias: scheduler de lembretes, envio por e-mail e validacao por usuarios reais de cada role.
 
 ## Dados e Permissoes
 
@@ -165,6 +173,8 @@
 - Agenda: CRUD de calls com UTC/timezone, cliente vinculado, responsavel e lembretes preparados.
 - Suporte: ciclo real de tickets, mensagens, eventos, SLA e anexos por metadados.
 - Relatorios: endpoint real com filtros por periodo e exportacao CSV/XLSX/PDF.
+- Busca Global: endpoint real com command palette e RBAC por dominio.
+- Notificacoes: emissao in-app real por eventos operacionais e centro no header.
 
 ## Qualidade
 

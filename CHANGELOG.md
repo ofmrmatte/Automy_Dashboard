@@ -14,6 +14,10 @@
 
 ## Unreleased
 
+- Implementadas notificacoes operacionais in-app para eventos reais de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Adicionado helper server-side compartilhado para gerar notificacoes respeitando `company_notification_settings` e `notification_preferences`.
+- Adicionado arquivamento de notificacoes no centro do header e endpoint protegido `PATCH /api/notifications/:id/archive`.
+- Adicionado teste funcional autenticado para emissao, leitura e arquivamento de notificacoes reais.
 - Implementada Busca Global real no header com command palette, atalho `Ctrl/Cmd+K`, endpoint protegido `/api/search`, RBAC por dominio e consultas parametrizadas no Railway PostgreSQL.
 - Busca Global agora cobre Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria conforme permissoes do usuario autenticado.
 - Implementado modulo Relatorios com endpoint protegido `/api/reports`, filtros reais por periodo, RBAC por dominio e exportacao CSV, XLSX e PDF a partir de dados reais do Railway PostgreSQL.

@@ -31,6 +31,7 @@ import {
   type AuthenticatedUserContext,
   type PermissionKey,
 } from "@/shared/server/authz";
+import { createOperationalNotification } from "@/shared/server/notifications";
 import type { QueryResultRow } from "pg";
 
 type QueryableConnection = {
@@ -478,6 +479,13 @@ async function recordClientAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "client",
+    resourceId: clientId,
+    metadata,
+  });
 }
 
 async function handleUpdateClient(request: Request, context: AuthenticatedUserContext) {
@@ -960,6 +968,13 @@ async function recordProductAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "product",
+    resourceId: productId,
+    metadata,
+  });
 }
 
 async function handleCreateContract(request: Request, context: AuthenticatedUserContext) {
@@ -1374,6 +1389,13 @@ async function recordContractAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "contract",
+    resourceId: contractId,
+    metadata,
+  });
 }
 
 async function handleDashboardSummary(context: AuthenticatedUserContext) {
@@ -2749,6 +2771,13 @@ async function recordScheduledCallAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "scheduled_call",
+    resourceId: callId,
+    metadata,
+  });
 }
 
 async function handleCreateTicket(request: Request, context: AuthenticatedUserContext) {
@@ -3223,6 +3252,13 @@ async function recordTicketAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "support_ticket",
+    resourceId: ticketId,
+    metadata,
+  });
 }
 
 function assertOwnResource(authUserId: string, currentUserId: string) {

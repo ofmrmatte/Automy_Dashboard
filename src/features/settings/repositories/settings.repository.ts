@@ -116,6 +116,13 @@ export const settingsRepository = {
       "Não foi possível marcar como lida.",
     ),
 
+  archiveNotification: async (id: string) =>
+    apiRequest<{ ok: boolean }>(
+      `/api/notifications/${encodeURIComponent(id)}/archive`,
+      { method: "PATCH" },
+      "Não foi possível arquivar a notificação.",
+    ),
+
   markAllNotificationsRead: async () =>
     apiRequest<{ ok: boolean }>(
       "/api/notifications/read-all",

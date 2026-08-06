@@ -81,7 +81,7 @@ Escopo entregue:
 - Seguranca em `company_security_settings` e `login_history`: senha/sessoes Better Auth, politica corporativa e historico.
 - Integracoes em `company_integrations`: status seguro, metadados publicos e teste controlado sem exposicao de secrets.
 - Notificacoes em `notification_preferences`, `company_notification_settings`, `notifications` e `notification_deliveries`.
-- Centro de notificacoes no header com contagem real de nao lidas e marcacao como lida.
+- Centro de notificacoes no header com contagem real de nao lidas, marcacao como lida e arquivamento.
 - RBAC server-side com `settings.read` e `settings.manage`.
 
 Pendencias:
@@ -89,7 +89,7 @@ Pendencias:
 - Provider de e-mail transacional para convites, recuperacao e verificacao.
 - Storage binario oficial para avatar/logo.
 - MFA real no Better Auth.
-- Eventos reais de notificacao gerados pelos modulos de negocio.
+- Lembretes automaticos por scheduler e envio por e-mail quando houver provedor transacional aprovado.
 
 ## Sprint 2.2 - Dashboard real
 
@@ -226,7 +226,7 @@ Critério de pronto:
 
 Objetivo: tornar a agenda confiavel por fuso horario.
 
-Status nesta branch: implementado como Fase 9 funcional inicial. Falta ativar notificacoes reais de lembrete e validar por usuarios reais de cada role.
+Status nesta branch: implementado como Fase 9 funcional inicial. Falta ativar lembretes por scheduler e validar por usuarios reais de cada role.
 
 Escopo entregue:
 
@@ -241,7 +241,7 @@ Escopo entregue:
 
 Pendencias:
 
-- Disparo real de lembretes por scheduler/notificacoes.
+- Disparo real de lembretes por scheduler/event worker.
 - Validacao por manager/operator/read_only.
 
 Critério de pronto:
@@ -253,7 +253,7 @@ Critério de pronto:
 
 Objetivo: completar operacao de tickets.
 
-Status nesta branch: implementado como Fase 10 funcional inicial. Falta ativar storage binario, notificacoes/SLA automatizados e validacao por usuarios reais de cada role.
+Status nesta branch: implementado como Fase 10 funcional inicial. Falta ativar storage binario, automacoes de SLA e validacao por usuarios reais de cada role.
 
 Escopo entregue:
 
@@ -270,7 +270,7 @@ Escopo entregue:
 Pendencias:
 
 - Storage oficial para upload binario.
-- Notificacoes/SLA automatizados.
+- Automacoes de SLA.
 - Validacao por manager/operator/read_only.
 - Encerramento.
 - Permissoes por role.
@@ -327,6 +327,27 @@ Escopo entregue:
 Pendencias:
 
 - Ranking avancado por relevancia com volume real.
+- Testes autenticados por todos os perfis.
+
+## Sprint 11 - Notificacoes operacionais
+
+Objetivo: conectar o centro de notificacoes a eventos reais dos modulos de negocio.
+
+Status nesta branch: implementado como Fase 13 funcional inicial. Falta scheduler de lembretes e provider de e-mail transacional.
+
+Escopo entregue:
+
+- Emissao in-app real para eventos de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Respeito a `company_notification_settings` e `notification_preferences`.
+- Criacao automatica das preferencias padrao do usuario quando necessario.
+- Persistencia em `notifications` e rastreio em `notification_deliveries`.
+- Centro de notificacoes com contagem de nao lidas, marcar como lida, marcar todas e arquivar.
+- Endpoints protegidos para listar, ler e arquivar notificacoes.
+
+Pendencias:
+
+- Scheduler/event worker para lembretes futuros de agenda, contrato, cobranca e SLA.
+- Envio por e-mail quando houver provider transacional aprovado.
 - Testes autenticados por todos os perfis.
 
 ## Dependencias transversais

@@ -13,6 +13,7 @@ export const settingsService = {
   updateNotificationSettings: settingsRepository.updateNotificationSettings,
   listNotifications: () => settingsRepository.listNotifications(),
   markNotificationRead: settingsRepository.markNotificationRead,
+  archiveNotification: settingsRepository.archiveNotification,
   markAllNotificationsRead: settingsRepository.markAllNotificationsRead,
   integrationStatusLabel: (status: CompanyIntegration["status"]) =>
     ({

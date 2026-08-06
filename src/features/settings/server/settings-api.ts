@@ -1105,6 +1105,30 @@ async function markAllNotificationsRead(context: AuthenticatedUserContext) {
   });
 }
 
+async function archiveNotification(url: URL, context: AuthenticatedUserContext) {
+  const id = url.pathname.split("/").at(-2);
+  if (!id) throw new ApiError("Notificação não informada.", 400, "bad_request");
+  return withClient(context, async (client) => {
+    const result = await client.query<{ id: string }>(
+      `
+        update public.notifications
+        set status = 'archived',
+            archived_at = now(),
+            updated_by = $3,
+            updated_at = now()
+        where id = $1
+          and company_id = $2
+          and auth_user_id = $3
+          and deleted_at is null
+        returning id
+      `,
+      [id, context.companyId, context.authUserId],
+    );
+    if (!result.rows[0]) throw new ApiError("Notificação não encontrada.", 404, "not_found");
+    return jsonResponse({ ok: true });
+  });
+}
+
 function handleApiError(error: unknown) {
   if (error instanceof ApiError) {
     return jsonResponse({ error: error.message, code: error.code }, { status: error.status });
@@ -1170,6 +1194,12 @@ export async function handleSettingsApiRequest(request: Request) {
     }
     if (url.pathname.match(/^\/api\/notifications\/[^/]+\/read$/) && request.method === "PATCH") {
       return await markNotificationRead(url, context);
+    }
+    if (
+      url.pathname.match(/^\/api\/notifications\/[^/]+\/archive$/) &&
+      request.method === "PATCH"
+    ) {
+      return await archiveNotification(url, context);
     }
     if (url.pathname === "/api/notifications/read-all" && request.method === "POST") {
       return await markAllNotificationsRead(context);

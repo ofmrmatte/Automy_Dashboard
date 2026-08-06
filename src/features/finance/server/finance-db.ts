@@ -7,6 +7,7 @@ import type {
 import type { ChargeFormData, ChargePatchData } from "@/features/finance/validation";
 import { chargeStatusLabels } from "@/features/finance/validation";
 import type { AuthenticatedUserContext } from "@/shared/server/authz";
+import { createOperationalNotification } from "@/shared/server/notifications";
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
 import type { QueryResultRow } from "pg";
@@ -572,6 +573,13 @@ async function recordFinanceAudit(
       context.authUserId,
     ],
   );
+
+  await createOperationalNotification(db, context, {
+    action,
+    resourceType: "charge",
+    resourceId: chargeId,
+    metadata,
+  });
 }
 
 export async function recordMercadoPagoWebhookEvent(input: WebhookEventInput) {

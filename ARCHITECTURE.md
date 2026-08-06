@@ -113,6 +113,7 @@ Endpoints protegidos:
 - `GET/PATCH /api/settings/notifications`
 - `GET /api/notifications`
 - `PATCH /api/notifications/:id/read`
+- `PATCH /api/notifications/:id/archive`
 - `POST /api/notifications/read-all`
 
 Regras:
@@ -120,6 +121,7 @@ Regras:
 - `company_id` sempre e derivado da sessao.
 - `settings.manage` e obrigatorio para edicao de Empresa, Seguranca corporativa e Integracoes.
 - Preferencias pessoais de notificacao sao gravadas apenas para o usuario autenticado.
+- Eventos operacionais usam `src/shared/server/notifications.ts` e geram notificacoes in-app conforme preferencias de empresa e usuario.
 - Secrets de integracoes nao sao retornados ao frontend; o status usa metadados seguros e presenca de variaveis de ambiente.
 - Alteracoes relevantes geram `audit_logs`.
 

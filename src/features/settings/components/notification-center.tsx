@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck } from "lucide-react";
+import { Archive, Bell, CheckCheck } from "lucide-react";
 import { useState } from "react";
 import {
   notificationsQueryOptions,
@@ -37,6 +37,16 @@ export function NotificationCenter() {
       toast.success("Notificações marcadas como lidas.");
     } catch (error) {
       toast.danger(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
+  }
+
+  async function archive(id: string) {
+    try {
+      await settingsService.archiveNotification(id);
+      await refresh();
+      toast.success("Notificação arquivada.");
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível arquivar.");
     }
   }
 
@@ -96,15 +106,25 @@ export function NotificationCenter() {
                   )}
                   <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                     <span>{formatDateTime(notification.createdAt)}</span>
-                    {notification.status === "unread" && (
+                    <div className="flex items-center gap-3">
+                      {notification.status === "unread" && (
+                        <button
+                          type="button"
+                          className="font-medium text-primary"
+                          onClick={() => markRead(notification.id)}
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="font-medium text-primary"
-                        onClick={() => markRead(notification.id)}
+                        className="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => archive(notification.id)}
                       >
-                        Marcar como lida
+                        <Archive className="size-3.5" />
+                        Arquivar
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               ))

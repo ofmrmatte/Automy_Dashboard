@@ -194,6 +194,24 @@ async function verifyAnonymousApiProtection() {
     testIntegrationResponse.status,
     401,
   );
+
+  const archiveNotificationResponse = await request("/api/notifications/test/archive", {
+    method: "PATCH",
+  });
+  assertStatus(
+    "PATCH /api/notifications/:id/archive sem sessao",
+    archiveNotificationResponse.status,
+    401,
+  );
+
+  const markAllNotificationsResponse = await request("/api/notifications/read-all", {
+    method: "POST",
+  });
+  assertStatus(
+    "POST /api/notifications/read-all sem sessao",
+    markAllNotificationsResponse.status,
+    401,
+  );
 }
 
 async function verifyUntrustedOrigin() {
@@ -254,6 +272,11 @@ async function verifyAdminFlow() {
     headers: { cookie },
   });
   assertStatus("Admin lendo /api/settings/notifications", notificationSettingsResponse.status, 200);
+
+  const notificationsResponse = await request("/api/notifications", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/notifications", notificationsResponse.status, 200);
 
   const reportResponse = await request("/api/reports?kind=clients&period=all", {
     headers: { cookie },
