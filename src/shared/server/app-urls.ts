@@ -1,3 +1,4 @@
+const ERP_CANONICAL_ORIGIN = "https://app.automy.dev.br";
 const FINAL_CUSTOM_ORIGIN = "https://automy.dev.br";
 const WWW_CUSTOM_ORIGIN = "https://www.automy.dev.br";
 const SECONDARY_VERCEL_ORIGIN = "https://automy-dashboard.vercel.app";
@@ -36,7 +37,7 @@ export function resolveCanonicalAppOrigin() {
     return "http://localhost:5173";
   }
 
-  return FINAL_CUSTOM_ORIGIN;
+  return ERP_CANONICAL_ORIGIN;
 }
 
 export function resolveTrustedAppOrigins() {
@@ -59,6 +60,7 @@ export function resolveTrustedAppOrigins() {
 
   return uniqueValues([
     resolveCanonicalAppOrigin(),
+    ERP_CANONICAL_ORIGIN,
     FINAL_CUSTOM_ORIGIN,
     WWW_CUSTOM_ORIGIN,
     SECONDARY_VERCEL_ORIGIN,

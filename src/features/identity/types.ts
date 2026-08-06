@@ -113,5 +113,6 @@ export type PreferencesUpdatePayload = {
 export type PasswordUpdatePayload = {
   currentPassword: string;
   password: string;
+  confirmPassword: string;
   revokeOtherSessions: boolean;
 };

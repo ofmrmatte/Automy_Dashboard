@@ -166,9 +166,10 @@ export function ProfileSettingsPanel() {
   const onPasswordSubmit = passwordForm.handleSubmit(async (values) => {
     try {
       await updatePassword({
-        currentPassword: values.currentPassword,
-        password: values.password,
-        revokeOtherSessions: values.revokeOtherSessions,
+        currentPassword: values["currentPassword"],
+        password: values["password"],
+        confirmPassword: values["confirmPassword"],
+        revokeOtherSessions: values["revokeOtherSessions"],
       });
       passwordForm.reset();
       toast.success("Senha alterada.");

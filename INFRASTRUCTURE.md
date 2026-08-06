@@ -8,7 +8,7 @@ Esta foundation reconstrói apenas a infraestrutura de dados da Automy. A aplica
 
 Railway PostgreSQL é o banco oficial da Automy.
 
-O runtime oficial passa a ser Railway. Vercel permanece apenas como origem antiga/rollback temporario ate a migracao operacional ser encerrada.
+O runtime oficial do ERP e Vercel. Railway permanece somente como PostgreSQL e infraestrutura de dados necessaria.
 
 O projeto não deve utilizar Supabase, bancos antigos, mocks ou dados fictícios como fonte da aplicação.
 
@@ -70,8 +70,9 @@ Better Auth é o provedor oficial de autenticação.
 - Recuperação de senha: estrutura pronta; envio depende de provedor transacional.
 - Verificação de e-mail: estrutura pronta; envio depende de provedor transacional.
 - Better Auth Infra: `dash()` habilitado somente quando `BETTER_AUTH_API_KEY` existir.
-- URL canonica atual: `https://automy.dev.br`.
-- Origem secundaria com www: `https://www.automy.dev.br`.
+- URL canonica atual do ERP: `https://app.automy.dev.br`.
+- Origem temporaria raiz: `https://automy.dev.br`, reservada para a Landing Page em projeto Vercel separado.
+- Origem temporaria com www: `https://www.automy.dev.br`.
 - Origem secundaria Vercel: `https://automy-dashboard.vercel.app`.
 
 ## Variáveis por Ambiente
@@ -100,7 +101,7 @@ DATABASE_URL=
 PGSSLMODE=disable
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=https://preview-url.vercel.app
-AUTOMY_TRUSTED_ORIGINS=https://preview-url.vercel.app,https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app
+AUTOMY_TRUSTED_ORIGINS=https://preview-url.vercel.app,https://app.automy.dev.br,https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
@@ -114,8 +115,8 @@ Usar Vercel como runtime canonico. A URL interna `*.railway.internal` só deve s
 DATABASE_URL=
 PGSSLMODE=require
 BETTER_AUTH_SECRET=
-BETTER_AUTH_URL=https://automy.dev.br
-AUTOMY_TRUSTED_ORIGINS=https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app
+BETTER_AUTH_URL=https://app.automy.dev.br
+AUTOMY_TRUSTED_ORIGINS=https://app.automy.dev.br,https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
@@ -135,6 +136,15 @@ PGPORT=${{Postgres.PGPORT}}
 ```
 
 O host `*.railway.internal` não deve ser usado em Vercel nem em desenvolvimento local.
+
+## Dominios
+
+- `https://app.automy.dev.br`: ERP Automy, projeto Vercel `automy-dashboard`.
+- `https://automy.dev.br`: Landing Page, projeto Vercel separado.
+- `https://www.automy.dev.br`: futuro redirect para a Landing Page.
+- `https://automy-dashboard.vercel.app`: fallback tecnico temporario do ERP.
+
+Rollback: enquanto a Landing Page nao estiver validada, manter `automy.dev.br`, `www.automy.dev.br` e `automy-dashboard.vercel.app` como origens confiaveis no ERP. Nao alterar registros MX, TXT, SPF, DKIM ou qualquer registro de e-mail durante ajustes de dominio web.
 
 ## Aplicar Banco
 

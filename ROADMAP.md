@@ -8,6 +8,8 @@
 - `v1.0.0-rc6` consolida manutencao de producao: Vercel canonico, CNPJ, avatar storage e documentos contratuais.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
+- O dominio canonico do ERP e `https://app.automy.dev.br`.
+- `https://automy.dev.br` fica reservado para a Landing Page em repositório/projeto Vercel separado.
 - Design System, Brand Kit e Login Premium estao congelados.
 - A arquitetura Feature First esta consolidada.
 - Better Auth e a autenticacao oficial da Automy.

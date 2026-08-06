@@ -65,7 +65,7 @@ Pagina -> React Query -> Service -> Repository -> API interna -> Railway Postgre
 
 ## Arquitetura Canonica RC6
 
-Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece como PostgreSQL oficial. O dominio canonico e `https://automy.dev.br`; `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` sao origens confiaveis secundarias para cookies, callbacks e transicao operacional.
+Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece somente como PostgreSQL oficial e infraestrutura de dados. O dominio canonico do ERP e `https://app.automy.dev.br`; `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` permanecem como origens confiaveis temporarias para cookies, callbacks e transicao operacional.
 
 Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
 

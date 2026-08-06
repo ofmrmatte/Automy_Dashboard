@@ -14,7 +14,9 @@
 
 ## Unreleased
 
-- Nenhuma alteracao pendente registrada.
+- Corrigido envio de confirmacao no fluxo de alteracao de senha para evitar erro tecnico de validacao do Zod.
+- Atualizada a origem canonica do ERP para `https://app.automy.dev.br`, mantendo `automy.dev.br`, `www.automy.dev.br` e `automy-dashboard.vercel.app` como fallbacks temporarios.
+- Documentado Vercel como runtime oficial do ERP e Railway como PostgreSQL/infraestrutura de dados.
 
 ## v1.0.0-rc6
 

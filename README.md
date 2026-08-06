@@ -17,8 +17,9 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
 - Runtime oficial da aplicacao: Vercel.
-- Dominio principal oficial: `https://automy.dev.br`.
-- Origens secundarias aceitas: `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app`.
+- Dominio canonico do ERP: `https://app.automy.dev.br`.
+- Dominios temporarios aceitos como fallback: `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app`.
+- `https://automy.dev.br` fica reservado para a Landing Page em projeto Vercel separado.
 - Better Auth e o provedor oficial de autenticacao, usando Railway PostgreSQL.
 - Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e configurado com variaveis da nova foundation.
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
@@ -115,7 +116,7 @@ Para Railway runtime interno:
 DATABASE_URL=
 PGSSLMODE=require
 BETTER_AUTH_SECRET=
-BETTER_AUTH_URL=
+BETTER_AUTH_URL=https://app.automy.dev.br
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
@@ -142,6 +143,7 @@ Use `.env.example` como referencia de nomes de variaveis. Nunca versionar `.env.
 - LOCAL: usar a URL publica/TCP Proxy do Railway, pois o host `*.railway.internal` nao e acessivel fora da rede privada Railway.
 - Vercel: usar a URL publica/TCP Proxy do Railway, com `PGSSLMODE=disable` para o proxy validado nesta foundation.
 - Railway: pode usar a URL interna `*.railway.internal` somente quando a aplicacao estiver rodando dentro da propria rede Railway.
+- Production ERP: usar `BETTER_AUTH_URL=https://app.automy.dev.br` e manter `AUTOMY_TRUSTED_ORIGINS=https://app.automy.dev.br,https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app` ate a Landing Page estar validada.
 
 As migrations oficiais ficam em:
 

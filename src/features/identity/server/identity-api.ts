@@ -608,7 +608,7 @@ async function handleChangePassword(request: Request, context: AuthenticatedUser
   const payload = await request.json().catch(() => null);
   const parsed = passwordChangeSchema.safeParse(payload);
   if (!parsed.success) {
-    throw new ApiError(parsed.error.issues[0]?.message ?? "Dados inválidos.", 400, "bad_request");
+    throw new ApiError("Revise os campos da senha e tente novamente.", 400, "bad_request");
   }
 
   const auth = getAutomyAuth();
