@@ -19,16 +19,16 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Railway Storage S3-compatible e o storage privado oficial para arquivos persistentes.
 - Runtime oficial da aplicacao: Vercel.
 - Dominio canonico do ERP: `https://app.automy.dev.br`.
-- Dominios temporarios aceitos como fallback: `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app`.
-- `https://automy.dev.br` fica reservado para a Landing Page em projeto Vercel separado.
+- Dominio tecnico de fallback do ERP: `https://automy-dashboard.vercel.app`.
+- Landing Page canonica: `https://automy.dev.br`, com `https://www.automy.dev.br` redirecionando para o apex.
 - Better Auth e o provedor oficial de autenticacao, usando Railway PostgreSQL.
 - Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e configurado com variaveis da nova foundation.
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
-- Release Candidate atual em consolidacao: `v1.0.0-rc8`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc9`.
 - Fases funcionais consolidadas na `main`: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app.
-- Sprint RC8 preserva a RC7 e corrige a resposta publica de Leads para nao expor mensagens tecnicas de validacao.
+- Sprint RC9 finaliza a separacao de dominios entre Landing e ERP sem alterar Design System, Brand Kit, Login Premium ou regras de negocio.
 - Proximo modulo operacional: Auditoria administrativa.
 
 # BASELINE v1.0.0-RC3
@@ -153,7 +153,7 @@ Use `.env.example` como referencia de nomes de variaveis. Nunca versionar `.env.
 - LOCAL: usar a URL publica/TCP Proxy do Railway, pois o host `*.railway.internal` nao e acessivel fora da rede privada Railway.
 - Vercel: usar a URL publica/TCP Proxy do Railway, com `PGSSLMODE=disable` para o proxy validado nesta foundation.
 - Railway: pode usar a URL interna `*.railway.internal` somente quando a aplicacao estiver rodando dentro da propria rede Railway.
-- Production ERP: usar `BETTER_AUTH_URL=https://app.automy.dev.br` e manter `AUTOMY_TRUSTED_ORIGINS=https://app.automy.dev.br,https://automy.dev.br,https://www.automy.dev.br,https://automy-dashboard.vercel.app` ate a Landing Page estar validada.
+- Production ERP: usar `BETTER_AUTH_URL=https://app.automy.dev.br` e `AUTOMY_TRUSTED_ORIGINS=https://app.automy.dev.br,https://automy-dashboard.vercel.app`.
 
 As migrations oficiais ficam em:
 

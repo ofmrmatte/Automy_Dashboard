@@ -1,6 +1,4 @@
 const ERP_CANONICAL_ORIGIN = "https://app.automy.dev.br";
-const FINAL_CUSTOM_ORIGIN = "https://automy.dev.br";
-const WWW_CUSTOM_ORIGIN = "https://www.automy.dev.br";
 const SECONDARY_VERCEL_ORIGIN = "https://automy-dashboard.vercel.app";
 
 function splitOriginList(value: string | undefined) {
@@ -61,8 +59,6 @@ export function resolveTrustedAppOrigins() {
   return uniqueValues([
     resolveCanonicalAppOrigin(),
     ERP_CANONICAL_ORIGIN,
-    FINAL_CUSTOM_ORIGIN,
-    WWW_CUSTOM_ORIGIN,
     SECONDARY_VERCEL_ORIGIN,
     ...configured,
     ...(vercelDeployment ? [vercelDeployment] : []),

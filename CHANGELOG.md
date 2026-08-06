@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0-rc9
+
+- Finalizada a migracao de dominios entre os projetos Vercel da Automy.
+- Mantido o ERP no projeto `automy-dashboard` com dominio canonico `https://app.automy.dev.br`.
+- Mantido `https://automy-dashboard.vercel.app` como fallback tecnico do ERP.
+- Movidos `https://automy.dev.br` e `https://www.automy.dev.br` para o projeto Vercel `automy-landing`.
+- Configurado `https://www.automy.dev.br` com redirect 308 para `https://automy.dev.br`.
+- Removidas as origens da Landing das origens confiaveis padrao do Better Auth no ERP.
+- Documentada a separacao final entre Landing publica, ERP autenticado e endpoint publico de Leads.
+
 ## v1.0.0-rc8
 
 - Mantida a consolidacao da RC7 e publicada correcao pos-validacao sem mover tags anteriores.
@@ -18,7 +28,7 @@
 
 ## Current Project Status
 
-- Release Candidate atual em consolidacao: `v1.0.0-rc6`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc9`.
 - `v1.0.0-rc4` permanece como release de correcao critica de seguranca e origem Railway.
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
@@ -26,12 +36,13 @@
 - Better Auth definido como provedor oficial de autenticacao.
 - Vercel conectado ao GitHub e configurado com variaveis da nova foundation.
 - TCP Proxy Railway configurado para acesso local/Vercel.
+- ERP canonico em `https://app.automy.dev.br`.
+- Landing canonica em `https://automy.dev.br`, com `https://www.automy.dev.br` redirecionando para o apex.
 - Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
 
 ## Unreleased
 
 - Corrigido envio de confirmacao no fluxo de alteracao de senha para evitar erro tecnico de validacao do Zod.
-- Atualizada a origem canonica do ERP para `https://app.automy.dev.br`, mantendo `automy.dev.br`, `www.automy.dev.br` e `automy-dashboard.vercel.app` como fallbacks temporarios.
 - Documentado Vercel como runtime oficial do ERP e Railway como PostgreSQL/infraestrutura de dados.
 
 ## v1.0.0-rc6

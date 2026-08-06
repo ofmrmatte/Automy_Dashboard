@@ -7,10 +7,12 @@
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - `v1.0.0-rc6` consolida manutencao de producao: Vercel canonico, CNPJ, avatar storage e documentos contratuais.
 - `v1.0.0-rc8` consolida Landing separada, dominio `app.automy.dev.br`, CRM Leads, Railway Storage e resposta publica segura para validacao de Leads.
+- `v1.0.0-rc9` finaliza a migracao de dominios: Landing no apex `https://automy.dev.br` e ERP em `https://app.automy.dev.br`.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - O dominio canonico do ERP e `https://app.automy.dev.br`.
-- `https://automy.dev.br` fica reservado para a Landing Page em repositório/projeto Vercel separado.
+- `https://automy.dev.br` e o dominio canonico da Landing Page em repositório/projeto Vercel separado.
+- `https://www.automy.dev.br` redireciona para a Landing Page apex.
 - Design System, Brand Kit e Login Premium estao congelados.
 - A arquitetura Feature First esta consolidada.
 - Better Auth e a autenticacao oficial da Automy.
@@ -74,7 +76,7 @@
 - Adicionadas tabelas `leads` e `file_assets` ao Railway PostgreSQL.
 - Configurado contrato `StorageProvider` com adapter Railway S3-compatible.
 - Landing Page integrada ao CRM via funcao serverless `/api/leads`, sem acesso direto ao banco.
-- Pendencias: validar CAPTCHA/Turnstile com chave oficial, concluir migracao final dos dominios apex/www para a Landing e ampliar testes reais por role.
+- Pendencias: validar CAPTCHA/Turnstile com chave oficial e ampliar testes reais por role.
 
 ## Fase RC8 - Ajuste Pos-validacao
 

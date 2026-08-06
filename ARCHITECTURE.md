@@ -10,6 +10,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - `v1.0.0-rc6` estabiliza runtime Vercel, avatar por provider, consulta CNPJ e contratos documentais.
 - `v1.0.0-rc8` consolida dominio `app.automy.dev.br`, Landing separada, CRM Leads, Railway Storage S3-compatible e resposta publica segura para validacao de Leads.
+- `v1.0.0-rc9` finaliza a separacao de dominios: Landing em `https://automy.dev.br` e ERP em `https://app.automy.dev.br`.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
@@ -66,15 +67,15 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 
 Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL
 
-## Arquitetura Canonica RC6
+## Arquitetura Canonica Atual
 
-Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece como PostgreSQL oficial e Storage privado. O dominio canonico do ERP e `https://app.automy.dev.br`; `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` permanecem como origens confiaveis temporarias para cookies, callbacks e transicao operacional.
+Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece como PostgreSQL oficial e Storage privado. O dominio canonico do ERP e `https://app.automy.dev.br`; `https://automy-dashboard.vercel.app` permanece como fallback tecnico. `https://automy.dev.br` e `https://www.automy.dev.br` pertencem ao projeto Landing e nao devem ser usados como origens de autenticacao do ERP.
 
 Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
 
 ## Landing e CRM Leads
 
-A Landing Page fica em repositorio e projeto Vercel separados. O navegador envia o formulario para `/api/leads` da Landing, e a funcao serverless encaminha para `POST https://app.automy.dev.br/api/public/leads`.
+A Landing Page fica em repositorio e projeto Vercel separados. O apex `https://automy.dev.br` aponta para a Landing, e `https://www.automy.dev.br` redireciona para o apex com 308. O navegador envia o formulario para `/api/leads` da Landing, e a funcao serverless encaminha para `POST https://app.automy.dev.br/api/public/leads`.
 
 O endpoint publico do ERP nao exige sessao Better Auth, mas aplica validacao Zod, honeypot, rate limit, limite de payload, hash de IP, CAPTCHA/Turnstile quando configurado e resposta generica. O CRM interno usa `/api/leads` e `/api/leads/convert`, protegidos por `leads.read` e `leads.manage`.
 
