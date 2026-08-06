@@ -42,6 +42,12 @@
 
 ## Unreleased
 
+- Corrigida consulta CNPJ em producao substituindo provider hardcoded antigo por CNPJ.ws server-side.
+- Adicionadas tabelas `company_registry_cache` e `company_registry_rate_limits` para cache persistente e rate limit operacional.
+- Frontend de Clientes passa a acionar apenas a API interna, com debounce, consulta manual, abort de requisicao anterior e preenchimento sem sobrescrever campos ja digitados.
+- Restaurado preview/download de PDF de contratos no runtime serverless Vercel usando bundle standalone do PDFKit.
+- Endpoint de PDF de contratos passa a retornar headers seguros, erros JSON apropriados e auditoria distinta para preview/download.
+- Adicionado teste automatizado focado para normalizacao/mapeamento CNPJ.ws, cache, 429, headers e geracao minima de PDF.
 - Corrigido envio de confirmacao no fluxo de alteracao de senha para evitar erro tecnico de validacao do Zod.
 - Documentado Vercel como runtime oficial do ERP e Railway como PostgreSQL/infraestrutura de dados.
 

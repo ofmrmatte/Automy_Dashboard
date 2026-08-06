@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
-import { generateContractPdf } from "@/features/contracts/server/contract-pdf-service";
+import {
+  generateContractPdf,
+  type ContractPdfItem,
+} from "@/features/contracts/server/contract-pdf-service";
+import { contractPdfHeaders } from "@/features/contracts/server/contract-pdf-http";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
   contractFormSchema,
@@ -1264,78 +1268,107 @@ async function handleDeleteContract(request: Request, context: AuthenticatedUser
 async function handleContractPdf(request: Request, context: AuthenticatedUserContext) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id") ?? "";
-  if (!id) return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+  if (
+    !id ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  ) {
+    return jsonResponse({ error: "ID inválido." }, { status: 400 });
+  }
 
   const db = await getRailwayPostgresPool();
   const row = await getContractSnapshotRow(db, context, id);
   if (!row) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
   if (!row.contract_text) {
-    return jsonResponse({ error: "Contrato ainda não possui minuta gerada." }, { status: 400 });
+    return jsonResponse({ error: "Contrato ainda não possui dados suficientes." }, { status: 409 });
   }
 
-  if (!row["contract_hash"]) {
-    await persistContractSnapshot(
+  try {
+    if (!row["contract_hash"]) {
+      await persistContractSnapshot(
+        db,
+        context,
+        id,
+        {
+          clientId: row.client_id,
+          productId: row.product_id ?? "",
+          name: row.name ?? "",
+          monthlyValue: Number(row.monthly_value ?? 0),
+          implementationValue: Number(row.implementation_value ?? 0),
+          startsAt: row.starts_at ?? "",
+          endsAt: row.ends_at ?? "",
+          renewalAt: row.renewal_at ?? "",
+          billingPeriod: "Mensal",
+          status: "Pendente",
+          signerName: row.signer_name ?? "",
+          witnessName: row.witness_name ?? "",
+          notes: row.notes ?? "",
+          contractText: row.contract_text,
+        },
+        true,
+      );
+    }
+
+    const refreshed = (await getContractSnapshotRow(db, context, id)) ?? row;
+    const items = await getContractItems(db, context, id);
+    const generatedAt = new Date().toISOString();
+    const hash = refreshed["contract_hash"] ?? contractHash(refreshed.contract_text);
+    const pdf = await generateContractPdf({
+      id: refreshed.id,
+      version: Number(refreshed.contract_version ?? 1),
+      hash,
+      generatedAt,
+      companyName: refreshed.company_trade_name ?? refreshed.company_legal_name ?? "Automy",
+      clientName: refreshed.client_trade_name ?? refreshed.client_legal_name ?? "Cliente",
+      clientDocument: refreshed.client_document ?? "",
+      productName: refreshed.product_name ?? "Produto",
+      plan: refreshed.name ?? "Contrato Automy",
+      status: refreshed.status,
+      monthlyValue: Number(refreshed.monthly_value ?? 0),
+      implementationValue: Number(refreshed.implementation_value ?? 0),
+      startsAt: refreshed.starts_at ?? "",
+      endsAt: refreshed.ends_at ?? "",
+      signerName: refreshed.signer_name ?? "",
+      witnessName: refreshed.witness_name ?? "",
+      items,
+      contractText: refreshed.contract_text ?? "",
+    });
+
+    await db.query(
+      `
+        update public.contracts
+        set last_pdf_generated_at = now(),
+            updated_by = $3,
+            updated_at = now()
+        where id = $1
+          and company_id = $2
+          and deleted_at is null
+      `,
+      [id, context.companyId, context.authUserId],
+    );
+
+    const isDownload = url.searchParams.get("download") === "1";
+    await recordContractAudit(
       db,
       context,
+      isDownload ? "contract.pdf.downloaded" : "contract.pdf.previewed",
       id,
       {
-        clientId: row.client_id,
-        productId: row.product_id ?? "",
-        name: row.name ?? "",
-        monthlyValue: Number(row.monthly_value ?? 0),
-        implementationValue: Number(row.implementation_value ?? 0),
-        startsAt: row.starts_at ?? "",
-        endsAt: row.ends_at ?? "",
-        renewalAt: row.renewal_at ?? "",
-        billingPeriod: "Mensal",
-        status: "Pendente",
-        signerName: row.signer_name ?? "",
-        witnessName: row.witness_name ?? "",
-        notes: row.notes ?? "",
-        contractText: row.contract_text,
+        hash,
+        version: refreshed.contract_version,
       },
-      true,
     );
+
+    const disposition = isDownload ? "attachment" : "inline";
+    return new Response(new Uint8Array(pdf), {
+      headers: contractPdfHeaders(id, disposition),
+    });
+  } catch (error) {
+    console.error(
+      "Falha ao gerar PDF do contrato:",
+      error instanceof Error ? error.message : error,
+    );
+    return jsonResponse({ error: "Não foi possível gerar o contrato." }, { status: 500 });
   }
-
-  const refreshed = (await getContractSnapshotRow(db, context, id)) ?? row;
-  const generatedAt = new Date().toISOString();
-  const pdf = await generateContractPdf({
-    id: refreshed.id,
-    version: Number(refreshed.contract_version ?? 1),
-    hash: refreshed["contract_hash"] ?? contractHash(refreshed.contract_text),
-    generatedAt,
-    clientName: refreshed.client_trade_name ?? refreshed.client_legal_name ?? "Cliente",
-    productName: refreshed.product_name ?? "Produto",
-    plan: refreshed.name ?? "Contrato Automy",
-    status: refreshed.status,
-    contractText: refreshed.contract_text ?? "",
-  });
-
-  await db.query(
-    `
-      update public.contracts
-      set last_pdf_generated_at = now(),
-          updated_by = $3,
-          updated_at = now()
-      where id = $1
-        and company_id = $2
-        and deleted_at is null
-    `,
-    [id, context.companyId, context.authUserId],
-  );
-  await recordContractAudit(db, context, "contract.pdf.generated", id, {
-    version: refreshed.contract_version,
-  });
-
-  const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
-  return new Response(new Uint8Array(pdf), {
-    headers: {
-      "content-disposition": `${disposition}; filename="automy-contrato-${id}.pdf"`,
-      "content-type": "application/pdf",
-      "cache-control": "no-store",
-    },
-  });
 }
 
 async function handleGenerateContractVersion(request: Request, context: AuthenticatedUserContext) {
@@ -1453,6 +1486,8 @@ type ContractSnapshotRow = QueryResultRow & {
   product_version: string | null;
   product_commercial_terms: unknown;
   product_contract_template: string | null;
+  company_trade_name: string | null;
+  company_legal_name: string | null;
 };
 
 function contractHash(input: unknown) {
@@ -1475,8 +1510,13 @@ async function getContractSnapshotRow(
         products.category as product_category,
         products.version as product_version,
         products.commercial_terms as product_commercial_terms,
-        products.contract_template as product_contract_template
+        products.contract_template as product_contract_template,
+        companies.trade_name as company_trade_name,
+        companies.legal_name as company_legal_name
       from public.contracts
+      join public.companies
+        on companies.id = contracts.company_id
+        and companies.deleted_at is null
       join public.clients
         on clients.id = contracts.client_id
         and clients.company_id = contracts.company_id
@@ -1494,6 +1534,30 @@ async function getContractSnapshotRow(
   );
 
   return result.rows[0] as ContractSnapshotRow | undefined;
+}
+
+async function getContractItems(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  contractId: string,
+): Promise<ContractPdfItem[]> {
+  const result = await db.query(
+    `
+      select name, quantity, monthly_value
+      from public.contract_items
+      where company_id = $1
+        and contract_id = $2
+        and deleted_at is null
+      order by created_at asc
+    `,
+    [context.companyId, contractId],
+  );
+
+  return result.rows.map((row) => ({
+    name: String(row["name"] ?? "Item contratado"),
+    quantity: Number(row["quantity"] ?? 1),
+    monthlyValue: Number(row["monthly_value"] ?? 0),
+  }));
 }
 
 function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {

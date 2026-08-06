@@ -11,6 +11,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `v1.0.0-rc6` estabiliza runtime Vercel, avatar por provider, consulta CNPJ e contratos documentais.
 - `v1.0.0-rc8` consolida dominio `app.automy.dev.br`, Landing separada, CRM Leads, Railway Storage S3-compatible e resposta publica segura para validacao de Leads.
 - `v1.0.0-rc9` finaliza a separacao de dominios: Landing em `https://automy.dev.br` e ERP em `https://app.automy.dev.br`.
+- Hotfix pos-RC9 estabiliza CNPJ.ws como provider oficial de consulta cadastral e restaura PDF autenticado de contratos no runtime serverless Vercel.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
@@ -55,11 +56,13 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/shared`: componentes, tokens, constantes, utilitarios e infraestrutura compartilhada.
 - `src/shared/server/authz.ts`: sessao Better Auth, RBAC minimo e contexto de empresa para APIs internas.
 - `src/shared/server/app-urls.ts`: URL canonica e origens confiaveis do Better Auth.
-- `src/features/clients/server/company-lookup-api.ts`: consulta CNPJ server-side com provider configuravel, cache e rate limit.
+- `src/features/clients/server/company-lookup-api.ts`: endpoint protegido de consulta CNPJ server-side.
+- `src/features/clients/server/company-registry-provider.ts`: adapter CNPJ.ws com normalizacao, cache persistente e rate limit.
 - `src/shared/server/storage-provider.ts`: contrato server-side de storage privado com adapter Railway S3-compatible.
 - `src/features/identity/server/avatar-storage.ts`: provider oficial de avatar com processamento WebP 256/512 e persistencia no storage configurado.
 - `src/features/leads`: CRM de leads recebidos pela Landing, com endpoint publico, RBAC, auditoria e conversao em cliente.
 - `src/features/contracts/server/contract-pdf-service.ts`: geracao server-side sob demanda de PDF de contrato.
+- `src/features/contracts/server/contract-pdf-http.ts`: headers seguros para preview/download de PDF.
 - `railway/migrations`: schema versionado da foundation oficial.
 - `railway/seeds`: configuracoes iniciais de sistema, sem dados ficticios.
 
@@ -165,6 +168,15 @@ O modulo `src/features/clients` usa formulario React Hook Form + Zod e persiste 
 - Todas as escritas exigem `clients.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Documentos/anexos nao sao simulados; dependem de storage oficial.
 
+Consulta cadastral:
+
+- `GET /api/company-lookup/cnpj?document=` exige sessao valida e `clients.manage`.
+- O provider oficial e CNPJ.ws, em modo publico por padrao.
+- O backend valida o CNPJ antes de qualquer chamada externa.
+- `company_registry_cache` evita chamadas repetidas e mantem payload normalizado.
+- `company_registry_rate_limits` aplica limite por empresa, usuario, documento e janela de tempo.
+- O frontend apenas consome a API interna e preenche campos vazios, sem sobrescrever dados digitados.
+
 ## Produtos
 
 O modulo `src/features/products` usa formulario React Hook Form + Zod e persiste portfolio, termos comerciais e modelo de contrato via `/api/products`.
@@ -186,6 +198,14 @@ O modulo `src/features/contracts` usa formulario React Hook Form + Zod e persist
 - `DELETE /api/contracts?id=`: aplica soft delete.
 - Todas as escritas exigem `contracts.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
 - Datas de contrato sao persistidas como `date`; Agenda persiste `start_at`/`end_at` em UTC com timezone original do agendamento.
+
+Documentos:
+
+- `GET /api/contracts/pdf?id=` gera preview autenticado com `Content-Disposition: inline`.
+- `GET /api/contracts/pdf?id=&download=1` gera download autenticado com `Content-Disposition: attachment`.
+- A rota valida UUID, permissao, existencia do contrato, snapshot e texto contratual.
+- Erros retornam JSON seguro para toast no frontend.
+- PDF usa bundle standalone do PDFKit para evitar falha de `__dirname` no serverless ESM da Vercel.
 
 ## Suporte
 

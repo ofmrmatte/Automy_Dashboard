@@ -42,6 +42,7 @@ export function ContractsPage() {
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   const [deletingContract, setDeletingContract] = useState<Contract | null>(null);
+  const [pdfAction, setPdfAction] = useState<"preview" | "download" | null>(null);
   const { data: contracts = [], error, isLoading } = useQuery(contractsQueryOptions());
   const filtered = useMemo(
     () => contractService.filterContracts(contracts, { search, status }),
@@ -136,10 +137,40 @@ export function ContractsPage() {
     },
   });
 
-  const openPdf = (contract: Contract, download = false) => {
-    const params = new URLSearchParams({ id: contract.id });
-    if (download) params.set("download", "1");
-    window.open(`/api/contracts/pdf?${params.toString()}`, "_blank", "noopener,noreferrer");
+  const openPdf = async (contract: Contract, download = false) => {
+    if (!contract.contractText) {
+      toast.danger("Contrato ainda não possui dados suficientes.");
+      return;
+    }
+
+    setPdfAction(download ? "download" : "preview");
+    try {
+      const { blob, filename } = await contractService.getContractPdf(contract.id, download);
+      const url = URL.createObjectURL(blob);
+      if (download) {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        toast.success("Download do contrato iniciado.");
+        return;
+      }
+
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        URL.revokeObjectURL(url);
+        toast.danger("Não foi possível abrir o PDF. Verifique o bloqueador de pop-ups.");
+        return;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível gerar o contrato.");
+    } finally {
+      setPdfAction(null);
+    }
   };
 
   const contractColumns = useMemo<Array<DataTableColumn<Contract>>>(
@@ -335,6 +366,7 @@ export function ContractsPage() {
       <ContractViewModal
         contract={viewingContract}
         generatingVersion={generateVersion.isPending}
+        pdfAction={pdfAction}
         sendingToSignature={sendToSignature.isPending}
         onClose={() => setViewingContract(null)}
         onDownloadPdf={(contract) => openPdf(contract, true)}
@@ -376,6 +408,7 @@ export function ContractsPage() {
 function ContractViewModal({
   contract,
   generatingVersion,
+  pdfAction,
   sendingToSignature,
   onClose,
   onDownloadPdf,
@@ -385,6 +418,7 @@ function ContractViewModal({
 }: {
   contract: Contract | null;
   generatingVersion: boolean;
+  pdfAction: "preview" | "download" | null;
   sendingToSignature: boolean;
   onClose: () => void;
   onDownloadPdf: (contract: Contract) => void;
@@ -404,11 +438,23 @@ function ContractViewModal({
             <Badge tone={toneForStatus(contract.status)}>{contract.status}</Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => onViewPdf(contract)}>
+            <Button
+              type="button"
+              variant="outline"
+              loading={pdfAction === "preview"}
+              disabled={!contract.contractText}
+              onClick={() => onViewPdf(contract)}
+            >
               <FileText className="size-4" />
               Visualizar PDF
             </Button>
-            <Button type="button" variant="outline" onClick={() => onDownloadPdf(contract)}>
+            <Button
+              type="button"
+              variant="outline"
+              loading={pdfAction === "download"}
+              disabled={!contract.contractText}
+              onClick={() => onDownloadPdf(contract)}
+            >
               <FileDown className="size-4" />
               Baixar PDF
             </Button>

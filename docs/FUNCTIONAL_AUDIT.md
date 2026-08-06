@@ -7,6 +7,13 @@
 - Railway Storage S3-compatible foi preparado para arquivos privados e avatares.
 - Persistem pendencias de validacao operacional por todos os perfis reais e ativacao de CAPTCHA/Turnstile oficial.
 
+## Atualizacao hotfix pos-RC9
+
+- Consulta CNPJ corrigida para provider CNPJ.ws server-side, com validacao, cache persistente e rate limit.
+- Cadastro de Clientes continua sem chamadas diretas do navegador ao provider externo e preenche somente campos vazios.
+- PDF de Contratos corrigido para runtime Vercel serverless, com preview/download autenticados, headers seguros e erros por toast.
+- Migration `20260806193000_company_registry_cache.sql` aplicada para cache/rate limit de consultas cadastrais.
+
 Data: 2026-08-06.
 
 ## RC6 - Sprint de Manutencao
