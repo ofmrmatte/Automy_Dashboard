@@ -9,7 +9,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - Baseline oficial congelada em `v1.0.0-rc3`; a tag nao foi movida.
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - `v1.0.0-rc6` estabiliza runtime Vercel, avatar por provider, consulta CNPJ e contratos documentais.
-- `v1.0.0-rc7` consolida dominio `app.automy.dev.br`, Landing separada, CRM Leads e Railway Storage S3-compatible.
+- `v1.0.0-rc8` consolida dominio `app.automy.dev.br`, Landing separada, CRM Leads, Railway Storage S3-compatible e resposta publica segura para validacao de Leads.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.

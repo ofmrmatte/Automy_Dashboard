@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.0-rc8
+
+- Mantida a consolidacao da RC7 e publicada correcao pos-validacao sem mover tags anteriores.
+- Corrigida resposta publica de payload invalido em `POST /api/public/leads`, substituindo mensagens tecnicas do Zod por mensagem segura e apropriada.
+- Mantida a normalizacao server-side de `revokeOtherSessions` no fluxo de alteracao de senha para evitar payload booleano ausente.
+
 ## v1.0.0-rc7
 
 - Consolidado `https://app.automy.dev.br` como dominio canonico do ERP.

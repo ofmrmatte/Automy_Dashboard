@@ -262,10 +262,19 @@ async function handleCreatePublicLead(request: Request) {
   try {
     assertPublicRateLimit(request);
     const payload = await request.json().catch(() => null);
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "website" in payload &&
+      String(payload.website ?? "").trim()
+    ) {
+      return jsonResponse({ ok: true }, { status: 202, headers });
+    }
+
     const parsed = publicLeadSchema.safeParse(payload);
     if (!parsed.success) {
       return jsonResponse(
-        { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+        { error: "Dados inválidos. Revise os campos obrigatórios." },
         { status: 400, headers },
       );
     }

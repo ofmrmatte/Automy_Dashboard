@@ -6,7 +6,7 @@
 - `v1.0.0-rc4` consolida as correcoes criticas de seguranca e origem Railway.
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - `v1.0.0-rc6` consolida manutencao de producao: Vercel canonico, CNPJ, avatar storage e documentos contratuais.
-- `v1.0.0-rc7` consolida Landing separada, dominio `app.automy.dev.br`, CRM Leads e Railway Storage.
+- `v1.0.0-rc8` consolida Landing separada, dominio `app.automy.dev.br`, CRM Leads, Railway Storage e resposta publica segura para validacao de Leads.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - O dominio canonico do ERP e `https://app.automy.dev.br`.
@@ -75,6 +75,11 @@
 - Configurado contrato `StorageProvider` com adapter Railway S3-compatible.
 - Landing Page integrada ao CRM via funcao serverless `/api/leads`, sem acesso direto ao banco.
 - Pendencias: validar CAPTCHA/Turnstile com chave oficial, concluir migracao final dos dominios apex/www para a Landing e ampliar testes reais por role.
+
+## Fase RC8 - Ajuste Pos-validacao
+
+- Corrigida resposta publica de payload invalido em `POST /api/public/leads` para evitar exposicao de mensagens tecnicas do Zod.
+- Mantidas as entregas da RC7 sem mover tags antigas.
 
 ## Fase 3 - Configuracoes
 

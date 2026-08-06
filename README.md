@@ -26,9 +26,9 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
-- Release Candidate atual em consolidacao: `v1.0.0-rc7`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc8`.
 - Fases funcionais consolidadas na `main`: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app.
-- Sprint RC7 adiciona Landing separada, CRM Leads, Railway Storage e dominio canonico `app.automy.dev.br`.
+- Sprint RC8 preserva a RC7 e corrige a resposta publica de Leads para nao expor mensagens tecnicas de validacao.
 - Proximo modulo operacional: Auditoria administrativa.
 
 # BASELINE v1.0.0-RC3
