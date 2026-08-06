@@ -81,7 +81,8 @@ Todo CRUD deve possuir:
 ## Arquivos e Documentos
 
 - Nunca armazenar imagens ou PDFs diretamente no PostgreSQL.
-- Avatares devem usar `AvatarStorageProvider`.
+- Avatares devem usar `AvatarStorageProvider` sobre `StorageProvider`.
+- Arquivos persistentes devem usar storage privado configurado por `STORAGE_PROVIDER`; nunca filesystem efemero em producao.
 - Contratos devem preservar snapshot, versao e hash antes de gerar PDF.
 - PDF de contrato deve ser gerado sob demanda a partir de `contract_text`.
 - Contratos assinados nunca devem ser sobrescritos.

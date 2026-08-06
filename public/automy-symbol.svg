@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
-  <title id="title">Automy brand asset</title>
-  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
-
-
+  <title id="title">Automy symbol</title>
+  <desc id="desc">Identidade vetorial da Automy, uma marca de tecnologia focada em simplificar operações.</desc>
   <defs>
     <linearGradient id="symbol-blue" x1="48" y1="198" x2="132" y2="46" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#2563EB"/>
@@ -14,16 +12,10 @@
       <stop offset="1" stop-color="#5EEAD4"/>
     </linearGradient>
   </defs>
-
-  <g id="symbol-artwork">
-
   <g id="automy-symbol" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path id="left-ascending-stroke" d="M54 190 C70 150 88 98 110 52" stroke="url(#symbol-blue)" stroke-width="30"/>
-    <path id="right-ascending-stroke" d="M121 52 C142 99 162 150 180 190" stroke="url(#symbol-blue)" stroke-width="30"/>
-    <path id="control-gap" d="M117 122 C128 122 140 122 151 122" stroke="#FFFFFF" stroke-width="30" opacity="0.98"/>
-    <path id="data-flow-crossbar" d="M104 126 C124 135 147 146 170 156" stroke="url(#symbol-teal)" stroke-width="26"/>
+    <path d="M54 190 C70 150 88 98 110 52" stroke="url(#symbol-blue)" stroke-width="30"/>
+    <path d="M121 52 C142 99 162 150 180 190" stroke="url(#symbol-blue)" stroke-width="30"/>
+    <path d="M117 122 C128 122 140 122 151 122" stroke="#FFFFFF" stroke-width="30" opacity="0.98"/>
+    <path d="M104 126 C124 135 147 146 170 156" stroke="url(#symbol-teal)" stroke-width="26"/>
   </g>
-
-  </g>
-
 </svg>

@@ -9,11 +9,12 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - Baseline oficial congelada em `v1.0.0-rc3`; a tag nao foi movida.
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - `v1.0.0-rc6` estabiliza runtime Vercel, avatar por provider, consulta CNPJ e contratos documentais.
+- `v1.0.0-rc7` consolida dominio `app.automy.dev.br`, Landing separada, CRM Leads e Railway Storage S3-compatible.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
 - Vercel e o runtime oficial da aplicacao.
-- Railway e usado exclusivamente como Railway PostgreSQL.
+- Railway e usado como Railway PostgreSQL e Storage S3-compatible privado.
 - Better Auth e o provedor oficial de autenticacao.
 - O projeto Vercel `automy-dashboard` esta conectado ao GitHub e configurado com as variaveis da nova foundation.
 - A persistencia real em Railway PostgreSQL foi validada por TCP Proxy fora da rede Railway e por runtime interno Railway.
@@ -54,7 +55,9 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/shared/server/authz.ts`: sessao Better Auth, RBAC minimo e contexto de empresa para APIs internas.
 - `src/shared/server/app-urls.ts`: URL canonica e origens confiaveis do Better Auth.
 - `src/features/clients/server/company-lookup-api.ts`: consulta CNPJ server-side com provider configuravel, cache e rate limit.
-- `src/features/identity/server/avatar-storage.ts`: provider oficial de avatar com adapters `noop`, `local`, `railway_volume`, `s3` e `cloudflare_r2` preparados.
+- `src/shared/server/storage-provider.ts`: contrato server-side de storage privado com adapter Railway S3-compatible.
+- `src/features/identity/server/avatar-storage.ts`: provider oficial de avatar com processamento WebP 256/512 e persistencia no storage configurado.
+- `src/features/leads`: CRM de leads recebidos pela Landing, com endpoint publico, RBAC, auditoria e conversao em cliente.
 - `src/features/contracts/server/contract-pdf-service.ts`: geracao server-side sob demanda de PDF de contrato.
 - `railway/migrations`: schema versionado da foundation oficial.
 - `railway/seeds`: configuracoes iniciais de sistema, sem dados ficticios.
@@ -65,9 +68,15 @@ Pagina -> React Query -> Service -> Repository -> API interna -> Railway Postgre
 
 ## Arquitetura Canonica RC6
 
-Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece somente como PostgreSQL oficial e infraestrutura de dados. O dominio canonico do ERP e `https://app.automy.dev.br`; `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` permanecem como origens confiaveis temporarias para cookies, callbacks e transicao operacional.
+Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece como PostgreSQL oficial e Storage privado. O dominio canonico do ERP e `https://app.automy.dev.br`; `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` permanecem como origens confiaveis temporarias para cookies, callbacks e transicao operacional.
 
 Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
+
+## Landing e CRM Leads
+
+A Landing Page fica em repositorio e projeto Vercel separados. O navegador envia o formulario para `/api/leads` da Landing, e a funcao serverless encaminha para `POST https://app.automy.dev.br/api/public/leads`.
+
+O endpoint publico do ERP nao exige sessao Better Auth, mas aplica validacao Zod, honeypot, rate limit, limite de payload, hash de IP, CAPTCHA/Turnstile quando configurado e resposta generica. O CRM interno usa `/api/leads` e `/api/leads/convert`, protegidos por `leads.read` e `leads.manage`.
 
 ## Seguranca das APIs Internas
 

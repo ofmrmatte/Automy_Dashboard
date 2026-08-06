@@ -1,5 +1,12 @@
 # Functional Audit v1.0.0-rc6
 
+## Atualizacao RC7
+
+- Adicionado CRM Leads com dados reais em Railway PostgreSQL.
+- Landing separada passa a enviar leads ao ERP por endpoint publico server-side.
+- Railway Storage S3-compatible foi preparado para arquivos privados e avatares.
+- Persistem pendencias de validacao operacional por todos os perfis reais e ativacao de CAPTCHA/Turnstile oficial.
+
 Data: 2026-08-06.
 
 ## RC6 - Sprint de Manutencao

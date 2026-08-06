@@ -1,71 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="680" viewBox="0 0 960 680" role="img" aria-labelledby="title desc">
-  <title id="title">Automy brand asset</title>
-  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
-
-  <rect width="960" height="680" rx="28" fill="#F8FAFC"/>
-  <rect x="24" y="24" width="912" height="632" rx="24" fill="#FFFFFF" stroke="#E2E8F0"/>
-  <text x="48" y="72" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="30" font-weight="700">Automy Brand Colors</text>
-  <text x="48" y="96" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14">Paleta oficial para produtos SaaS de logistica, automacao e controle operacional.</text>
-
-  <g id="swatch-1" transform="translate(48 122)">
-    <rect width="76" height="76" rx="18" fill="#2563EB" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Primary Blue</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#2563EB</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Acoes principais, foco e destaque</text>
-  </g>
-  <g id="swatch-2" transform="translate(478 122)">
-    <rect width="76" height="76" rx="18" fill="#0F172A" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Deep Navy</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#0F172A</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Marca, navegacao e texto forte</text>
-  </g>
-  <g id="swatch-3" transform="translate(48 230)">
-    <rect width="76" height="76" rx="18" fill="#14B8A6" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Accent Teal</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#14B8A6</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Conexao, fluxo e apoio visual</text>
-  </g>
-  <g id="swatch-4" transform="translate(478 230)">
-    <rect width="76" height="76" rx="18" fill="#22C55E" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Success</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#22C55E</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Estados positivos</text>
-  </g>
-  <g id="swatch-5" transform="translate(48 338)">
-    <rect width="76" height="76" rx="18" fill="#F59E0B" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Warning</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#F59E0B</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Pendencias e alertas</text>
-  </g>
-  <g id="swatch-6" transform="translate(478 338)">
-    <rect width="76" height="76" rx="18" fill="#EF4444" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Error</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#EF4444</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Falhas e acoes destrutivas</text>
-  </g>
-  <g id="swatch-7" transform="translate(48 446)">
-    <rect width="76" height="76" rx="18" fill="#F8FAFC" stroke="#E2E8F0"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Background</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#F8FAFC</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Fundo claro da aplicacao</text>
-  </g>
-  <g id="swatch-8" transform="translate(478 446)">
-    <rect width="76" height="76" rx="18" fill="#FFFFFF" stroke="#E2E8F0"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Surface</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#FFFFFF</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Cards, modais e paineis</text>
-  </g>
-  <g id="swatch-9" transform="translate(48 554)">
-    <rect width="76" height="76" rx="18" fill="#0F172A" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Text</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#0F172A</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Texto primario</text>
-  </g>
-  <g id="swatch-10" transform="translate(478 554)">
-    <rect width="76" height="76" rx="18" fill="#64748B" stroke="none"/>
-    <text x="100" y="24" fill="#0F172A" font-family="Geist, Inter, Arial, sans-serif" font-size="20" font-weight="700">Secondary Text</text>
-    <text x="100" y="48" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="14" font-weight="600">#64748B</text>
-    <text x="100" y="70" fill="#64748B" font-family="Geist, Inter, Arial, sans-serif" font-size="12">Texto auxiliar</text>
-  </g>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Automy brand colors</title>
+<desc id="desc">Paleta de cores oficial da Automy.</desc>
+<rect width="1200" height="760" fill="#FFFFFF"/>
+<text x="72" y="96" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Automy — Brand colors</text>
+<text x="72" y="136" fill="#64748B" font-family="Inter, Arial, sans-serif" font-size="20">Paleta principal e de apoio da marca.</text>
+<rect x="72" y="190" width="300" height="150" rx="24" fill="#2563EB" stroke="#E2E8F0"/>
+<text x="96" y="234" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Primary Blue</text>
+<text x="96" y="272" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#2563EB</text>
+<text x="96" y="310" fill="#FFFFFF" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 37, 99, 235</text>
+<rect x="432" y="190" width="300" height="150" rx="24" fill="#60A5FA" stroke="#E2E8F0"/>
+<text x="456" y="234" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Light Blue</text>
+<text x="456" y="272" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#60A5FA</text>
+<text x="456" y="310" fill="#0F172A" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 96, 165, 250</text>
+<rect x="792" y="190" width="300" height="150" rx="24" fill="#14B8A6" stroke="#E2E8F0"/>
+<text x="816" y="234" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Teal Accent</text>
+<text x="816" y="272" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#14B8A6</text>
+<text x="816" y="310" fill="#FFFFFF" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 20, 184, 166</text>
+<rect x="72" y="440" width="300" height="150" rx="24" fill="#5EEAD4" stroke="#E2E8F0"/>
+<text x="96" y="484" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Light Teal</text>
+<text x="96" y="522" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#5EEAD4</text>
+<text x="96" y="560" fill="#0F172A" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 94, 234, 212</text>
+<rect x="432" y="440" width="300" height="150" rx="24" fill="#0F172A" stroke="#E2E8F0"/>
+<text x="456" y="484" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Ink</text>
+<text x="456" y="522" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#0F172A</text>
+<text x="456" y="560" fill="#FFFFFF" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 15, 23, 42</text>
+<rect x="792" y="440" width="300" height="150" rx="24" fill="#64748B" stroke="#E2E8F0"/>
+<text x="816" y="484" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Slate</text>
+<text x="816" y="522" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">#64748B</text>
+<text x="816" y="560" fill="#FFFFFF" opacity="0.86" font-family="Inter, Arial, sans-serif" font-size="18">RGB 100, 116, 139</text>
 </svg>

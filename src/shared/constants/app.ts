@@ -6,6 +6,7 @@ import {
   FileText,
   Headphones,
   LayoutDashboard,
+  Megaphone,
   Settings,
   Users,
 } from "lucide-react";
@@ -16,6 +17,7 @@ export const APP_DESCRIPTION =
 
 export const APP_NAVIGATION = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
+  { label: "Leads", to: "/leads", icon: Megaphone },
   { label: "Clientes", to: "/clientes", icon: Users },
   { label: "Contratos", to: "/contratos", icon: FileText },
   { label: "Produtos", to: "/produtos", icon: Boxes },

@@ -1,16 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">Automy brand asset</title>
-  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
-
-  <rect id="favicon-background" x="2" y="2" width="60" height="60" rx="15" fill="#2563EB"/>
-  <g id="favicon-symbol" transform="translate(6 5) scale(0.22)">
-
-  <g id="automy-symbol" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path id="left-ascending-stroke" d="M54 190 C70 150 88 98 110 52" stroke="#FFFFFF" stroke-width="30"/>
-    <path id="right-ascending-stroke" d="M121 52 C142 99 162 150 180 190" stroke="#FFFFFF" stroke-width="30"/>
-    <path id="data-flow-crossbar" d="M104 126 C124 135 147 146 170 156" stroke="#FFFFFF" stroke-width="26"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Automy favicon</title>
+  <rect width="64" height="64" rx="16" fill="#FFFFFF"/>
+  <g transform="translate(0 0) scale(0.2666667)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <defs>
+      <linearGradient id="fb" x1="48" y1="198" x2="132" y2="46" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#2563EB"/>
+        <stop offset="1" stop-color="#60A5FA"/>
+      </linearGradient>
+      <linearGradient id="ft" x1="104" y1="126" x2="170" y2="156" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#2563EB"/>
+        <stop offset="0.48" stop-color="#14B8A6"/>
+        <stop offset="1" stop-color="#5EEAD4"/>
+      </linearGradient>
+    </defs>
+    <path d="M54 190 C70 150 88 98 110 52" stroke="url(#fb)" stroke-width="30"/>
+    <path d="M121 52 C142 99 162 150 180 190" stroke="url(#fb)" stroke-width="30"/>
+    <path d="M117 122 C128 122 140 122 151 122" stroke="#FFFFFF" stroke-width="30" opacity="0.98"/>
+    <path d="M104 126 C124 135 147 146 170 156" stroke="url(#ft)" stroke-width="26"/>
   </g>
-
-  </g>
-
 </svg>

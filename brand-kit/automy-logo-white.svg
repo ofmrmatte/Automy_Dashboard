@@ -1,20 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="180" viewBox="0 0 640 180" role="img" aria-labelledby="title desc">
-  <title id="title">Automy brand asset</title>
-  <desc id="desc">Original vector identity for Automy, a logistics software platform.</desc>
-
-
-  <g id="logo-horizontal">
-    <g id="symbol" transform="translate(28 22) scale(0.58)">
-
-  <g id="automy-symbol" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path id="left-ascending-stroke" d="M54 190 C70 150 88 98 110 52" stroke="#FFFFFF" stroke-width="30"/>
-    <path id="right-ascending-stroke" d="M121 52 C142 99 162 150 180 190" stroke="#FFFFFF" stroke-width="30"/>
-    <path id="data-flow-crossbar" d="M104 126 C124 135 147 146 170 156" stroke="#FFFFFF" stroke-width="26"/>
-  </g>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="120" viewBox="20 34 540 104" role="img" aria-labelledby="title desc">
+  <title id="title">Automy logo white</title>
+  <desc id="desc">Versão monocromática clara do logo da Automy.</desc>
+  <g id="logo-horizontal-white">
+    <g transform="translate(28 22) scale(0.58)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M54 190 C70 150 88 98 110 52" stroke="#FFFFFF" stroke-width="30"/>
+      <path d="M121 52 C142 99 162 150 180 190" stroke="#FFFFFF" stroke-width="30"/>
+      <path d="M117 122 C128 122 140 122 151 122" stroke="rgba(15,23,42,.1)" stroke-width="30" opacity="0.98"/>
+      <path d="M104 126 C124 135 147 146 170 156" stroke="#FFFFFF" stroke-width="26"/>
     </g>
-    <text id="wordmark" x="166" y="93" fill="#FFFFFF" font-family="Geist, Inter, Arial, sans-serif" font-size="62" font-weight="700" font-kerning="normal" letter-spacing="-0.4">Automy</text>
-    <text id="descriptor" x="169" y="128" fill="#CBD5E1" font-family="Geist, Inter, Arial, sans-serif" font-size="9.5" font-weight="600" letter-spacing="3.1">SOFTWARE PARA LOGISTICA E TRANSPORTADORAS</text>
+    <text x="166" y="93" fill="#FFFFFF" font-family="Geist, Inter, Arial, sans-serif" font-size="62" font-weight="700" letter-spacing="-0.4">Automy</text>
+    <text x="169" y="128" fill="#FFFFFF" font-family="Geist, Inter, Arial, sans-serif" font-size="13.2" font-weight="700" letter-spacing="0.28">TECNOLOGIA QUE SIMPLIFICA OPERAÇÕES</text>
   </g>
-
 </svg>

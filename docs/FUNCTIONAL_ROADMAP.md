@@ -4,6 +4,13 @@ Data: 2026-08-05.
 
 Este roadmap parte da baseline `v1.0.0-rc6`. O objetivo e continuar a evolucao do ERP operacional, sem alterar Design System, Brand Kit, Login Premium, Better Auth, runtime Vercel ou Railway PostgreSQL.
 
+## Atualizacao RC7
+
+- CRM Leads implementado como entrada oficial dos contatos da Landing.
+- Endpoint publico de leads e tela interna `/leads` entram na foundation funcional.
+- Storage privado Railway preparado para avatares e proximos anexos.
+- Proximas etapas: validar dominio da Landing, CAPTCHA oficial, testes por role e automacoes de notificacao/atribuicao.
+
 ## Sprint RC6 - Manutencao de Producao
 
 Status: implementado como consolidacao tecnica.

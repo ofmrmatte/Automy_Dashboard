@@ -16,6 +16,7 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Login Premium Automy consolidado e congelado.
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
+- Railway Storage S3-compatible e o storage privado oficial para arquivos persistentes.
 - Runtime oficial da aplicacao: Vercel.
 - Dominio canonico do ERP: `https://app.automy.dev.br`.
 - Dominios temporarios aceitos como fallback: `https://automy.dev.br`, `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app`.
@@ -25,9 +26,9 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
-- Release Candidate atual em consolidacao: `v1.0.0-rc6`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc7`.
 - Fases funcionais consolidadas na `main`: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app.
-- Sprint RC6 adiciona estabilizacao de CNPJ, avatar por provider e ciclo documental de contratos.
+- Sprint RC7 adiciona Landing separada, CRM Leads, Railway Storage e dominio canonico `app.automy.dev.br`.
 - Proximo modulo operacional: Auditoria administrativa.
 
 # BASELINE v1.0.0-RC3
@@ -56,6 +57,7 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Railway PostgreSQL
 - Node Postgres (`pg`)
 - Better Auth
+- Railway Storage S3-compatible
 
 ## Scripts
 
@@ -107,6 +109,14 @@ A aplicação segue organização feature-first em `src/features`, com component
 ## Railway PostgreSQL
 
 Railway PostgreSQL e a fonte oficial de dados da Automy.
+
+## Landing e CRM Leads
+
+- ERP: `https://app.automy.dev.br`.
+- Landing: repositorio separado `ofmrmatte/Automy_Landing`.
+- Formulario publico: Landing `POST /api/leads` -> ERP `POST /api/public/leads`.
+- CRM interno: rota `/leads`, protegida por `leads.read` e `leads.manage`.
+- Conversao de lead em cliente cria cliente e contato principal em Railway PostgreSQL.
 
 Configure as variaveis de ambiente no ambiente de deploy.
 

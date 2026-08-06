@@ -19,11 +19,13 @@ import {
   requireAuthenticatedUser,
   type AuthenticatedUserContext,
 } from "@/shared/server/authz";
+import { getStorageProvider } from "@/shared/server/storage-provider";
 
 const IDENTITY_API_PATHS = new Set([
   "/api/identity/profile",
   "/api/identity/preferences",
   "/api/identity/avatar",
+  "/api/identity/avatar/file",
   "/api/identity/password",
   "/api/identity/sessions",
 ]);
@@ -563,6 +565,17 @@ async function handleUploadAvatar(request: Request, context: AuthenticatedUserCo
 
 async function handleRemoveAvatar(request: Request, context: AuthenticatedUserContext) {
   const db = await getRailwayPostgresPool();
+  const activeAssets = await db.query<{ storage_key: string; provider: string }>(
+    `
+      select storage_key, provider
+      from public.avatar_assets
+      where auth_user_id = $1
+        and status = 'active'
+        and deleted_at is null
+    `,
+    [context.authUserId],
+  );
+
   await db.query(
     `
       update public.user_profiles
@@ -600,13 +613,66 @@ async function handleRemoveAvatar(request: Request, context: AuthenticatedUserCo
     [context.authUserId],
   );
   await writeAuditLog(context, "identity.avatar.removed", context.domainUserId);
+  const storage = getStorageProvider();
+  if (storage.name !== "noop") {
+    await Promise.allSettled(
+      activeAssets.rows
+        .filter((asset) => asset.provider === storage.name)
+        .flatMap((asset) => [
+          storage.deleteObject(`${asset.storage_key}/avatar-256.webp`),
+          storage.deleteObject(`${asset.storage_key}/avatar-512.webp`),
+        ]),
+    );
+  }
   const session = await getBetterAuthSessionFromRequest(request);
   return jsonResponse({ profile: await getProfile(context, session!) });
 }
 
+async function handleAvatarFile(request: Request, context: AuthenticatedUserContext) {
+  const url = new URL(request.url);
+  const key = url.searchParams.get("key") ?? "";
+  const match = key.match(/^avatars\/([^/]+)\/([^/]+)\/avatar-(256|512)\.webp$/);
+  if (!match || match[1] !== context.authUserId) {
+    throw new ApiError("Arquivo não encontrado.", 404, "not_found");
+  }
+
+  const storageKey = `avatars/${match[1]}/${match[2]}`;
+  const db = await getRailwayPostgresPool();
+  const asset = await db.query<{ provider: string; mime_type: string }>(
+    `
+      select provider, mime_type
+      from public.avatar_assets
+      where auth_user_id = $1
+        and storage_key = $2
+        and status = 'active'
+        and deleted_at is null
+      order by created_at desc
+      limit 1
+    `,
+    [context.authUserId, storageKey],
+  );
+  const row = asset.rows[0];
+  if (!row) throw new ApiError("Arquivo não encontrado.", 404, "not_found");
+
+  const storage = getStorageProvider();
+  if (storage.name !== row.provider) {
+    throw new ApiError("Storage do avatar não está configurado.", 503, "database_unavailable");
+  }
+
+  const object = await storage.getObject(key);
+  return new Response(object.body, {
+    headers: {
+      "content-type": object.contentType ?? row.mime_type,
+      "cache-control": "private, max-age=3600",
+    },
+  });
+}
+
 async function handleChangePassword(request: Request, context: AuthenticatedUserContext) {
   const payload = await request.json().catch(() => null);
-  const parsed = passwordChangeSchema.safeParse(payload);
+  const normalizedPayload =
+    payload && typeof payload === "object" ? { revokeOtherSessions: true, ...payload } : payload;
+  const parsed = passwordChangeSchema.safeParse(normalizedPayload);
   if (!parsed.success) {
     throw new ApiError("Revise os campos da senha e tente novamente.", 400, "bad_request");
   }
@@ -732,6 +798,9 @@ export async function handleIdentityApiRequest(request: Request) {
     }
     if (url.pathname === "/api/identity/avatar" && request.method === "DELETE") {
       return await handleRemoveAvatar(request, auth.context);
+    }
+    if (url.pathname === "/api/identity/avatar/file" && request.method === "GET") {
+      return await handleAvatarFile(request, auth.context);
     }
     if (url.pathname === "/api/identity/password" && request.method === "POST") {
       return await handleChangePassword(request, auth.context);

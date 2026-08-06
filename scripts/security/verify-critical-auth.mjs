@@ -44,6 +44,7 @@ async function signIn(email, password) {
 async function verifyAnonymousApiProtection() {
   const internalEndpoints = [
     "/api/clients",
+    "/api/leads",
     "/api/products",
     "/api/contracts",
     "/api/support/tickets",
@@ -93,6 +94,12 @@ async function verifyAnonymousApiProtection() {
 
   const updateClientResponse = await request("/api/clients", { method: "PATCH", body: "{}" });
   assertStatus("PATCH /api/clients sem sessao", updateClientResponse.status, 401);
+
+  const updateLeadResponse = await request("/api/leads", { method: "PATCH", body: "{}" });
+  assertStatus("PATCH /api/leads sem sessao", updateLeadResponse.status, 401);
+
+  const convertLeadResponse = await request("/api/leads/convert", { method: "POST", body: "{}" });
+  assertStatus("POST /api/leads/convert sem sessao", convertLeadResponse.status, 401);
 
   const deleteClientResponse = await request("/api/clients?id=test", { method: "DELETE" });
   assertStatus("DELETE /api/clients sem sessao", deleteClientResponse.status, 401);
@@ -170,6 +177,9 @@ async function verifyAnonymousApiProtection() {
     body: "{}",
   });
   assertStatus("POST /api/identity/avatar sem sessao", uploadIdentityAvatarResponse.status, 401);
+
+  const avatarFileResponse = await request("/api/identity/avatar/file?key=test");
+  assertStatus("GET /api/identity/avatar/file sem sessao", avatarFileResponse.status, 401);
 
   const deleteIdentitySessionsResponse = await request("/api/identity/sessions?id=test", {
     method: "DELETE",

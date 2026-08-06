@@ -15,6 +15,7 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PermissoesRouteImport } from './routes/permissoes'
 import { Route as ProdutosRouteImport } from './routes/produtos'
@@ -54,6 +55,11 @@ const ContratosRoute = ContratosRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/financeiro': typeof FinanceiroRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/permissoes': typeof PermissoesRoute
   '/produtos': typeof ProdutosRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/leads'
     | '/login'
     | '/permissoes'
     | '/produtos'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/leads'
     | '/login'
     | '/permissoes'
     | '/produtos'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/financeiro'
+    | '/leads'
     | '/login'
     | '/permissoes'
     | '/produtos'
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   PermissoesRoute: typeof PermissoesRoute
   ProdutosRoute: typeof ProdutosRoute
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -373,6 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   PermissoesRoute: PermissoesRoute,
   ProdutosRoute: ProdutosRoute,

@@ -6,6 +6,7 @@ import { handleCompanyLookupApiRequest } from "./features/clients/server/company
 import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api";
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
 import { handleIdentityApiRequest } from "./features/identity/server/identity-api";
+import { handleLeadsApiRequest } from "./features/leads/server/leads-api";
 import { handleBetterAuthRequest } from "./features/identity/server/better-auth";
 import { handleSettingsApiRequest } from "./features/settings/server/settings-api";
 import { handleUsersApiRequest } from "./features/users/server/users-api";
@@ -59,6 +60,9 @@ export default {
 
       const companyLookupResponse = await handleCompanyLookupApiRequest(request);
       if (companyLookupResponse) return companyLookupResponse;
+
+      const leadsResponse = await handleLeadsApiRequest(request);
+      if (leadsResponse) return leadsResponse;
 
       const appDataResponse = await handleAppDataApiRequest(request);
       if (appDataResponse) return appDataResponse;

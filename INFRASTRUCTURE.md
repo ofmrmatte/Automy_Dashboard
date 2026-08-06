@@ -8,7 +8,7 @@ Esta foundation reconstrói apenas a infraestrutura de dados da Automy. A aplica
 
 Railway PostgreSQL é o banco oficial da Automy.
 
-O runtime oficial do ERP e Vercel. Railway permanece somente como PostgreSQL e infraestrutura de dados necessaria.
+O runtime oficial do ERP e Vercel. Railway permanece como PostgreSQL e Storage S3-compatible privado.
 
 O projeto não deve utilizar Supabase, bancos antigos, mocks ou dados fictícios como fonte da aplicação.
 
@@ -18,6 +18,7 @@ O projeto não deve utilizar Supabase, bancos antigos, mocks ou dados fictícios
 - `railway/seeds`: seeds de configuração de sistema, sem dados de negócio fictícios.
 - `scripts/db/run-sql-directory.mjs`: executor local/CI para migrations e seeds.
 - `src/shared/server/postgres.ts`: adapter server-side para conexão PostgreSQL.
+- `src/shared/server/storage-provider.ts`: adapter server-side para Railway Storage S3-compatible.
 - `src/shared/server/app-urls.ts`: resolucao centralizada de URL canonica e origens confiaveis.
 - `src/shared/server/authz.ts`: sessao, RBAC minimo e contexto de empresa para APIs internas.
 - `src/features/identity/server/better-auth.ts`: configuração oficial Better Auth.
@@ -36,12 +37,19 @@ Ela cria:
 - Organização e RBAC: `companies`, `users`, `roles`, `permissions`, `role_permissions`.
 - Operação ERP: `clients`, `contacts`, `addresses`, `products`, `contracts`, `activities`, `activity_logs`, `audit_logs`.
 - Suporte ao app atual: `user_profiles`, `user_preferences`, `support_tickets`, `scheduled_calls`, `charges`, `app_settings`.
+- CRM e arquivos: `leads`, `file_assets`, `avatar_assets`.
 
 Todas as entidades de domínio usam UUID, timestamps, soft delete, índices, constraints e foreign keys.
 
 A segunda migration alinha os nomes físicos das colunas base do Better Auth ao contrato observado pelo adapter PostgreSQL oficial, preservando os campos adicionais Automy em snake_case.
 
 A terceira migration adiciona a coluna `id` na tabela `rate_limit`, exigida pelo adapter de banco do Better Auth durante o controle de tentativas de autenticação.
+
+Migration RC7:
+
+- `railway/migrations/20260806160000_crm_leads_storage_foundation.sql`
+
+Ela cria `leads` e `file_assets`, adiciona indices operacionais, triggers de `updated_at` e permite `railway_s3` em `avatar_assets.provider`.
 
 ## Seeds
 
@@ -120,7 +128,13 @@ AUTOMY_TRUSTED_ORIGINS=https://app.automy.dev.br,https://automy.dev.br,https://w
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
 BETTER_AUTH_KV_URL=
-AVATAR_STORAGE_PROVIDER=cloudflare_r2
+STORAGE_PROVIDER=railway_s3
+STORAGE_BUCKET=
+STORAGE_ENDPOINT=
+STORAGE_REGION=
+STORAGE_ACCESS_KEY_ID=
+STORAGE_SECRET_ACCESS_KEY=
+AUTOMY_PUBLIC_LEAD_ORIGINS=https://automy.dev.br,https://www.automy.dev.br
 ```
 
 ### Railway PostgreSQL

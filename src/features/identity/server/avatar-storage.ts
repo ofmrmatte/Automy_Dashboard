@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
 import { RepositoryError } from "@/shared/api/errors";
+import { getStorageProvider } from "@/shared/server/storage-provider";
 
 export type AvatarUploadInput = {
   authUserId: string;
@@ -21,7 +22,7 @@ export type AvatarUploadResult = {
 };
 
 export type AvatarStorageProviderName =
-  "noop" | "local" | "s3" | "cloudflare_r2" | "railway_volume";
+  "noop" | "local" | "s3" | "cloudflare_r2" | "railway_volume" | "railway_s3";
 
 type ProcessedAvatar = {
   image256: Buffer;
@@ -113,32 +114,78 @@ function localProvider(name: "local" | "railway_volume"): AvatarStorageProvider 
   };
 }
 
-const noopProvider: AvatarStorageProvider = {
-  name: "noop",
-  save: async () => {
-    throw new RepositoryError(
-      "Storage persistente de avatar ainda não está configurado. Configure AVATAR_STORAGE_PROVIDER com local, railway_volume, s3 ou cloudflare_r2.",
-    );
-  },
-};
-
-function unavailableObjectStorageProvider(name: "s3" | "cloudflare_r2"): AvatarStorageProvider {
+function objectStorageProvider(name: "railway_s3" | "s3" | "cloudflare_r2"): AvatarStorageProvider {
   return {
     name,
-    save: async () => {
-      throw new RepositoryError(
-        `Adapter ${name} preparado, mas as credenciais de storage ainda não estão configuradas.`,
-      );
+    save: async ({ authUserId, file, processed }) => {
+      const storage = getStorageProvider();
+      if (storage.name !== name) {
+        throw new RepositoryError("Storage de avatar não corresponde ao provider configurado.");
+      }
+
+      const avatarId = randomUUID();
+      const storageKey = `avatars/${authUserId}/${avatarId}`;
+      const metadata = {
+        "checksum-sha256": processed.checksumSha256,
+        "original-file-name": file.name.slice(0, 120),
+      };
+
+      await Promise.all([
+        storage.putObject({
+          key: `${storageKey}/avatar-256.webp`,
+          body: processed.image256,
+          contentType: "image/webp",
+          metadata,
+        }),
+        storage.putObject({
+          key: `${storageKey}/avatar-512.webp`,
+          body: processed.image512,
+          contentType: "image/webp",
+          metadata,
+        }),
+      ]);
+
+      const thumbnail256Url = `/api/identity/avatar/file?key=${encodeURIComponent(
+        `${storageKey}/avatar-256.webp`,
+      )}`;
+      const thumbnail512Url = `/api/identity/avatar/file?key=${encodeURIComponent(
+        `${storageKey}/avatar-512.webp`,
+      )}`;
+
+      return {
+        url: thumbnail512Url,
+        thumbnail256Url,
+        thumbnail512Url,
+        mimeType: "image/webp",
+        size: file.size,
+        storageKey,
+        provider: name,
+        checksumSha256: processed.checksumSha256,
+      };
     },
   };
 }
 
+const noopProvider: AvatarStorageProvider = {
+  name: "noop",
+  save: async () => {
+    throw new RepositoryError(
+      "Storage persistente de avatar ainda não está configurado. Configure STORAGE_PROVIDER com railway_s3.",
+    );
+  },
+};
+
 function getAvatarStorageProvider(): AvatarStorageProvider {
-  const provider = (process.env["AVATAR_STORAGE_PROVIDER"] ?? "noop").toLowerCase();
+  const provider = (
+    process.env["STORAGE_PROVIDER"] ??
+    process.env["AVATAR_STORAGE_PROVIDER"] ??
+    "noop"
+  ).toLowerCase();
   if (provider === "local") return localProvider("local");
   if (provider === "railway_volume") return localProvider("railway_volume");
-  if (provider === "s3") return unavailableObjectStorageProvider("s3");
-  if (provider === "cloudflare_r2") return unavailableObjectStorageProvider("cloudflare_r2");
+  if (provider === "railway_s3") return objectStorageProvider("railway_s3");
+  if (provider === "s3") return objectStorageProvider("s3");
+  if (provider === "cloudflare_r2") return objectStorageProvider("cloudflare_r2");
   return noopProvider;
 }
 

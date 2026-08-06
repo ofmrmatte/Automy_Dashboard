@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0-rc7
+
+- Consolidado `https://app.automy.dev.br` como dominio canonico do ERP.
+- Integrada Landing Page separada ao ERP por `POST /api/public/leads`.
+- Criada foundation de CRM Leads com tabela `leads`, RBAC `leads.read`/`leads.manage`, auditoria, filtro, detalhe e conversao em cliente.
+- Criada tabela `file_assets` e adapter `StorageProvider` para Railway Storage S3-compatible.
+- Avatares passam a suportar `STORAGE_PROVIDER=railway_s3` com arquivos privados servidos por rota autenticada.
+- Aplicado `automy-brand-kit-completo` nos assets publicos do ERP e da Landing.
+- Atualizada a documentacao de infraestrutura, arquitetura e roadmap para Railway PostgreSQL + Railway Storage.
+
 ## Current Project Status
 
 - Release Candidate atual em consolidacao: `v1.0.0-rc6`.

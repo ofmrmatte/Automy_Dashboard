@@ -5,6 +5,8 @@ export type AuthRole = "admin" | "manager" | "operator" | "read_only";
 export type PermissionKey =
   | "users.read"
   | "users.manage"
+  | "leads.read"
+  | "leads.manage"
   | "clients.read"
   | "clients.manage"
   | "products.read"
@@ -40,6 +42,8 @@ const ROLE_PERMISSIONS: Record<AuthRole, PermissionKey[]> = {
   admin: [
     "users.read",
     "users.manage",
+    "leads.read",
+    "leads.manage",
     "clients.read",
     "clients.manage",
     "products.read",
@@ -58,6 +62,8 @@ const ROLE_PERMISSIONS: Record<AuthRole, PermissionKey[]> = {
   ],
   manager: [
     "clients.read",
+    "leads.read",
+    "leads.manage",
     "clients.manage",
     "products.read",
     "products.manage",
@@ -73,6 +79,7 @@ const ROLE_PERMISSIONS: Record<AuthRole, PermissionKey[]> = {
   ],
   operator: [
     "clients.read",
+    "leads.read",
     "products.read",
     "contracts.read",
     "finance.read",
@@ -83,6 +90,7 @@ const ROLE_PERMISSIONS: Record<AuthRole, PermissionKey[]> = {
   ],
   read_only: [
     "clients.read",
+    "leads.read",
     "products.read",
     "contracts.read",
     "finance.read",
