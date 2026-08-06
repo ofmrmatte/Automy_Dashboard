@@ -2,8 +2,8 @@
 
 ## Current Project Status
 
-- Baseline oficial publicada: `v1.0.0-rc3`.
-- Correcoes criticas em preparacao para `v1.0.0-rc4`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc5`.
+- `v1.0.0-rc4` permanece como release de correcao critica de seguranca e origem Railway.
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
 - Arquitetura Feature First consolidada.
@@ -13,6 +13,12 @@
 - Envio transacional de e-mails de autenticacao pendente de provedor aprovado.
 
 ## Unreleased
+
+- Nenhuma alteracao pendente registrada.
+
+## v1.0.0-rc5
+
+- Consolidada a foundation funcional completa na `main` por merge preservando historico da branch `feature/complete-functional-foundation`.
 
 - Implementadas notificacoes operacionais in-app para eventos reais de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
 - Adicionado helper server-side compartilhado para gerar notificacoes respeitando `company_notification_settings` e `notification_preferences`.

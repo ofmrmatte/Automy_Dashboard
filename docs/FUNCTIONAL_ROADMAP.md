@@ -2,7 +2,7 @@
 
 Data: 2026-08-05.
 
-Este roadmap parte da baseline `v1.0.0-rc4`. O objetivo e transformar a foundation atual em ERP operacional, sem alterar Design System, Brand Kit, Login Premium ou infraestrutura Railway.
+Este roadmap parte da baseline `v1.0.0-rc5`. O objetivo e continuar a evolucao do ERP operacional, sem alterar Design System, Brand Kit, Login Premium ou infraestrutura Railway.
 
 ## Sprint 1 - Usuarios, permissoes e RBAC completo
 

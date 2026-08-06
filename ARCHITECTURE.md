@@ -7,7 +7,7 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 ## Current Project Status
 
 - Baseline oficial congelada em `v1.0.0-rc3`; a tag nao foi movida.
-- `v1.0.0-rc4` deve consolidar as correcoes criticas de seguranca e origem Railway.
+- `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.

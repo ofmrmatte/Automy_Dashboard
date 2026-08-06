@@ -1,29 +1,29 @@
-# Functional Audit v1.0.0-rc4
+# Functional Audit v1.0.0-rc5
 
 Data: 2026-08-05.
 
 ## 1. Resumo executivo
 
-A Automy v1.0.0-rc4 esta publicada, sincronizada com `origin/main` e rodando no Railway em producao. O deploy atual verificado esta online em `https://automydashboard-production.up.railway.app`.
+A Automy v1.0.0-rc5 consolida na `main` a foundation funcional completa apos merge da branch `feature/complete-functional-foundation`. O runtime oficial permanece Railway com banco Railway PostgreSQL.
 
-O estado funcional ainda e de foundation: autenticacao oficial, banco Railway PostgreSQL, RBAC inicial, Design System, Brand Kit, Login Premium e arquitetura feature-first estao consolidados. Os modulos de negocio, porem, estao majoritariamente parciais. Existem telas reais e algumas operacoes persistidas no banco. Nesta branch, a Fase 2 conecta perfil, preferencias, saudacao, timezone, header e sessoes aos dados reais do usuario autenticado. Ainda faltam fluxos completos de edicao/exclusao em varios modulos, auditoria automatica ampla e testes autenticados por todos os perfis.
+O estado funcional ainda e de foundation, mas os principais modulos ja possuem persistencia real: autenticacao oficial, banco Railway PostgreSQL, RBAC inicial, Design System, Brand Kit, Login Premium, arquitetura feature-first, Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app estao consolidados. Ainda faltam automacoes, providers externos finais e testes autenticados por todos os perfis.
 
-Ponto critico originalmente confirmado: o administrador nao conseguia criar outros usuarios porque nao existia implementacao funcional do modulo de Usuarios. Nesta branch, a Fase 1 implementa tela, formulario, endpoint, criacao Better Auth com senha temporaria, vinculo de dominio, sessoes, soft delete e matriz de permissoes.
+Ponto critico originalmente confirmado: o administrador nao conseguia criar outros usuarios porque nao existia implementacao funcional do modulo de Usuarios. A foundation funcional implementa tela, formulario, endpoint, criacao Better Auth com senha temporaria, vinculo de dominio, sessoes, soft delete e matriz de permissoes.
 
 ## 2. Sincronizacao e deploy
 
-| Item                | Resultado                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| Branch local        | `main`                                                                               |
-| Status local        | sincronizada com `origin/main`, sem alteracoes antes da documentacao desta auditoria |
-| Tag                 | `v1.0.0-rc4` presente                                                                |
-| Commit da tag       | `3de4647f77f71403cf997cd972861bb74323f9ed`                                           |
-| Railway project     | `Automy_ERP`                                                                         |
-| Railway environment | `production`                                                                         |
-| Railway service     | `Automy_Dashboard`                                                                   |
-| Railway URL         | `https://automydashboard-production.up.railway.app`                                  |
-| Deploy observado    | `a6614e58-f5f0-4cb2-8926-add38029a5ce`                                               |
-| Deploy status       | `SUCCESS`, servico online                                                            |
+| Item                | Resultado                                                               |
+| ------------------- | ----------------------------------------------------------------------- |
+| Branch local        | `main`                                                                  |
+| Status local        | `main` com merge da foundation funcional em validacao para `v1.0.0-rc5` |
+| Tag                 | `v1.0.0-rc5` preparada apos validacoes finais                           |
+| Commit da tag       | definido apos commit final de documentacao RC5                          |
+| Railway project     | `Automy_ERP`                                                            |
+| Railway environment | `production`                                                            |
+| Railway service     | `Automy_Dashboard`                                                      |
+| Railway URL         | `https://automydashboard-production.up.railway.app`                     |
+| Deploy observado    | sera verificado apos push da `main`                                     |
+| Deploy status       | pendente de verificacao pos-push                                        |
 
 ## 3. Perfis de teste
 

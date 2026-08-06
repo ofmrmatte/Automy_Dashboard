@@ -3,7 +3,8 @@
 ## Current Project Status
 
 - `v1.0.0-rc3` congela a baseline oficial da Automy antes dos modulos reais.
-- `v1.0.0-rc4` deve ser criada apos merge das correcoes criticas de seguranca e origem Railway.
+- `v1.0.0-rc4` consolida as correcoes criticas de seguranca e origem Railway.
+- `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - Design System, Brand Kit e Login Premium estao congelados.
@@ -26,20 +27,15 @@
 ## Proxima Etapa
 
 - Seguir para Auditoria administrativa sem reintroduzir mocks.
-- Validar Fase 7 autenticada em producao apos deploy da branch.
-- Validar Fase 3 autenticada em producao apos deploy da branch.
-- Validar Fase 2 autenticada em producao com usuario admin real.
+- Validar os modulos consolidados em producao apos deploy da RC5.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
-- Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
-- Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
 - Continuar desenvolvimento dos modulos de negocio: Auditoria administrativa e validacoes autenticadas por role.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
-- Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para relatorios e modulos posteriores.
+- Evoluir automacoes de agenda, SLA, e-mail transacional e storage oficial.
 
 ## Fase 1 - Usuarios e Permissoes
 
