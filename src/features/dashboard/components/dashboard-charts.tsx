@@ -1,6 +1,8 @@
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -9,7 +11,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ClientGrowthPoint, RevenueGrowthPoint } from "@/features/dashboard/types";
+import type {
+  ClientGrowthPoint,
+  ProductUsagePoint,
+  RevenueGrowthPoint,
+  StatusDistributionPoint,
+} from "@/features/dashboard/types";
 
 const tooltipStyle = {
   borderRadius: 8,
@@ -85,7 +92,13 @@ export function RevenueChart({ data }: { data: RevenueGrowthPoint[] }) {
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value) => [`R$ ${value} mil`, "Receita"]}
+            formatter={(value) => [
+              new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              }).format(Number(value)),
+              "Receita",
+            ]}
           />
           <Area
             type="monotone"
@@ -95,6 +108,64 @@ export function RevenueChart({ data }: { data: RevenueGrowthPoint[] }) {
             fill="url(#revenueFill)"
           />
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export function DistributionChart({
+  data,
+  valueLabel,
+}: {
+  data: StatusDistributionPoint[];
+  valueLabel: string;
+}) {
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis
+            dataKey="name"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
+          <YAxis
+            allowDecimals={false}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value), valueLabel]} />
+          <Bar dataKey="value" name={valueLabel} fill="var(--primary)" radius={[8, 8, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export function ProductUsageChart({ data }: { data: ProductUsagePoint[] }) {
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis
+            dataKey="name"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
+          <YAxis
+            allowDecimals={false}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value), "Clientes"]} />
+          <Bar dataKey="clients" name="Clientes" fill="var(--chart-2)" radius={[8, 8, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

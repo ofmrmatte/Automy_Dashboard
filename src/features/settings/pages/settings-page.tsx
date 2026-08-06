@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { ProfileSettingsPanel } from "@/features/identity/components/profile-settings-panel";
+import { CompanySettingsPanel } from "@/features/settings/components/company-settings-panel";
+import { IntegrationsSettingsPanel } from "@/features/settings/components/integrations-settings-panel";
+import { NotificationsSettingsPanel } from "@/features/settings/components/notifications-settings-panel";
+import { SecuritySettingsPanel } from "@/features/settings/components/security-settings-panel";
 import { SETTINGS_SECTIONS } from "@/features/settings/constants/settings";
 import type { SettingsSectionId } from "@/features/settings/types";
 import { PermissionsPage } from "@/features/users/pages/permissions-page";
 import { UsersPage } from "@/features/users/pages/users-page";
-import { EmptyState } from "@/shared/components/empty-state";
 import { PageHeader } from "@/shared/components/page-header";
-import { Card } from "@/shared/components/ui";
 
 export function SettingsPage() {
   const [active, setActive] = useState<SettingsSectionId>("Perfil");
@@ -39,18 +41,19 @@ export function SettingsPage() {
         </nav>
         {active === "Perfil" ? (
           <ProfileSettingsPanel />
+        ) : active === "Empresa" ? (
+          <CompanySettingsPanel />
         ) : active === "Usuários" ? (
           <UsersPage />
         ) : active === "Permissões" ? (
           <PermissionsPage />
-        ) : (
-          <Card>
-            <EmptyState
-              title={`${active} sem configuração ativa`}
-              description="Esta área será conectada quando as regras reais do módulo forem implementadas."
-            />
-          </Card>
-        )}
+        ) : active === "Segurança" ? (
+          <SecuritySettingsPanel />
+        ) : active === "Integrações" ? (
+          <IntegrationsSettingsPanel />
+        ) : active === "Notificações" ? (
+          <NotificationsSettingsPanel />
+        ) : null}
       </div>
     </div>
   );

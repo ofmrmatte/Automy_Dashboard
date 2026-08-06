@@ -92,6 +92,128 @@ O modulo `src/features/identity` centraliza autenticacao, perfil e preferencias 
 - Perfil: dados de usuario Better Auth, dados complementares de perfil, avatar, senha, preferencias e sessoes ativas.
 - Avatar: estrutura mantida no dominio de identidade; upload definitivo sera conectado a storage dedicado em etapa futura.
 
+## Configuracoes
+
+O modulo `src/features/settings` centraliza configuracoes reais de empresa, seguranca, integracoes e notificacoes.
+
+- UI: `src/features/settings/components`.
+- Queries: `src/features/settings/api/settings.queries.ts`.
+- Repository: `src/features/settings/repositories/settings.repository.ts`.
+- Service: `src/features/settings/services/settings.service.ts`.
+- API interna: `src/features/settings/server/settings-api.ts`.
+- Validacao: `src/features/settings/validation.ts`.
+
+Endpoints protegidos:
+
+- `GET/PATCH /api/settings/company`
+- `GET/PATCH /api/settings/security`
+- `GET /api/settings/integrations`
+- `PATCH /api/settings/integrations/:provider`
+- `POST /api/settings/integrations/:provider/test`
+- `GET/PATCH /api/settings/notifications`
+- `GET /api/notifications`
+- `PATCH /api/notifications/:id/read`
+- `PATCH /api/notifications/:id/archive`
+- `POST /api/notifications/read-all`
+
+Regras:
+
+- `company_id` sempre e derivado da sessao.
+- `settings.manage` e obrigatorio para edicao de Empresa, Seguranca corporativa e Integracoes.
+- Preferencias pessoais de notificacao sao gravadas apenas para o usuario autenticado.
+- Eventos operacionais usam `src/shared/server/notifications.ts` e geram notificacoes in-app conforme preferencias de empresa e usuario.
+- Secrets de integracoes nao sao retornados ao frontend; o status usa metadados seguros e presenca de variaveis de ambiente.
+- Alteracoes relevantes geram `audit_logs`.
+
+## Dashboard
+
+O modulo `src/features/dashboard` consome apenas dados reais agregados pela API interna. A pagina segue React Query -> Service -> Repository -> `/api/dashboard/*`; as agregacoes server-side derivam `company_id` da sessao Better Auth e aplicam soft delete.
+
+- `GET /api/dashboard/summary`: clientes, contratos, MRR/ARR, cobrancas, tickets, agendamentos e usuarios ativos conforme permissoes.
+- `GET /api/dashboard/charts`: crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- `GET /api/dashboard/recent-clients`: ultimos clientes cadastrados da empresa autenticada.
+- `GET /api/dashboard/activity`: eventos recentes em `activity_logs`.
+- Series mensais usam `user_preferences.time_zone` com fallback `America/Sao_Paulo`.
+
+## Clientes
+
+O modulo `src/features/clients` usa formulario React Hook Form + Zod e persiste dados reais via `/api/clients`.
+
+- `GET /api/clients`: lista e detalha clientes da empresa autenticada, com contato e endereco principal.
+- `POST /api/clients`: cria cliente, contato principal e endereco principal em transacao.
+- `PATCH /api/clients`: atualiza dados cadastrais, status, contato e endereco.
+- `DELETE /api/clients?id=`: aplica soft delete.
+- Todas as escritas exigem `clients.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Documentos/anexos nao sao simulados; dependem de storage oficial.
+
+## Produtos
+
+O modulo `src/features/products` usa formulario React Hook Form + Zod e persiste portfolio, termos comerciais e modelo de contrato via `/api/products`.
+
+- `GET /api/products`: lista produtos da empresa autenticada com contadores reais de clientes e contratos vinculados.
+- `POST /api/products`: cria produto com campos operacionais, termos comerciais e template de contrato.
+- `PATCH /api/products`: atualiza cadastro, status, termos e contrato; tambem suporta ativar/inativar.
+- `DELETE /api/products?id=`: aplica soft delete.
+- Todas as escritas exigem `products.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Vinculos com clientes sao calculados por contratos reais; nao ha simulacao de uso.
+
+## Contratos
+
+O modulo `src/features/contracts` usa formulario React Hook Form + Zod e persiste o ciclo de vida comercial via `/api/contracts`.
+
+- `GET /api/contracts`: lista contratos da empresa autenticada com cliente e produto relacionados.
+- `POST /api/contracts`: cria contrato e item inicial em `contract_items`.
+- `PATCH /api/contracts`: atualiza dados comerciais e status; suporta ativar, suspender, renovar, cancelar e encerrar.
+- `DELETE /api/contracts?id=`: aplica soft delete.
+- Todas as escritas exigem `contracts.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Datas de contrato sao persistidas como `date`; Agenda persiste `start_at`/`end_at` em UTC com timezone original do agendamento.
+
+## Suporte
+
+O modulo `src/features/support` usa formulario React Hook Form + Zod e persiste tickets via `/api/support/tickets`.
+
+- `GET /api/support/tickets`: lista tickets da empresa autenticada com cliente, responsavel, mensagens, eventos e anexos.
+- `POST /api/support/tickets`: cria ticket em transacao, validando cliente real da empresa e responsavel opcional.
+- `PATCH /api/support/tickets`: atualiza cadastro, prioridade, status, SLA, mensagens e anexos por URL/metadados.
+- `DELETE /api/support/tickets?id=`: aplica soft delete.
+- `support_ticket_messages` registra atualizacoes internas/clientes.
+- `support_ticket_events` registra historico operacional.
+- `support_ticket_attachments` registra metadados/URL; upload binario depende de storage oficial.
+- Todas as escritas exigem `support.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+
+## Agenda
+
+O modulo `src/features/scheduling` usa formulario React Hook Form + Zod e persiste calls via `/api/scheduled-calls`.
+
+- `GET /api/scheduled-calls`: lista calls da empresa autenticada com cliente vinculado.
+- `POST /api/scheduled-calls`: cria call em transacao, validando cliente real da empresa, intervalo e timezone.
+- `PATCH /api/scheduled-calls`: atualiza dados, permite reagendar e alterar status para agendada, reagendada, concluida ou cancelada.
+- `DELETE /api/scheduled-calls?id=`: aplica soft delete.
+- `start_at` e `end_at` sao armazenados em UTC; a interface converte para o timezone do usuario.
+- Todas as escritas exigem `schedule.manage`, derivam `company_id` da sessao e registram `audit_logs` e `activity_logs`.
+- Lembretes ficam modelados por `reminder_minutes`; disparo ativo dependera do modulo de notificacoes/agendador.
+
+## Relatorios
+
+O modulo `src/features/reports` usa repository/service e consome o endpoint protegido `/api/reports`.
+
+- `GET /api/reports?kind=&period=` retorna linhas normalizadas de relatorio a partir do Railway PostgreSQL.
+- `kind` suporta `clients`, `products`, `contracts`, `finance`, `scheduling`, `support`, `users`, `permissions` e `audit`.
+- `period` suporta `all`, `last_30_days`, `quarter` e `year`, aplicado server-side quando o relatorio possui data operacional.
+- Cada tipo de relatorio exige a permissao de leitura do dominio correspondente; Auditoria exige `audit.read`.
+- A API deriva `company_id` da sessao Better Auth e nunca aceita empresa enviada pelo cliente.
+- Exportacoes CSV, XLSX e PDF sao geradas no cliente a partir do payload real; arquivos vazios continuam validos e nao usam dados ficticios.
+
+## Busca Global
+
+O modulo `src/features/search` usa repository/service, React Query e um command palette no header.
+
+- `GET /api/search?q=` executa busca real no Railway PostgreSQL.
+- A API exige sessao Better Auth, deriva `company_id` do usuario autenticado e nunca aceita empresa enviada pelo cliente.
+- A busca cobre Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- Cada fonte so e consultada quando o usuario possui a permissao de leitura correspondente.
+- Consultas usam parametros SQL e retornam resultados normalizados para a UI.
+
 ## Railway PostgreSQL
 
 O acesso server-side fica em `src/shared/server/postgres.ts` e le:
@@ -112,6 +234,15 @@ As migrations ativas da foundation sao:
 - `20260805010000_automy_foundation_schema.sql`
 - `20260805012000_align_better_auth_column_names.sql`
 - `20260805140000_align_rate_limit_primary_key.sql`
+- `20260805190000_align_user_statuses.sql`
+- `20260805200000_identity_preferences_foundation.sql`
+- `20260805213000_settings_foundation.sql`
+- `20260805223000_clients_operational_fields.sql`
+- `20260805233000_products_operational_fields.sql`
+- `20260806000000_contracts_lifecycle_fields.sql`
+- `20260806010000_finance_billing_lifecycle.sql`
+- `20260806020000_scheduling_timezone_lifecycle.sql`
+- `20260806030000_support_ticket_lifecycle.sql`
 
 A migration foundation cria:
 
@@ -125,14 +256,19 @@ A migration foundation cria:
 - `addresses`
 - `products`
 - `contracts`
+- `contract_items`
 - `activities`
 - `activity_logs`
 - `audit_logs`
 - `user_profiles`
 - `user_preferences`
 - `support_tickets`
+- `support_ticket_messages`
+- `support_ticket_events`
+- `support_ticket_attachments`
 - `scheduled_calls`
 - `charges`
+- `payment_webhook_events`
 - `app_settings`
 - Better Auth: `user`, `session`, `account`, `verification`, `rate_limit`
 

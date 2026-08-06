@@ -50,7 +50,11 @@ async function verifyAnonymousApiProtection() {
     "/api/scheduled-calls",
     "/api/settings/profile?authUserId=test",
     "/api/dashboard/summary",
+    "/api/dashboard/charts",
+    "/api/dashboard/recent-clients",
     "/api/dashboard/activity",
+    "/api/reports?kind=clients&period=all",
+    "/api/search?q=matheus",
     "/api/finance/charges",
     "/api/identity/profile",
     "/api/identity/preferences",
@@ -58,6 +62,11 @@ async function verifyAnonymousApiProtection() {
     "/api/users",
     "/api/users/sessions?id=test",
     "/api/permissions",
+    "/api/settings/company",
+    "/api/settings/security",
+    "/api/settings/integrations",
+    "/api/settings/notifications",
+    "/api/notifications",
   ];
 
   for (const endpoint of internalEndpoints) {
@@ -68,8 +77,59 @@ async function verifyAnonymousApiProtection() {
   const writeResponse = await request("/api/finance/charges", { method: "POST", body: "{}" });
   assertStatus("POST /api/finance/charges sem sessao", writeResponse.status, 401);
 
+  const updateFinanceResponse = await request("/api/finance/charges", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/finance/charges sem sessao", updateFinanceResponse.status, 401);
+
+  const deleteFinanceResponse = await request("/api/finance/charges?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/finance/charges sem sessao", deleteFinanceResponse.status, 401);
+
   const createUserResponse = await request("/api/users", { method: "POST", body: "{}" });
   assertStatus("POST /api/users sem sessao", createUserResponse.status, 401);
+
+  const updateClientResponse = await request("/api/clients", { method: "PATCH", body: "{}" });
+  assertStatus("PATCH /api/clients sem sessao", updateClientResponse.status, 401);
+
+  const deleteClientResponse = await request("/api/clients?id=test", { method: "DELETE" });
+  assertStatus("DELETE /api/clients sem sessao", deleteClientResponse.status, 401);
+
+  const updateProductResponse = await request("/api/products", { method: "PATCH", body: "{}" });
+  assertStatus("PATCH /api/products sem sessao", updateProductResponse.status, 401);
+
+  const deleteProductResponse = await request("/api/products?id=test", { method: "DELETE" });
+  assertStatus("DELETE /api/products sem sessao", deleteProductResponse.status, 401);
+
+  const updateContractResponse = await request("/api/contracts", { method: "PATCH", body: "{}" });
+  assertStatus("PATCH /api/contracts sem sessao", updateContractResponse.status, 401);
+
+  const deleteContractResponse = await request("/api/contracts?id=test", { method: "DELETE" });
+  assertStatus("DELETE /api/contracts sem sessao", deleteContractResponse.status, 401);
+
+  const updateSupportResponse = await request("/api/support/tickets", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/support/tickets sem sessao", updateSupportResponse.status, 401);
+
+  const deleteSupportResponse = await request("/api/support/tickets?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/support/tickets sem sessao", deleteSupportResponse.status, 401);
+
+  const updateScheduledCallResponse = await request("/api/scheduled-calls", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/scheduled-calls sem sessao", updateScheduledCallResponse.status, 401);
+
+  const deleteScheduledCallResponse = await request("/api/scheduled-calls?id=test", {
+    method: "DELETE",
+  });
+  assertStatus("DELETE /api/scheduled-calls sem sessao", deleteScheduledCallResponse.status, 401);
 
   const passwordResponse = await request("/api/users/password", { method: "POST", body: "{}" });
   assertStatus("POST /api/users/password sem sessao", passwordResponse.status, 401);
@@ -119,6 +179,39 @@ async function verifyAnonymousApiProtection() {
     deleteIdentitySessionsResponse.status,
     401,
   );
+
+  const updateCompanyResponse = await request("/api/settings/company", {
+    method: "PATCH",
+    body: "{}",
+  });
+  assertStatus("PATCH /api/settings/company sem sessao", updateCompanyResponse.status, 401);
+
+  const testIntegrationResponse = await request("/api/settings/integrations/railway/test", {
+    method: "POST",
+  });
+  assertStatus(
+    "POST /api/settings/integrations/:provider/test sem sessao",
+    testIntegrationResponse.status,
+    401,
+  );
+
+  const archiveNotificationResponse = await request("/api/notifications/test/archive", {
+    method: "PATCH",
+  });
+  assertStatus(
+    "PATCH /api/notifications/:id/archive sem sessao",
+    archiveNotificationResponse.status,
+    401,
+  );
+
+  const markAllNotificationsResponse = await request("/api/notifications/read-all", {
+    method: "POST",
+  });
+  assertStatus(
+    "POST /api/notifications/read-all sem sessao",
+    markAllNotificationsResponse.status,
+    401,
+  );
 }
 
 async function verifyUntrustedOrigin() {
@@ -161,14 +254,39 @@ async function verifyAdminFlow() {
     headers: { cookie },
     body: "{}",
   });
-  assertStatus("Admin autorizado antes do metodo nao implementado", writeResponse.status, 405);
+  assertStatus("Admin autorizado antes da validacao financeira", writeResponse.status, 400);
 
   const profileResponse = await request("/api/identity/profile", {
     headers: { cookie },
   });
-  record("Sessao persistente admin", profileResponse.status !== 401, {
+  record("Sessao persistente admin", profileResponse.status !== 401 ? "passed" : "failed", {
     actual: profileResponse.status,
   });
+
+  const companySettingsResponse = await request("/api/settings/company", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/settings/company", companySettingsResponse.status, 200);
+
+  const notificationSettingsResponse = await request("/api/settings/notifications", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/settings/notifications", notificationSettingsResponse.status, 200);
+
+  const notificationsResponse = await request("/api/notifications", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/notifications", notificationsResponse.status, 200);
+
+  const reportResponse = await request("/api/reports?kind=clients&period=all", {
+    headers: { cookie },
+  });
+  assertStatus("Admin lendo /api/reports", reportResponse.status, 200);
+
+  const searchResponse = await request("/api/search?q=matheus", {
+    headers: { cookie },
+  });
+  assertStatus("Admin pesquisando /api/search", searchResponse.status, 200);
 }
 
 async function verifyReadOnlyWriteBlock() {

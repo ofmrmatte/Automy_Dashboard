@@ -69,26 +69,71 @@ Critério de pronto:
 - Alterar timezone muda exibicao de datas/horarios.
 - Preferencias persistem apos refresh.
 
+## Sprint 2.1 - Configuracoes corporativas
+
+Objetivo: remover empty states de Configuracoes e persistir dados administrativos reais.
+
+Status nesta branch: implementado para Empresa, Seguranca, Integracoes e Notificacoes.
+
+Escopo entregue:
+
+- Empresa em `companies`: dados institucionais, endereco, preferencias organizacionais, identidade e faturamento.
+- Seguranca em `company_security_settings` e `login_history`: senha/sessoes Better Auth, politica corporativa e historico.
+- Integracoes em `company_integrations`: status seguro, metadados publicos e teste controlado sem exposicao de secrets.
+- Notificacoes em `notification_preferences`, `company_notification_settings`, `notifications` e `notification_deliveries`.
+- Centro de notificacoes no header com contagem real de nao lidas, marcacao como lida e arquivamento.
+- RBAC server-side com `settings.read` e `settings.manage`.
+
+Pendencias:
+
+- Provider de e-mail transacional para convites, recuperacao e verificacao.
+- Storage binario oficial para avatar/logo.
+- MFA real no Better Auth.
+- Lembretes automaticos por scheduler e envio por e-mail quando houver provedor transacional aprovado.
+
+## Sprint 2.2 - Dashboard real
+
+Objetivo: transformar o Dashboard em leitura operacional real sobre Railway PostgreSQL.
+
+Status nesta branch: implementado.
+
+Escopo entregue:
+
+- Metricas reais agregadas server-side por `company_id` e `deleted_at`.
+- Cards para clientes ativos, em implantacao e inativos.
+- Cards para contratos ativos, vencimento em 30/60 dias, MRR e ARR.
+- Cards para cobrancas pendentes/vencidas, chamados abertos/criticos, agendamentos futuros e usuarios ativos.
+- Graficos reais para crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- Clientes recentes via endpoint dedicado e atividades recentes via `activity_logs`.
+- Empty states reais quando nao houver dados de dominio.
+
+Pendencias:
+
+- Gerar `activity_logs` em todos os CRUDs dos modulos seguintes.
+- Validar o Dashboard com usuarios reais manager/operator/read_only.
+- Evoluir filtros por periodo quando os modulos de negocio estiverem completos.
+
 ## Sprint 3 - Clientes
 
 Objetivo: completar o cadastro e relacionamento de clientes.
 
-Escopo:
+Status nesta branch: implementado para cadastro operacional completo.
 
-- Editar cliente.
-- Soft delete/inativacao.
-- Contatos vinculados.
-- Enderecos vinculados.
-- Produtos vinculados.
-- Contratos vinculados.
-- Documentos.
-- Historico.
-- Logo/avatar da empresa.
-- Busca server-side.
-- Filtros persistentes.
-- Paginacao server-side.
-- Audit logs.
-- Isolamento por `company_id`.
+Escopo entregue:
+
+- Criar, listar, detalhar e editar cliente.
+- Inativar, reativar e excluir logicamente.
+- Persistir campos oficiais de cadastro, inscricoes, segmento, contato principal, endereco principal, site, observacoes e logo por URL.
+- Busca, filtro por status e paginacao inicial.
+- Validacao com React Hook Form + Zod.
+- Audit log e activity log nas escritas.
+- Isolamento por `company_id` e RBAC em backend.
+
+Pendencias:
+
+- Produtos, contratos, cobrancas, tickets e agenda vinculados serao completados nos modulos correspondentes.
+- Documentos/anexos dependem de storage oficial aprovado.
+- Paginacao server-side podera substituir a paginacao client-side quando houver volume operacional.
 
 Critério de pronto:
 
@@ -100,52 +145,58 @@ Critério de pronto:
 
 Objetivo: consolidar o portfolio comercial e operacional.
 
+Status nesta branch: implementado como Fase 6 funcional inicial. Falta validar o fluxo completo com usuarios reais por role e aprofundar versionamento historico quando houver contratos reais.
+
 Escopo:
 
-- Revisar criacao/edicao atual com RHF + Zod.
-- Substituir `window.confirm` por modal do Design System.
-- Completar ativacao/inativacao.
-- Soft delete com confirmacao.
-- Vincular clientes e contratos.
-- Versionamento.
-- Categorias reais.
-- Quantidade de clientes por produto.
-- Audit logs.
-- Paginacao server-side.
+- Criacao/edicao revisada com React Hook Form + Zod.
+- Confirmacao de exclusao usando modal do Design System.
+- Ativacao e inativacao completas.
+- Soft delete com auditoria.
+- Vinculo com clientes e contratos calculado por contratos reais.
+- Categorias reais persistidas.
+- Quantidade de clientes e contratos por produto.
+- Audit logs e activity logs.
+- Paginacao client-side inicial com componente compartilhado.
 
 Critério de pronto:
 
-- CRUD completo testado por role.
-- Produto removido nao aparece em novos contratos.
+- CRUD completo validado tecnicamente com usuario admin.
+- Produto removido nao aparece em listagens operacionais.
+- Pendencias: validacao por role e versionamento historico.
 
 ## Sprint 5 - Contratos
 
 Objetivo: criar ciclo de vida real de contratos.
 
+Status nesta branch: implementado como Fase 7 funcional inicial. Falta validar com usuarios reais por role e definir assinatura/anexos/versionamento juridico.
+
 Escopo:
 
-- Editar contrato.
-- Alterar status.
+- Edicao de contrato.
+- Alteracao de status.
 - Vigencia real.
-- Valor mensal e anual.
-- Renovacao.
-- Cancelamento.
+- Valor mensal, implantacao e ARR derivado pelo Dashboard.
+- Renovacao, suspensao, cancelamento e encerramento.
 - Vinculo obrigatorio com cliente/produto.
-- Historico.
-- Contratos a vencer.
-- Auditoria.
-- Exportacao/visualizacao da minuta.
+- Item de contrato em `contract_items`.
+- Contratos a vencer refletidos pelo Dashboard.
+- Auditoria e activity logs.
+- Visualizacao da minuta.
 
 Critério de pronto:
 
 - Dashboard reflete contratos e receita.
 - Contratos a vencer batem com banco.
+- Pendencias: validacao por role, assinatura digital, anexos e versionamento juridico.
 
 ## Sprint 6 - Financeiro
 
 Objetivo: transformar o financeiro em modulo operacional.
 
-Escopo:
+Status nesta branch: implementado como Fase 8 funcional inicial. Falta validar Mercado Pago em sandbox/producao com credenciais oficiais e definir se a geracao de pagamentos externos sera feita pela Automy ou por fluxo operacional externo.
+
+Escopo entregue:
 
 - CRUD de cobrancas.
 - Baixa manual.
@@ -153,33 +204,45 @@ Escopo:
 - Vencimento/inadimplencia.
 - Receita mensal/anual real.
 - Recebimentos previstos.
-- Integracao Mercado Pago sandbox e producao.
-- Webhook com assinatura obrigatoria em producao.
-- Relatorios financeiros.
+- Endpoint protegido com RBAC `finance.read` e `finance.manage`.
+- Audit logs e activity logs.
+- Webhook Mercado Pago com assinatura obrigatoria em producao, protecao contra replay, idempotencia e eventos persistidos.
+- Conciliacao de webhook contra cobranca existente por referencia externa ou pagamento ja conhecido.
+
+Pendencias:
+
+- Credenciais Mercado Pago sandbox/producao.
+- Fluxo comercial para geracao de pagamento externo.
+- Relatorios financeiros avancados.
 - Permissoes `finance.read` e `finance.manage`.
-- Audit logs.
 
 Critério de pronto:
 
 - Metric cards financeiros nao usam zero hardcoded.
-- Webhook cria/atualiza cobranca real.
+- Cobrancas persistem apos refresh/login.
+- Webhook atualiza cobranca real quando a referencia externa corresponde a uma cobranca existente.
 
 ## Sprint 7 - Agenda e timezone de agendamentos
 
 Objetivo: tornar a agenda confiavel por fuso horario.
 
-Escopo:
+Status nesta branch: implementado como Fase 9 funcional inicial. Falta ativar lembretes por scheduler e validar por usuarios reais de cada role.
 
-- Remodelar agendamento para armazenar timestamp UTC.
-- Persistir timezone original do usuario.
-- Converter exibicao para timezone do usuario.
-- Criar/editar/cancelar call.
-- Responsaveis.
-- Cliente vinculado.
-- Lembretes.
-- Status.
-- Permissoes.
-- Audit logs.
+Escopo entregue:
+
+- Agendamentos armazenam `start_at` e `end_at` em UTC.
+- Timezone original do agendamento e persistido.
+- Interface converte exibicao para timezone do usuario.
+- Criar, visualizar, editar, reagendar, concluir, cancelar e excluir logicamente.
+- Responsavel e cliente vinculado reais.
+- Participantes, link, status, observacoes e lembrete em minutos.
+- Endpoint protegido com RBAC `schedule.read` e `schedule.manage`.
+- Audit logs e activity logs.
+
+Pendencias:
+
+- Disparo real de lembretes por scheduler/event worker.
+- Validacao por manager/operator/read_only.
 
 Critério de pronto:
 
@@ -190,16 +253,25 @@ Critério de pronto:
 
 Objetivo: completar operacao de tickets.
 
-Escopo:
+Status nesta branch: implementado como Fase 10 funcional inicial. Falta ativar storage binario, automacoes de SLA e validacao por usuarios reais de cada role.
 
-- Editar ticket.
-- Alterar status.
-- Prioridade.
-- Responsavel.
-- Mensagens/comentarios.
-- Historico.
-- SLA.
-- Anexos.
+Escopo entregue:
+
+- Criar, visualizar, editar, atribuir e excluir logicamente.
+- Alterar prioridade e status.
+- Resolver, reabrir e cancelar ticket.
+- Mensagens internas.
+- Historico operacional em eventos.
+- SLA de primeira resposta e resolucao.
+- Anexos por URL/metadados, sem filesystem efemero.
+- Cliente e responsavel vinculados.
+- Audit logs e activity logs.
+
+Pendencias:
+
+- Storage oficial para upload binario.
+- Automacoes de SLA.
+- Validacao por manager/operator/read_only.
 - Encerramento.
 - Permissoes por role.
 - Audit logs e activity logs.
@@ -213,12 +285,13 @@ Critério de pronto:
 
 Objetivo: entregar administracao e analise operacional.
 
-Escopo:
+Status nesta branch: Relatorios implementado como Fase 11 funcional inicial; Configuracoes avancadas ja foram entregues na Fase 3. Falta validar exports por role e evoluir envio/agendamento automatico.
+
+Escopo entregue:
 
 - Filtros reais por periodo.
-- Exportacao XLSX.
-- Exportacao PDF.
-- Relatorios por modulo.
+- Exportacao CSV, XLSX e PDF.
+- Relatorios por modulo: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria.
 - Configuracoes da empresa.
 - Configuracoes de seguranca.
 - Integracoes.
@@ -226,10 +299,56 @@ Escopo:
 - Preferencias organizacionais.
 - Dominio e dados institucionais.
 
+Pendencias:
+
+- Validacao por manager/operator/read_only.
+- Agendamento e envio automatico de relatorios quando houver provedor transacional aprovado.
+
 Critério de pronto:
 
 - Relatorios usam dados reais, filtros server-side e respeitam permissoes.
 - Configuracoes deixam de ser empty states.
+
+## Sprint 10 - Busca Global
+
+Objetivo: permitir localizacao rapida de registros reais sem duplicar logica de cada modulo.
+
+Status nesta branch: implementado como Fase 12 funcional inicial. Falta validar comportamento por manager/operator/read_only com usuarios reais.
+
+Escopo entregue:
+
+- Command palette no header.
+- Atalho `Ctrl/Cmd+K`.
+- Endpoint protegido `/api/search`.
+- Busca por Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- RBAC por dominio antes de consultar cada fonte.
+- Estados de carregamento, vazio e erro na interface.
+
+Pendencias:
+
+- Ranking avancado por relevancia com volume real.
+- Testes autenticados por todos os perfis.
+
+## Sprint 11 - Notificacoes operacionais
+
+Objetivo: conectar o centro de notificacoes a eventos reais dos modulos de negocio.
+
+Status nesta branch: implementado como Fase 13 funcional inicial. Falta scheduler de lembretes e provider de e-mail transacional.
+
+Escopo entregue:
+
+- Emissao in-app real para eventos de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Respeito a `company_notification_settings` e `notification_preferences`.
+- Criacao automatica das preferencias padrao do usuario quando necessario.
+- Persistencia em `notifications` e rastreio em `notification_deliveries`.
+- Centro de notificacoes com contagem de nao lidas, marcar como lida, marcar todas e arquivar.
+- Endpoints protegidos para listar, ler e arquivar notificacoes.
+
+Pendencias:
+
+- Scheduler/event worker para lembretes futuros de agenda, contrato, cobranca e SLA.
+- Envio por e-mail quando houver provider transacional aprovado.
+- Testes autenticados por todos os perfis.
 
 ## Dependencias transversais
 

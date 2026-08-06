@@ -14,6 +14,42 @@
 
 ## Unreleased
 
+- Implementadas notificacoes operacionais in-app para eventos reais de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Adicionado helper server-side compartilhado para gerar notificacoes respeitando `company_notification_settings` e `notification_preferences`.
+- Adicionado arquivamento de notificacoes no centro do header e endpoint protegido `PATCH /api/notifications/:id/archive`.
+- Adicionado teste funcional autenticado para emissao, leitura e arquivamento de notificacoes reais.
+- Implementada Busca Global real no header com command palette, atalho `Ctrl/Cmd+K`, endpoint protegido `/api/search`, RBAC por dominio e consultas parametrizadas no Railway PostgreSQL.
+- Busca Global agora cobre Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria conforme permissoes do usuario autenticado.
+- Implementado modulo Relatorios com endpoint protegido `/api/reports`, filtros reais por periodo, RBAC por dominio e exportacao CSV, XLSX e PDF a partir de dados reais do Railway PostgreSQL.
+- Relatorios agora cobrem Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria, sempre com `company_id` derivado da sessao.
+- Criado exportador client-side reutilizavel para gerar arquivos vazios validos quando nao houver registros, sem mocks ou placeholders.
+- Implementado modulo Suporte completo com criar, listar, visualizar, editar, atribuir, alterar prioridade/status, mensagens internas, resolver, reabrir, cancelar, soft delete, busca, filtro, paginacao, auditoria e activity log.
+- Criada migration `20260806030000_support_ticket_lifecycle.sql` para ciclo de vida de tickets, SLA, responsavel, tags, mensagens, eventos e anexos por metadados.
+- Finalizado endpoint protegido `/api/support/tickets` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `support.read`/`support.manage`.
+- Implementado modulo Agenda completo com criar, listar, visualizar, editar, reagendar, concluir, cancelar, soft delete, busca, filtro, paginacao, validacao RHF+Zod, auditoria e activity log.
+- Criada migration `20260806020000_scheduling_timezone_lifecycle.sql` para persistencia UTC em `start_at`/`end_at`, timezone original, responsavel, participantes, lembretes, cliente vinculado e indices operacionais.
+- Finalizado endpoint protegido `/api/scheduled-calls` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `schedule.read`/`schedule.manage`.
+- Agenda passou a apresentar horarios no timezone do usuario, mantendo armazenamento em UTC e evitando dependencia do timezone local do servidor.
+- Implementado modulo Financeiro completo com criar, listar, visualizar, editar, marcar como paga, cancelar, detectar atraso, soft delete, filtros, paginacao, validacao RHF+Zod, auditoria e activity log.
+- Criada migration `20260806010000_finance_billing_lifecycle.sql` para status oficiais `pending/paid/overdue/canceled/failed`, campos de conciliacao, indices financeiros e eventos de webhook.
+- Finalizado endpoint protegido `/api/finance/charges` com `GET`, `POST`, `PATCH` e `DELETE`, sempre com `company_id` derivado da sessao e RBAC `finance.read`/`finance.manage`.
+- Preservada integracao Mercado Pago com assinatura de webhook, janela anti-replay, idempotencia por evento, registro de eventos e conciliacao apenas quando houver cobranca correspondente.
+- Implementado modulo Contratos completo com CRUD real, visualizar, editar, ativar, suspender, renovar, cancelar, encerrar, soft delete, filtros, paginacao, validação RHF+Zod, itens de contrato, auditoria e activity log.
+- Criada migration `20260806000000_contracts_lifecycle_fields.sql` para ciclo de vida, campos comerciais e `contract_items`.
+- Implementado modulo Produtos completo com CRUD real, visualizar, editar, ativar/inativar, soft delete, busca, filtros, paginacao, validação RHF+Zod, termos comerciais, modelo de contrato, auditoria e activity log.
+- Criada migration `20260805233000_products_operational_fields.sql` para campos operacionais e indices de produtos.
+- Implementado módulo Clientes completo com CRUD real, edição, inativação/reativação, soft delete, busca, filtro, paginação client-side, validação RHF+Zod, contato/endereço principal, auditoria e activity log.
+- Criada migration `20260805223000_clients_operational_fields.sql` para campos operacionais de clientes.
+- Implementada Fase 4 do Dashboard real com agregacoes server-side no Railway PostgreSQL.
+- Adicionados endpoints protegidos `/api/dashboard/charts` e `/api/dashboard/recent-clients`.
+- Dashboard passou a exibir metricas reais de clientes, contratos, receita, cobrancas, tickets, agendamentos e usuarios ativos conforme permissoes do usuario autenticado.
+- Graficos de crescimento de clientes, receita recorrente, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status passaram a usar dados reais com empty states.
+- Implementada Fase 3 das Configuracoes: Empresa, Seguranca, Integracoes e Notificacoes.
+- Criada migration `20260805213000_settings_foundation.sql` com colunas corporativas em `companies` e tabelas dedicadas para seguranca, integracoes, preferencias e notificacoes.
+- Adicionados endpoints protegidos `/api/settings/company`, `/api/settings/security`, `/api/settings/integrations`, `/api/settings/notifications` e `/api/notifications`.
+- Conectado o sino do header ao centro real de notificacoes in-app com contagem de nao lidas e marcacao como lida.
+- Adicionado registro de login bem-sucedido em `login_history`.
+- Ajustado o runner de migrations para checksum estavel entre CRLF e LF.
 - Implementada Fase 2 da fundacao funcional: Perfil, Preferencias, timezone e personalizacao regional.
 - Substituido o fluxo de perfil/preferencias em `app_settings` por endpoints reais em `user_profiles` e `user_preferences`.
 - Adicionados endpoints protegidos `/api/identity/profile`, `/api/identity/preferences`, `/api/identity/avatar`, `/api/identity/password` e `/api/identity/sessions`.

@@ -1,13 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
   ChevronLeft,
   KeyRound,
   LogOut,
   Menu,
   Monitor,
   Moon,
-  Search,
   Settings,
   Sun,
   User,
@@ -15,8 +13,10 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useIdentity } from "@/features/identity/context/identity-context";
+import { GlobalSearch } from "@/features/search/components/global-search";
+import { NotificationCenter } from "@/features/settings/components/notification-center";
 import { APP_DESCRIPTION, APP_NAVIGATION, APP_NAME } from "@/shared/constants/app";
-import { Button, Input } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { toast } from "@/shared/components/toast";
 import { cn } from "@/shared/utils/cn";
 import { getLocalizedGreeting } from "@/shared/utils/regional-formatters";
@@ -184,23 +184,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className="flex items-center lg:hidden" aria-label={APP_NAME}>
             <img src="/automy-symbol.svg" alt={APP_NAME} className="size-8 object-contain" />
           </Link>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="h-9 border-0 bg-muted/70 pl-9 pr-12 ring-ring/20 focus:ring-3"
-              placeholder="Pesquisar em tudo..."
-            />
-            <kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground sm:block">
-              ⌘ K
-            </kbd>
-          </div>
+          <GlobalSearch />
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
               {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
-              <Bell className="size-4" />
-            </Button>
+            <NotificationCenter />
             <div className="relative ml-1 border-l border-border pl-3">
               <button
                 type="button"

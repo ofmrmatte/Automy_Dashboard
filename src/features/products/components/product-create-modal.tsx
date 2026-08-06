@@ -1,204 +1,231 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { FileText, Save } from "lucide-react";
-import { useMemo, useState } from "react";
-import { productQueryKeys } from "@/features/products/api/product.queries";
-import { productService } from "@/features/products/services/product.service";
-import type { ProductCommercialTerms } from "@/features/products/types";
-import { buildProductContractTemplate } from "@/features/contracts/utils/contract-template";
+import { useEffect, useMemo } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import {
+  buildProductContractTemplate,
+  normalizeProductTerms,
+} from "@/features/contracts/utils/contract-template";
+import type { Product, ProductCommercialTerms } from "@/features/products/types";
+import {
+  productBillingModes,
+  productCategories,
+  productFormSchema,
+  productStatuses,
+  type ProductFormValues,
+} from "@/features/products/validation";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
-import { toast } from "@/shared/components/toast";
-
-const categories = [
-  "Logística",
-  "WhatsApp",
-  "Automação",
-  "CRM",
-  "Financeiro",
-  "Atendimento",
-  "Analytics",
-  "Operacional",
-  "Outra ferramenta",
-];
 
 const paymentMethods = ["Boleto à vista", "Boleto parcelado", "Pix", "Pix + boleto", "Cartão"];
 
-function numberValue(formData: FormData, key: string) {
-  return Number(formData.get(key) || 0);
-}
-
-function checkboxValue(formData: FormData, key: string) {
-  return formData.get(key) === "on";
-}
-
-export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState(categories[0] ?? "Logística");
-  const [description, setDescription] = useState("");
-  const [deliverables, setDeliverables] = useState(
+const defaultValues: ProductFormValues = {
+  id: "",
+  name: "",
+  category: productCategories[0],
+  version: "1.0",
+  description: "",
+  status: "Ativo",
+  basePrice: 0,
+  billingMode: productBillingModes[0],
+  notes: "",
+  hostedOnAutomyUrl: true,
+  customUrl: false,
+  userLimit: 5,
+  segment: "",
+  implementationDays: 30,
+  implementationFee: 0,
+  paymentMethod: paymentMethods[0] ?? "Boleto à vista",
+  installments: 1,
+  discountPercent: 0,
+  hasMonthlyFee: true,
+  monthlyFee: 0,
+  hasDatabaseCost: false,
+  databaseCost: 0,
+  extraUserPrice: 0,
+  loyaltyMonths: 12,
+  deliverables:
     "Implantação, configuração do sistema, treinamento inicial, suporte operacional e ajustes previstos na proposta.",
-  );
-  const [hostedOnAutomyUrl, setHostedOnAutomyUrl] = useState(true);
-  const [customUrl, setCustomUrl] = useState(false);
-  const [hasMonthlyFee, setHasMonthlyFee] = useState(true);
-  const [hasDatabaseCost, setHasDatabaseCost] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(paymentMethods[0] ?? "Boleto à vista");
+  contractTemplate: "",
+};
 
-  const preview = useMemo(
-    () =>
-      buildProductContractTemplate({
-        name: name || "Nome do sistema",
-        category,
-        description,
-        commercialTerms: {
-          hostedOnAutomyUrl,
-          customUrl,
-          userLimit: 5,
-          segment: category,
-          implementationDays: 30,
-          implementationFee: 0,
-          paymentMethod,
-          installments: paymentMethod === "Boleto parcelado" ? 3 : 1,
-          discountPercent: 0,
-          hasMonthlyFee,
-          monthlyFee: 0,
-          hasDatabaseCost,
-          databaseCost: 0,
-          extraUserPrice: 0,
-          loyaltyMonths: 12,
-          deliverables,
-        },
-      }),
-    [
-      category,
-      customUrl,
-      deliverables,
-      description,
-      hasDatabaseCost,
-      hasMonthlyFee,
-      hostedOnAutomyUrl,
-      name,
-      paymentMethod,
-    ],
-  );
+function productToFormValues(product: Product | null | undefined): ProductFormValues {
+  if (!product) return defaultValues;
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const terms: ProductCommercialTerms = {
-      hostedOnAutomyUrl: checkboxValue(formData, "hostedOnAutomyUrl"),
-      customUrl: checkboxValue(formData, "customUrl"),
-      userLimit: numberValue(formData, "userLimit"),
-      segment: String(formData.get("category") || category),
-      implementationDays: numberValue(formData, "implementationDays"),
-      implementationFee: numberValue(formData, "implementationFee"),
-      paymentMethod: String(formData.get("paymentMethod") || paymentMethod),
-      installments: numberValue(formData, "installments") || 1,
-      discountPercent: numberValue(formData, "discountPercent"),
-      hasMonthlyFee: checkboxValue(formData, "hasMonthlyFee"),
-      monthlyFee: numberValue(formData, "monthlyFee"),
-      hasDatabaseCost: checkboxValue(formData, "hasDatabaseCost"),
-      databaseCost: numberValue(formData, "databaseCost"),
-      extraUserPrice: numberValue(formData, "extraUserPrice"),
-      loyaltyMonths: numberValue(formData, "loyaltyMonths"),
-      deliverables: String(formData.get("deliverables") || deliverables),
-    };
-    const productName = String(formData.get("name") || "").trim();
-    const productCategory = String(formData.get("category") || category);
-    const productDescription = String(formData.get("description") || "");
+  const terms = normalizeProductTerms(product);
+
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    version: product.version,
+    description: product.description ?? "",
+    status: product.status,
+    basePrice: product.basePrice,
+    billingMode: product.billingMode || productBillingModes[0],
+    notes: product.notes ?? "",
+    hostedOnAutomyUrl: terms.hostedOnAutomyUrl,
+    customUrl: terms.customUrl,
+    userLimit: terms.userLimit,
+    segment: terms.segment,
+    implementationDays: terms.implementationDays,
+    implementationFee: terms.implementationFee,
+    paymentMethod: terms.paymentMethod,
+    installments: terms.installments,
+    discountPercent: terms.discountPercent,
+    hasMonthlyFee: terms.hasMonthlyFee,
+    monthlyFee: terms.monthlyFee,
+    hasDatabaseCost: terms.hasDatabaseCost,
+    databaseCost: terms.databaseCost,
+    extraUserPrice: terms.extraUserPrice,
+    loyaltyMonths: terms.loyaltyMonths,
+    deliverables: terms.deliverables,
+    contractTemplate: product.contractTemplate ?? "",
+  };
+}
+
+function buildTerms(values: ProductFormValues): ProductCommercialTerms {
+  return {
+    hostedOnAutomyUrl: Boolean(values.hostedOnAutomyUrl),
+    customUrl: Boolean(values.customUrl),
+    userLimit: Number(values.userLimit || 0),
+    segment: values.segment || values.category,
+    implementationDays: Number(values.implementationDays || 0),
+    implementationFee: Number(values.implementationFee || 0),
+    paymentMethod: values.paymentMethod,
+    installments: Number(values.installments || 1),
+    discountPercent: Number(values.discountPercent || 0),
+    hasMonthlyFee: Boolean(values.hasMonthlyFee),
+    monthlyFee: Number(values.monthlyFee || 0),
+    hasDatabaseCost: Boolean(values.hasDatabaseCost),
+    databaseCost: Number(values.databaseCost || 0),
+    extraUserPrice: Number(values.extraUserPrice || 0),
+    loyaltyMonths: Number(values.loyaltyMonths || 0),
+    deliverables: values.deliverables,
+  };
+}
+
+export function ProductCreateModal({
+  open,
+  product,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  product?: Product | null;
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (values: ProductFormValues) => Promise<unknown>;
+}) {
+  const isEditing = Boolean(product);
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: productToFormValues(product),
+  });
+  const values = useWatch({ control: form.control });
+
+  useEffect(() => {
+    form.reset(productToFormValues(product));
+  }, [form, open, product]);
+
+  const preview = useMemo(() => {
+    const nextValues = { ...defaultValues, ...values };
+
+    return buildProductContractTemplate({
+      name: nextValues.name || "Produto",
+      category: nextValues.category || productCategories[0],
+      ...(nextValues.description ? { description: nextValues.description } : {}),
+      commercialTerms: buildTerms(nextValues),
+    });
+  }, [values]);
+
+  async function handleSubmit(values: ProductFormValues) {
     const contractTemplate = buildProductContractTemplate({
-      name: productName,
-      category: productCategory,
-      description: productDescription,
-      commercialTerms: terms,
+      name: values.name,
+      category: values.category,
+      ...(values.description ? { description: values.description } : {}),
+      commercialTerms: buildTerms(values),
     });
 
-    try {
-      setSaving(true);
-      await productService.createProduct({
-        name: productName,
-        category: productCategory,
-        version: String(formData.get("version") || "1.0"),
-        description: productDescription,
-        commercialTerms: terms,
-        contractTemplate,
-      });
-      await queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
-      toast.success("Produto e modelo de contrato salvos.");
-      onClose();
-    } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Não foi possível salvar o produto.");
-    } finally {
-      setSaving(false);
-    }
+    await onSubmit({ ...values, contractTemplate });
+    if (!isEditing) form.reset(defaultValues);
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Novo produto"
-      description="Cadastre o sistema e gere o contrato padrão usado nas vendas."
+      title={isEditing ? "Editar produto" : "Novo produto"}
+      description="Cadastre produtos reais, termos comerciais e modelo operacional de contrato."
       size="xl"
     >
       <form
         className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]"
-        onSubmit={handleSubmit}
+        onSubmit={form.handleSubmit(handleSubmit)}
       >
+        <input type="hidden" {...form.register("id")} />
         <div className="grid gap-5">
           <section className="grid gap-4">
-            <h3 className="text-sm font-semibold text-foreground">Sistema</h3>
+            <h3 className="text-sm font-semibold text-foreground">Produto</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nome do produto ou sistema">
-                <Input
-                  name="name"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
+              <Field label="Nome">
+                <Input placeholder="Nome do produto" {...form.register("name")} />
+                <FormError message={form.formState.errors.name?.message} />
               </Field>
               <Field label="Versão">
-                <Input name="version" defaultValue="1.0" />
+                <Input placeholder="1.0" {...form.register("version")} />
+                <FormError message={form.formState.errors.version?.message} />
               </Field>
               <Field label="Categoria">
-                <Select
-                  name="category"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                >
-                  {categories.map((item) => (
+                <Select {...form.register("category")}>
+                  {productCategories.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </Select>
+                <FormError message={form.formState.errors.category?.message} />
               </Field>
-              <Field label="Limite de usuários incluídos">
-                <Input name="userLimit" type="number" min={1} defaultValue={5} />
+              <Field label="Status">
+                <Select {...form.register("status")}>
+                  {productStatuses.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </Select>
+                <FormError message={form.formState.errors.status?.message} />
+              </Field>
+              <Field label="Preço-base">
+                <Input type="number" min={0} step="0.01" {...form.register("basePrice")} />
+                <FormError message={form.formState.errors.basePrice?.message} />
+              </Field>
+              <Field label="Modalidade">
+                <Select {...form.register("billingMode")}>
+                  {productBillingModes.map((mode) => (
+                    <option key={mode}>{mode}</option>
+                  ))}
+                </Select>
+                <FormError message={form.formState.errors.billingMode?.message} />
               </Field>
             </div>
-            <Field label="Descrição do sistema">
+            <Field label="Descrição">
               <Textarea
-                name="description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Resumo da ferramenta, público e operação atendida."
+                placeholder="Resumo da solução, público atendido e operação coberta."
+                {...form.register("description")}
               />
+              <FormError message={form.formState.errors.description?.message} />
+            </Field>
+            <Field label="Observações">
+              <Textarea
+                placeholder="Notas internas sobre comercialização, implantação ou operação."
+                {...form.register("notes")}
+              />
+              <FormError message={form.formState.errors.notes?.message} />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
-                <Checkbox
-                  name="hostedOnAutomyUrl"
-                  checked={hostedOnAutomyUrl}
-                  onChange={(event) => setHostedOnAutomyUrl(event.target.checked)}
-                />
+                <Checkbox {...form.register("hostedOnAutomyUrl")} />
                 Hospedado em URL da Automy
               </label>
               <label className="flex items-center gap-2 text-sm text-foreground">
-                <Checkbox
-                  name="customUrl"
-                  checked={customUrl}
-                  onChange={(event) => setCustomUrl(event.target.checked)}
-                />
+                <Checkbox {...form.register("customUrl")} />
                 Terá personalização de URL
               </label>
             </div>
@@ -207,88 +234,76 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
           <section className="grid gap-4">
             <h3 className="text-sm font-semibold text-foreground">Cobrança e implantação</h3>
             <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Limite de usuários">
+                <Input type="number" min={1} {...form.register("userLimit")} />
+                <FormError message={form.formState.errors.userLimit?.message} />
+              </Field>
               <Field label="Prazo de implantação">
-                <Input name="implementationDays" type="number" min={1} defaultValue={30} />
+                <Input type="number" min={1} {...form.register("implementationDays")} />
+                <FormError message={form.formState.errors.implementationDays?.message} />
               </Field>
               <Field label="Valor da implantação">
-                <Input
-                  name="implementationFee"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  defaultValue={0}
-                />
+                <Input type="number" min={0} step="0.01" {...form.register("implementationFee")} />
+                <FormError message={form.formState.errors.implementationFee?.message} />
               </Field>
               <Field label="Forma de pagamento">
-                <Select
-                  name="paymentMethod"
-                  value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                >
+                <Select {...form.register("paymentMethod")}>
                   {paymentMethods.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </Select>
+                <FormError message={form.formState.errors.paymentMethod?.message} />
               </Field>
               <Field label="Parcelas">
-                <Input
-                  name="installments"
-                  type="number"
-                  min={1}
-                  defaultValue={paymentMethod === "Boleto parcelado" ? 3 : 1}
-                />
+                <Input type="number" min={1} {...form.register("installments")} />
+                <FormError message={form.formState.errors.installments?.message} />
               </Field>
               <Field label="Desconto (%)">
                 <Input
-                  name="discountPercent"
                   type="number"
                   min={0}
                   max={100}
                   step="0.01"
-                  defaultValue={0}
+                  {...form.register("discountPercent")}
                 />
+                <FormError message={form.formState.errors.discountPercent?.message} />
+              </Field>
+              <Field label="Mensalidade">
+                <Input type="number" min={0} step="0.01" {...form.register("monthlyFee")} />
+                <FormError message={form.formState.errors.monthlyFee?.message} />
+              </Field>
+              <Field label="Custo por banco">
+                <Input type="number" min={0} step="0.01" {...form.register("databaseCost")} />
+                <FormError message={form.formState.errors.databaseCost?.message} />
+              </Field>
+              <Field label="Valor por usuário extra">
+                <Input type="number" min={0} step="0.01" {...form.register("extraUserPrice")} />
+                <FormError message={form.formState.errors.extraUserPrice?.message} />
               </Field>
               <Field label="Fidelidade (meses)">
-                <Input name="loyaltyMonths" type="number" min={0} defaultValue={12} />
+                <Input type="number" min={0} {...form.register("loyaltyMonths")} />
+                <FormError message={form.formState.errors.loyaltyMonths?.message} />
+              </Field>
+              <Field label="Segmento">
+                <Input placeholder="Segmento comercial" {...form.register("segment")} />
+                <FormError message={form.formState.errors.segment?.message} />
               </Field>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
-                <Checkbox
-                  name="hasMonthlyFee"
-                  checked={hasMonthlyFee}
-                  onChange={(event) => setHasMonthlyFee(event.target.checked)}
-                />
+                <Checkbox {...form.register("hasMonthlyFee")} />
                 Tem mensalidade
               </label>
               <label className="flex items-center gap-2 text-sm text-foreground">
-                <Checkbox
-                  name="hasDatabaseCost"
-                  checked={hasDatabaseCost}
-                  onChange={(event) => setHasDatabaseCost(event.target.checked)}
-                />
+                <Checkbox {...form.register("hasDatabaseCost")} />
                 Tem custo por banco de dados
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Mensalidade">
-                <Input name="monthlyFee" type="number" min={0} step="0.01" defaultValue={0} />
-              </Field>
-              <Field label="Custo por banco">
-                <Input name="databaseCost" type="number" min={0} step="0.01" defaultValue={0} />
-              </Field>
-              <Field label="Valor por usuário extra">
-                <Input name="extraUserPrice" type="number" min={0} step="0.01" defaultValue={0} />
-              </Field>
-            </div>
           </section>
 
-          <Field label="O que esse sistema entrega">
-            <Textarea
-              name="deliverables"
-              value={deliverables}
-              onChange={(event) => setDeliverables(event.target.value)}
-            />
+          <Field label="Entregas">
+            <Textarea {...form.register("deliverables")} />
+            <FormError message={form.formState.errors.deliverables?.message} />
           </Field>
         </div>
 
@@ -310,13 +325,18 @@ export function ProductCreateModal({ open, onClose }: { open: boolean; onClose: 
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button loading={saving}>
+            <Button type="submit" loading={saving}>
               <Save className="size-4" />
-              Salvar produto
+              {isEditing ? "Salvar alterações" : "Salvar produto"}
             </Button>
           </div>
         </aside>
       </form>
     </Modal>
   );
+}
+
+function FormError({ message }: { message: string | undefined }) {
+  if (!message) return null;
+  return <span className="text-xs font-normal text-destructive">{message}</span>;
 }

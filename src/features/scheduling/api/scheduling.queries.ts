@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { schedulingService } from "@/features/scheduling/services/scheduling.service";
 
 export const schedulingQueryKeys = {
+  all: ["scheduling"] as const,
   calls: ["scheduling", "calls"] as const,
 };
 

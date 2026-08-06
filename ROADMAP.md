@@ -25,18 +25,21 @@
 
 ## Proxima Etapa
 
+- Seguir para Auditoria administrativa sem reintroduzir mocks.
+- Validar Fase 7 autenticada em producao apos deploy da branch.
+- Validar Fase 3 autenticada em producao apos deploy da branch.
 - Validar Fase 2 autenticada em producao com usuario admin real.
 - Concluir validacao operacional da Fase 1 com usuarios reais por role.
 - Aplicar a migration `20260805190000_align_user_statuses.sql` no ambiente Railway apos checklist de banco.
 - Fazer merge da branch `fix/security-and-railway-origin` e publicar `v1.0.0-rc4`.
-- Continuar desenvolvimento dos modulos de negocio: Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Continuar desenvolvimento dos modulos de negocio: Auditoria administrativa e validacoes autenticadas por role.
 - Manter migrations incrementais para qualquer evolucao de schema.
 - Validar cada deploy de producao com login, sessao e rotas protegidas.
 - Definir o fluxo administrativo de criacao de usuarios antes de expandir usuarios e permissoes.
 - Monitorar o primeiro ciclo de uso real apos o deploy da nova foundation.
 - Criar onboarding da primeira empresa.
 - Implementar formularios reais com React Hook Form e Zod.
-- Implementar CRUDs reais para clientes, produtos e contratos.
+- Implementar CRUDs reais para relatorios e modulos posteriores.
 
 ## Fase 1 - Usuarios e Permissoes
 
@@ -57,6 +60,101 @@
 - Geolocalizacao precisa segue desabilitada; GPS so sera adotado se houver caso funcional real.
 - Pendencias: definir storage oficial de arquivos e rodar testes autenticados por role.
 
+## Fase 3 - Configuracoes
+
+- Implementada aba Empresa com dados institucionais, endereco, preferencias organizacionais, identidade e faturamento em `companies`.
+- Implementada aba Seguranca com alteracao de senha Better Auth, sessoes reais, historico de login e politica corporativa em `company_security_settings`.
+- Implementada aba Integracoes com providers reais/preparados, status seguro por variaveis de ambiente, teste controlado e tabela `company_integrations`.
+- Implementada aba Notificacoes com preferencias individuais em `notification_preferences`, regras da empresa em `company_notification_settings` e centro in-app em `notifications`.
+- Implementado RBAC server-side: admin edita tudo; manager/read_only visualizam conforme `settings.read`; acoes sensiveis exigem `settings.manage`.
+- Pendencias: provider transacional de e-mail, storage binario oficial, MFA real e lembretes automatizados por scheduler.
+
+## Fase 4 - Dashboard real
+
+- Implementadas metricas reais via Railway PostgreSQL para clientes ativos/em implantacao/inativos, contratos ativos/a vencer, MRR, ARR, cobrancas pendentes/vencidas, chamados abertos/criticos, agendamentos futuros e usuarios ativos.
+- Implementados graficos reais para crescimento de clientes, evolucao de receita, contratos por status, tickets por prioridade, produtos por utilizacao e cobrancas por status.
+- Criados endpoints protegidos `/api/dashboard/summary`, `/api/dashboard/charts`, `/api/dashboard/recent-clients` e `/api/dashboard/activity` com `company_id` derivado da sessao.
+- Mantidos empty states quando a empresa ainda nao possui dados reais.
+- Pendencias: gerar `activity_logs` em todos os CRUDs dos proximos modulos e validar RBAC com usuarios reais por role.
+
+## Fase 5 - Clientes
+
+- Implementado CRUD real de clientes com criar, listar, detalhar, editar, inativar, reativar e excluir logicamente.
+- Adicionados campos oficiais: inscricoes, segmento, e-mail, telefone, site, observacoes e logo por URL.
+- Integrados contato principal e endereco principal em `contacts` e `addresses`.
+- Implementadas validacoes com React Hook Form + Zod, busca, filtro por status, paginação inicial e confirmaçao de exclusao.
+- Endpoints `/api/clients` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Pendencias: documentos/anexos dependem de storage oficial e relacoes operacionais completas serao aprofundadas nos modulos Produtos, Contratos, Financeiro, Agenda e Suporte.
+
+## Fase 6 - Produtos
+
+- Implementado CRUD real de produtos com criar, listar, visualizar, editar, ativar, inativar e excluir logicamente.
+- Persistidos campos oficiais: nome, descricao, categoria, versao, status, preco-base, modalidade, observacoes, termos comerciais e modelo de contrato.
+- Implementados busca, filtros por status/categoria, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
+- Endpoints `/api/products` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Quantidade de clientes e contratos por produto e calculada por vinculos reais em `contracts`.
+- Pendencias: versionamento historico e relacoes operacionais serao aprofundados no ciclo de Contratos.
+
+## Fase 7 - Contratos
+
+- Implementado ciclo real de contratos com criar, listar, visualizar, editar, ativar, suspender, renovar, cancelar, encerrar e excluir logicamente.
+- Persistidos campos oficiais: cliente, produto, plano, valor mensal, valor de implantacao, inicio, vencimento, renovacao, periodicidade, status, observacoes e minuta.
+- Criada tabela `contract_items` para itens do contrato vinculados ao produto.
+- Endpoints `/api/contracts` aplicam `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Dashboard passa a refletir contratos ativos, a vencer, MRR e ARR a partir do ciclo real de contratos.
+- Pendencias: assinatura digital, anexos e renovacao com versionamento juridico dependem de decisoes posteriores.
+
+## Fase 8 - Financeiro
+
+- Implementado CRUD real de cobrancas com criar, listar, visualizar, editar, marcar como paga, cancelar, detectar atraso e excluir logicamente.
+- Persistidos status oficiais `pending`, `paid`, `overdue`, `canceled` e `failed`, com labels traduzidos apenas na interface.
+- Implementadas metricas reais: receita mensal, receita anual, inadimplencia, recebimentos previstos, valores pagos, valores em aberto e clientes inadimplentes.
+- Endpoint `/api/finance/charges` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Finalizada base Mercado Pago com assinatura de webhook, janela anti-replay, idempotencia por evento e tabela `payment_webhook_events`.
+- Pendencias: validar sandbox/producao Mercado Pago com credenciais oficiais e ativar geracao externa de pagamentos quando a decisao comercial estiver definida.
+
+## Fase 9 - Agenda
+
+- Implementado CRUD real de calls com criar, listar, visualizar, editar, reagendar, concluir, cancelar e excluir logicamente.
+- Persistidos cliente vinculado, responsavel, participantes, inicio, fim, timezone, link, lembretes, status e observacoes.
+- Datas sao armazenadas em UTC (`start_at`/`end_at`) e exibidas no timezone resolvido do usuario.
+- Endpoint `/api/scheduled-calls` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Implementados busca, filtro por status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
+- Pendencias: disparo agendado de lembretes depende de scheduler/event worker e validacao por usuarios reais de cada role.
+
+## Fase 10 - Suporte
+
+- Implementado fluxo real de tickets com criar, listar, visualizar, editar, atribuir, alterar prioridade/status, resolver, reabrir, cancelar e excluir logicamente.
+- Persistidos cliente vinculado, responsavel, categoria, SLA de primeira resposta/resolucao, tags, mensagens, eventos e anexos por metadados.
+- Endpoint `/api/support/tickets` aplica `company_id` da sessao, soft delete, RBAC, `audit_logs` e `activity_logs`.
+- Implementados busca, filtros por prioridade/status, paginacao compartilhada, empty/error/loading states, toast e confirmacao de exclusao.
+- Pendencias: storage oficial para anexos binarios, automacoes de SLA e validacao por usuarios reais de cada role.
+
+## Fase 11 - Relatorios
+
+- Implementado endpoint unico `/api/reports` com `kind` e `period`.
+- Relatorios disponiveis: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios, Permissoes e Auditoria.
+- Exportacoes CSV, XLSX e PDF usam dados reais do Railway PostgreSQL e respeitam RBAC por dominio.
+- Arquivos vazios sao gerados com estrutura valida e mensagem de ausencia de registros.
+- Filtros por periodo sao aplicados server-side com `company_id` derivado da sessao.
+- Pendencias: validacao por usuarios reais de cada role e evolucao futura para agendamento/envio automatico de relatorios.
+
+## Fase 12 - Busca Global
+
+- Implementado endpoint protegido `/api/search` com consultas parametrizadas e `company_id` derivado da sessao.
+- Busca disponivel no header via command palette e atalho `Ctrl/Cmd+K`.
+- Fontes pesquisadas: Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Usuarios e Auditoria.
+- Resultados respeitam RBAC de leitura por dominio e nao exibem dados de modulos sem permissao.
+- Pendencias: validacao por usuarios reais de cada role e refinamento futuro de relevancia/ranking com volume real.
+
+## Fase 13 - Notificacoes operacionais
+
+- Implementada emissao in-app real para eventos de Clientes, Produtos, Contratos, Financeiro, Agenda e Suporte.
+- Notificacoes respeitam preferencias do usuario e regras da empresa.
+- Centro de notificacoes permite listar, marcar como lida, marcar todas e arquivar.
+- Persistencia usa `notifications` e `notification_deliveries`.
+- Pendencias: scheduler de lembretes, envio por e-mail e validacao por usuarios reais de cada role.
+
 ## Dados e Permissoes
 
 - Expandir a autorizacao server-side para fluxo administrativo completo de Usuarios e Permissoes.
@@ -69,11 +167,14 @@
 ## Modulos
 
 - Clientes: CRUD, contatos, enderecos e historico.
-- Produtos: CRUD e vinculacao com contratos.
-- Contratos: vigencia, valores e renovacoes.
-- Financeiro: modelagem propria antes de exibir cobrancas.
-- Suporte: modelagem propria antes de exibir tickets.
-- Relatorios: exportacao somente com dados reais.
+- Produtos: CRUD, termos comerciais, modelo de contrato e vinculacao real com contratos.
+- Contratos: ciclo de vida, valores, renovacoes e itens de contrato.
+- Financeiro: CRUD de cobrancas, baixa manual, cancelamento, metricas e conciliacao Mercado Pago preparada.
+- Agenda: CRUD de calls com UTC/timezone, cliente vinculado, responsavel e lembretes preparados.
+- Suporte: ciclo real de tickets, mensagens, eventos, SLA e anexos por metadados.
+- Relatorios: endpoint real com filtros por periodo e exportacao CSV/XLSX/PDF.
+- Busca Global: endpoint real com command palette e RBAC por dominio.
+- Notificacoes: emissao in-app real por eventos operacionais e centro no header.
 
 ## Qualidade
 
