@@ -9,7 +9,10 @@ import {
   writeCompanyRegistryCache,
 } from "../../src/features/clients/server/company-registry-provider.ts";
 import { contractPdfHeaders } from "../../src/features/contracts/server/contract-pdf-http.ts";
-import { generateContractPdf } from "../../src/features/contracts/server/contract-pdf-service.ts";
+import {
+  generateContractPdf,
+  loadContractPdfBrandAssets,
+} from "../../src/features/contracts/server/contract-pdf-service.ts";
 
 const context = {
   authUserId: "00000000-0000-4000-8000-000000000001",
@@ -116,7 +119,20 @@ assert.equal(headers["content-type"], "application/pdf");
 assert.match(headers["content-disposition"], /^inline; filename="contrato-/);
 assert.equal(headers["x-content-type-options"], "nosniff");
 
-const pdf = await generateContractPdf({
+const downloadHeaders = contractPdfHeaders("00000000-0000-4000-8000-000000000004", "attachment");
+assert.match(downloadHeaders["content-disposition"], /^attachment; filename="contrato-/);
+
+const brandAssets = loadContractPdfBrandAssets();
+assert.match(brandAssets.logoHorizontal, /<svg[\s>]/);
+assert.match(brandAssets.symbol, /<svg[\s>]/);
+assert.ok(["filesystem", "embedded"].includes(brandAssets.logoHorizontalSource));
+assert.ok(["filesystem", "embedded"].includes(brandAssets.symbolSource));
+
+function countPdfPages(buffer) {
+  return (buffer.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? []).length;
+}
+
+const minimalPdfInput = {
   id: "00000000-0000-4000-8000-000000000004",
   version: 1,
   hash: "abcdef1234567890abcdef1234567890",
@@ -135,9 +151,51 @@ const pdf = await generateContractPdf({
   witnessName: "",
   items: [{ name: "Licença Automy", quantity: 1, monthlyValue: 1000 }],
   contractText: "Cláusula primeira: prestação de serviços Automy.\n\nCláusula segunda: vigência.",
-});
+};
+
+const pdf = await generateContractPdf(minimalPdfInput);
 assert.equal(pdf.subarray(0, 4).toString("utf8"), "%PDF");
 assert.ok(pdf.byteLength > 1_000);
+assert.ok(countPdfPages(pdf) >= 1);
+
+const noWitnessPdf = await generateContractPdf({
+  ...minimalPdfInput,
+  signerName: "Responsável Teste",
+  witnessName: "",
+});
+assert.equal(countPdfPages(noWitnessPdf), 1);
+
+const originalConsoleWarn = console.warn;
+console.warn = () => {};
+let fallbackPdf;
+try {
+  fallbackPdf = await generateContractPdf({
+    ...minimalPdfInput,
+    brandAssets: {
+      ...brandAssets,
+      logoHorizontal: "<svg>",
+      logoHorizontalSource: "embedded",
+    },
+  });
+} finally {
+  console.warn = originalConsoleWarn;
+}
+assert.equal(fallbackPdf.subarray(0, 4).toString("utf8"), "%PDF");
+assert.ok(fallbackPdf.byteLength > 1_000);
+
+const longClause = Array.from(
+  { length: 8 },
+  (_, index) =>
+    `${index + 1}. CLÁUSULA OPERACIONAL\n${minimalPdfInput.contractText}\nA presente cláusula adicional valida acentuação, largura útil do texto, paginação previsível e ausência de páginas finais vazias.`,
+).join("\n\n");
+const longPdf = await generateContractPdf({
+  ...minimalPdfInput,
+  witnessName: "Testemunha Teste",
+  contractText: longClause,
+});
+const longPageCount = countPdfPages(longPdf);
+assert.ok(longPageCount > 1);
+assert.ok(longPageCount <= 6);
 
 console.log(
   JSON.stringify({
@@ -145,7 +203,11 @@ console.log(
     cnpjMapping: "ok",
     cnpjRateLimit: "ok",
     cnpjCache: "ok",
+    pdfAssets: "ok",
+    pdfFallback: "ok",
     pdfHeaders: "ok",
     pdfGeneration: "ok",
+    pdfNoWitness: "ok",
+    pdfPagination: "ok",
   }),
 );
