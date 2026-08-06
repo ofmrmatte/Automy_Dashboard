@@ -65,6 +65,7 @@ export function ProfileSettingsPanel() {
     updatePassword,
     updatePreferences,
     updateProfile,
+    removeAvatar: removeAvatarFromStorage,
     uploadAvatar,
     user,
   } = useIdentity();
@@ -83,7 +84,6 @@ export function ProfileSettingsPanel() {
       lastName: "",
       phone: "",
       jobTitle: "",
-      avatarUrl: "",
     },
   });
 
@@ -122,7 +122,6 @@ export function ProfileSettingsPanel() {
       lastName: profile.lastName,
       phone: profile.phone,
       jobTitle: profile.jobTitle,
-      avatarUrl: profile.avatarPath ?? "",
     });
     setAvatarPreview(profile.avatarPath);
   }, [profile, profileForm]);
@@ -188,13 +187,14 @@ export function ProfileSettingsPanel() {
     });
   };
 
-  const removeAvatar = () => {
-    profileForm.setValue("avatarUrl", "");
-    setAvatarPreview(null);
-  };
-
-  const saveAvatarUrl = (value: string) => {
-    setAvatarPreview(value || null);
+  const removeAvatar = async () => {
+    try {
+      await removeAvatarFromStorage();
+      setAvatarPreview(null);
+      toast.success("Foto removida.");
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível remover o avatar.");
+    }
   };
 
   async function handleRevokeSession(sessionId: string, current: boolean) {
@@ -235,7 +235,7 @@ export function ProfileSettingsPanel() {
                 onChange={(event) => onAvatarChange(event.target.files?.[0])}
               />
             </label>
-            <Button type="button" variant="ghost" onClick={removeAvatar}>
+            <Button type="button" variant="ghost" onClick={() => void removeAvatar()}>
               <Trash2 className="size-4" />
               Remover foto
             </Button>
@@ -257,15 +257,6 @@ export function ProfileSettingsPanel() {
               <Field label="Cargo">
                 <Input autoComplete="organization-title" {...profileForm.register("jobTitle")} />
                 <FormError message={profileForm.formState.errors.jobTitle?.message} />
-              </Field>
-              <Field label="Avatar por URL">
-                <Input
-                  placeholder="https://..."
-                  {...profileForm.register("avatarUrl", {
-                    onChange: (event) => saveAvatarUrl(event.target.value),
-                  })}
-                />
-                <FormError message={profileForm.formState.errors.avatarUrl?.message} />
               </Field>
               <Field label="E-mail">
                 <Input value={user?.email ?? ""} readOnly />

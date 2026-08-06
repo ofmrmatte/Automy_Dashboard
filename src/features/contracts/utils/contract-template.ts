@@ -7,6 +7,15 @@ export type ContractPartyInput = {
   witnessName?: string;
 };
 
+export type NegotiatedContractTerms = {
+  monthlyValue?: number | undefined;
+  implementationValue?: number | undefined;
+  billingPeriod?: string | undefined;
+  startsAt?: string | undefined;
+  endsAt?: string | undefined;
+  renewalAt?: string | undefined;
+};
+
 const DEFAULT_TERMS: ProductCommercialTerms = {
   hostedOnAutomyUrl: true,
   customUrl: false,
@@ -99,21 +108,40 @@ CONTRATANTE: pessoa jurídica identificada no quadro de assinatura do contrato.
 9.2. O foro e demais condições específicas poderão ser definidos no quadro final de contratação.`;
 }
 
-export function buildContractDraft(product: Product, party: ContractPartyInput) {
+export function buildContractDraft(
+  product: Product,
+  party: ContractPartyInput,
+  negotiatedTerms: NegotiatedContractTerms = {},
+) {
+  const terms = normalizeProductTerms(product);
   const template =
     product.contractTemplate ??
     buildProductContractTemplate({
       name: product.name,
       category: product.category,
       ...(product.description ? { description: product.description } : {}),
-      commercialTerms: normalizeProductTerms(product),
+      commercialTerms: terms,
     });
 
   const witnessBlock = party.witnessName
     ? `\nTESTEMUNHA: ${party.witnessName}\nAssinatura: _______________________________`
     : "\nSem testemunha informada neste cadastro.";
 
+  const commercialBlock = `
+CONDIÇÕES NEGOCIADAS DO CONTRATO
+Mensalidade negociada: ${money(negotiatedTerms.monthlyValue ?? terms.monthlyFee)}.
+Implantação negociada: ${money(negotiatedTerms.implementationValue ?? terms.implementationFee)}.
+Periodicidade: ${negotiatedTerms.billingPeriod || "Mensal"}.
+Início: ${negotiatedTerms.startsAt || "A definir"}.
+Vencimento: ${negotiatedTerms.endsAt || "A definir"}.
+Renovação: ${negotiatedTerms.renewalAt || "A definir"}.
+Fidelidade original do produto: ${terms.loyaltyMonths} meses.
+Forma de pagamento original: ${terms.paymentMethod}.
+Entregáveis originais: ${terms.deliverables}.`;
+
   return `${template}
+
+${commercialBlock}
 
 QUADRO DE CONTRATAÇÃO
 CONTRATANTE: ${party.companyName}

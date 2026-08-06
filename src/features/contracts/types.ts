@@ -23,6 +23,10 @@ export type Contract = AuditableEntity & {
   signerName?: string | null;
   witnessName?: string | null;
   contractText?: string | null;
+  contractVersion: number;
+  contractHash?: string | null;
+  signatureStatus: "draft" | "sent" | "signed" | "cancelled";
+  signedDocumentPath?: string | null;
   notes?: string | null;
 };
 

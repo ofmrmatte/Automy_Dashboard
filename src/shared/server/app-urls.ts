@@ -1,6 +1,6 @@
-const DEFAULT_RAILWAY_ORIGIN = "https://automydashboard-production.up.railway.app";
-const ROLLBACK_VERCEL_ORIGIN = "https://automy-dashboard.vercel.app";
 const FINAL_CUSTOM_ORIGIN = "https://automy.dev.br";
+const WWW_CUSTOM_ORIGIN = "https://www.automy.dev.br";
+const SECONDARY_VERCEL_ORIGIN = "https://automy-dashboard.vercel.app";
 
 function splitOriginList(value: string | undefined) {
   return (value ?? "")
@@ -32,14 +32,11 @@ export function resolveCanonicalAppOrigin() {
   const explicit = normalizeOrigin(process.env["BETTER_AUTH_URL"]);
   if (explicit) return explicit;
 
-  const railway = originFromHost(process.env["RAILWAY_PUBLIC_DOMAIN"]);
-  if (railway) return railway;
-
   if (process.env["NODE_ENV"] !== "production") {
     return "http://localhost:5173";
   }
 
-  return DEFAULT_RAILWAY_ORIGIN;
+  return FINAL_CUSTOM_ORIGIN;
 }
 
 export function resolveTrustedAppOrigins() {
@@ -63,7 +60,8 @@ export function resolveTrustedAppOrigins() {
   return uniqueValues([
     resolveCanonicalAppOrigin(),
     FINAL_CUSTOM_ORIGIN,
-    ROLLBACK_VERCEL_ORIGIN,
+    WWW_CUSTOM_ORIGIN,
+    SECONDARY_VERCEL_ORIGIN,
     ...configured,
     ...(vercelDeployment ? [vercelDeployment] : []),
     ...developmentOrigins,

@@ -26,6 +26,7 @@ export const identityService = {
     identityRepository.updatePreferences(authUserId, payload),
   uploadAvatar: (authUserId: string, file: File) =>
     identityRepository.uploadAvatar(authUserId, file),
+  removeAvatar: (authUserId: string) => identityRepository.removeAvatar(authUserId),
   listSessions: () => identityRepository.listSessions(),
   revokeSession: (sessionId: string) => identityRepository.revokeSession(sessionId),
   revokeOtherSessions: () => identityRepository.revokeOtherSessions(),

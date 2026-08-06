@@ -1,10 +1,23 @@
-# Functional Audit v1.0.0-rc5
+# Functional Audit v1.0.0-rc6
 
-Data: 2026-08-05.
+Data: 2026-08-06.
+
+## RC6 - Sprint de Manutencao
+
+- Runtime canonico ajustado para Vercel, com `https://automy.dev.br` como dominio principal.
+- Railway permanece somente como PostgreSQL oficial.
+- Better Auth passa a resolver origem canonica por `automy.dev.br`, aceitando `www` e Vercel como origens secundarias.
+- Avatar por URL foi removido do formulario de perfil.
+- Upload de avatar usa provider configuravel, valida PNG/JPG/JPEG/WebP, limita 5 MB, gera WebP quadrado 256/512, remove EXIF na regravacao e persiste metadados em `avatar_assets`.
+- Consulta CNPJ passa por endpoint backend protegido, com provider configuravel, cache e rate limit.
+- Clientes passaram a armazenar natureza juridica, CNAE, situacao cadastral, data de abertura e snapshot fiscal.
+- Contratos passaram a preservar snapshot completo, versao, hash, termos originais do produto e termos negociados.
+- PDF de contrato e gerado sob demanda pelo servidor, a partir de `contract_text`, com logo SVG oficial e layout A4.
+- Provider de assinatura eletronica permanece `noop`, preparado para adapter oficial futuro.
 
 ## 1. Resumo executivo
 
-A Automy v1.0.0-rc5 consolida na `main` a foundation funcional completa apos merge da branch `feature/complete-functional-foundation`. O runtime oficial permanece Railway com banco Railway PostgreSQL.
+A Automy v1.0.0-rc6 consolida na `main` a sprint de manutencao de producao. O runtime oficial passa a ser Vercel e o banco oficial permanece Railway PostgreSQL.
 
 O estado funcional ainda e de foundation, mas os principais modulos ja possuem persistencia real: autenticacao oficial, banco Railway PostgreSQL, RBAC inicial, Design System, Brand Kit, Login Premium, arquitetura feature-first, Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app estao consolidados. Ainda faltam automacoes, providers externos finais e testes autenticados por todos os perfis.
 
@@ -20,8 +33,8 @@ Ponto critico originalmente confirmado: o administrador nao conseguia criar outr
 | Commit da tag       | definido apos commit final de documentacao RC5                          |
 | Railway project     | `Automy_ERP`                                                            |
 | Railway environment | `production`                                                            |
-| Railway service     | `Automy_Dashboard`                                                      |
-| Railway URL         | `https://automydashboard-production.up.railway.app`                     |
+| Railway service     | `Postgres`                                                              |
+| App URL             | `https://automy.dev.br`                                                 |
 | Deploy observado    | sera verificado apos push da `main`                                     |
 | Deploy status       | pendente de verificacao pos-push                                        |
 

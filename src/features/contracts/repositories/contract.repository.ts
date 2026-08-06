@@ -11,6 +11,10 @@ type ContractRow = Omit<Database["public"]["Tables"]["contracts"]["Row"], "clien
   signer_name?: string | null;
   witness_name?: string | null;
   contract_text?: string | null;
+  contract_version?: number | null;
+  contract_hash?: string | null;
+  signature_status?: Contract["signatureStatus"] | null;
+  signed_document_path?: string | null;
 };
 
 function mapContractStatus(status: string): ContractStatus {
@@ -44,6 +48,10 @@ function mapContract(row: ContractRow): Contract {
     signerName: row.signer_name ?? null,
     witnessName: row.witness_name ?? null,
     contractText: row.contract_text ?? null,
+    contractVersion: Number(row.contract_version ?? 1),
+    contractHash: row.contract_hash ?? null,
+    signatureStatus: row.signature_status ?? "draft",
+    signedDocumentPath: row.signed_document_path ?? null,
     notes: row.notes ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -113,6 +121,33 @@ export const contractRepository = {
     if (!response.ok) {
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new RepositoryError(result?.error ?? "Não foi possível excluir o contrato.");
+    }
+  },
+  generateVersion: async (contractId: string) => {
+    const response = await fetch("/api/contracts/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: contractId }),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível gerar nova versão.");
+    }
+
+    const result = (await response.json()) as { contract: ContractRow };
+    return mapContract(result.contract);
+  },
+  sendToSignature: async (contractId: string) => {
+    const response = await fetch("/api/contracts/signature", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: contractId, action: "send" }),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível enviar para assinatura.");
     }
   },
 };

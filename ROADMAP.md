@@ -5,6 +5,7 @@
 - `v1.0.0-rc3` congela a baseline oficial da Automy antes dos modulos reais.
 - `v1.0.0-rc4` consolida as correcoes criticas de seguranca e origem Railway.
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
+- `v1.0.0-rc6` consolida manutencao de producao: Vercel canonico, CNPJ, avatar storage e documentos contratuais.
 - O codigo esta preparado e validado contra a nova foundation Railway PostgreSQL.
 - O projeto Vercel esta conectado ao GitHub e recebeu as variaveis da nova foundation.
 - Design System, Brand Kit e Login Premium estao congelados.
@@ -52,9 +53,16 @@
 - Implementada saudacao dinamica por timezone e primeiro nome.
 - Implementado header com dados reais, avatar, role, empresa e menu do usuario.
 - Implementada listagem/revogacao de sessoes e alteracao de senha auditada.
-- Avatar aceita URL HTTPS persistida; upload binario possui adapter preparado e valida MIME/tamanho, mas depende de storage persistente oficial.
+- Avatar por URL foi removido do formulario. Upload binario usa `AvatarStorageProvider`, valida MIME/tamanho, gera WebP 256/512 e depende de provider persistente configurado em producao.
 - Geolocalizacao precisa segue desabilitada; GPS so sera adotado se houver caso funcional real.
 - Pendencias: definir storage oficial de arquivos e rodar testes autenticados por role.
+
+## Fase RC6 - Manutencao de Producao
+
+- Implementar provider real de storage em producao, preferencialmente Cloudflare R2 ou S3 compativel.
+- Evoluir `ElectronicSignatureProvider` de Noop para provedor oficial de assinatura.
+- Adicionar versionamento juridico detalhado com revisoes, aprovadores e anexos.
+- Expandir testes autenticados por role para CNPJ, avatar e contratos PDF.
 
 ## Fase 3 - Configuracoes
 

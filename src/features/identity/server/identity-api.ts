@@ -383,10 +383,6 @@ async function handleUpdateProfile(request: Request, context: AuthenticatedUserC
         last_name = $3,
         phone = $4,
         job_title = $5,
-        avatar_path = nullif($6, ''),
-        avatar_mime_type = null,
-        avatar_size = null,
-        avatar_updated_at = case when coalesce(avatar_path, '') <> $6 then now() else avatar_updated_at end,
         updated_by = $1,
         updated_at = now()
       where auth_user_id = $1
@@ -398,7 +394,6 @@ async function handleUpdateProfile(request: Request, context: AuthenticatedUserC
       parsed.data.lastName,
       parsed.data.phone,
       parsed.data.jobTitle,
-      parsed.data.avatarUrl,
     ],
   );
 
@@ -406,12 +401,11 @@ async function handleUpdateProfile(request: Request, context: AuthenticatedUserC
     `
       update public."user"
       set name = $2,
-          image = nullif($3, ''),
           "updatedAt" = now()
       where id = $1
         and deleted_at is null
     `,
-    [context.authUserId, name, parsed.data.avatarUrl],
+    [context.authUserId, name],
   );
 
   await db.query(
@@ -427,7 +421,7 @@ async function handleUpdateProfile(request: Request, context: AuthenticatedUserC
   );
 
   await writeAuditLog(context, "identity.profile.updated", context.domainUserId, {
-    avatarChanged: Boolean(parsed.data.avatarUrl),
+    profileChanged: true,
   });
   const session = await getBetterAuthSessionFromRequest(request);
   return jsonResponse({ profile: await getProfile(context, session!) });
@@ -487,6 +481,16 @@ async function handleUploadAvatar(request: Request, context: AuthenticatedUserCo
 
   const result = await uploadAvatarToPersistentStorage({ authUserId: context.authUserId, file });
   const db = await getRailwayPostgresPool();
+  const profile = await db.query<{ id: string }>(
+    `
+      select id
+      from public.user_profiles
+      where auth_user_id = $1
+        and deleted_at is null
+      limit 1
+    `,
+    [context.authUserId],
+  );
   await db.query(
     `
       update public.user_profiles
@@ -501,7 +505,103 @@ async function handleUploadAvatar(request: Request, context: AuthenticatedUserCo
     `,
     [context.authUserId, result.url, result.mimeType, result.size],
   );
-  return jsonResponse({ avatarUrl: result.url });
+  await db.query(
+    `
+      update public."user"
+      set image = $2,
+          "updatedAt" = now()
+      where id = $1
+        and deleted_at is null
+    `,
+    [context.authUserId, result.url],
+  );
+  await db.query(
+    `
+      insert into public.avatar_assets (
+        company_id,
+        auth_user_id,
+        profile_id,
+        provider,
+        storage_key,
+        public_url,
+        thumbnail_256_url,
+        thumbnail_512_url,
+        mime_type,
+        size_bytes,
+        width,
+        height,
+        checksum_sha256,
+        original_file_name,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 512, 512, $11, $12, $2, $2)
+    `,
+    [
+      context.companyId,
+      context.authUserId,
+      profile.rows[0]?.id ?? null,
+      result.provider,
+      result.storageKey,
+      result.url,
+      result.thumbnail256Url,
+      result.thumbnail512Url,
+      result.mimeType,
+      result.size,
+      result.checksumSha256,
+      file.name,
+    ],
+  );
+  await writeAuditLog(context, "identity.avatar.updated", context.domainUserId, {
+    provider: result.provider,
+    mimeType: result.mimeType,
+    size: result.size,
+  });
+  const session = await getBetterAuthSessionFromRequest(request);
+  return jsonResponse({ profile: await getProfile(context, session!) });
+}
+
+async function handleRemoveAvatar(request: Request, context: AuthenticatedUserContext) {
+  const db = await getRailwayPostgresPool();
+  await db.query(
+    `
+      update public.user_profiles
+      set avatar_path = null,
+          avatar_mime_type = null,
+          avatar_size = null,
+          avatar_updated_at = now(),
+          updated_by = $1,
+          updated_at = now()
+      where auth_user_id = $1
+        and deleted_at is null
+    `,
+    [context.authUserId],
+  );
+  await db.query(
+    `
+      update public."user"
+      set image = null,
+          "updatedAt" = now()
+      where id = $1
+        and deleted_at is null
+    `,
+    [context.authUserId],
+  );
+  await db.query(
+    `
+      update public.avatar_assets
+      set status = 'removed',
+          deleted_at = coalesce(deleted_at, now()),
+          updated_by = $1,
+          updated_at = now()
+      where auth_user_id = $1
+        and deleted_at is null
+    `,
+    [context.authUserId],
+  );
+  await writeAuditLog(context, "identity.avatar.removed", context.domainUserId);
+  const session = await getBetterAuthSessionFromRequest(request);
+  return jsonResponse({ profile: await getProfile(context, session!) });
 }
 
 async function handleChangePassword(request: Request, context: AuthenticatedUserContext) {
@@ -629,6 +729,9 @@ export async function handleIdentityApiRequest(request: Request) {
     }
     if (url.pathname === "/api/identity/avatar" && request.method === "POST") {
       return await handleUploadAvatar(request, auth.context);
+    }
+    if (url.pathname === "/api/identity/avatar" && request.method === "DELETE") {
+      return await handleRemoveAvatar(request, auth.context);
     }
     if (url.pathname === "/api/identity/password" && request.method === "POST") {
       return await handleChangePassword(request, auth.context);

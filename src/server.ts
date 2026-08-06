@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleCompanyLookupApiRequest } from "./features/clients/server/company-lookup-api";
 import { handleAppDataApiRequest } from "./features/app-data/server/app-data-api";
 import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-webhook";
 import { handleIdentityApiRequest } from "./features/identity/server/identity-api";
@@ -55,6 +56,9 @@ export default {
     try {
       const authResponse = await handleBetterAuthRequest(request);
       if (authResponse) return authResponse;
+
+      const companyLookupResponse = await handleCompanyLookupApiRequest(request);
+      if (companyLookupResponse) return companyLookupResponse;
 
       const appDataResponse = await handleAppDataApiRequest(request);
       if (appDataResponse) return appDataResponse;

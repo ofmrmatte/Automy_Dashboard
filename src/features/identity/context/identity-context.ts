@@ -27,6 +27,7 @@ export type IdentityContextValue = {
   updateProfile: (payload: ProfileUpdatePayload) => Promise<void>;
   updatePreferences: (payload: PreferencesUpdatePayload) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   revokeSession: (sessionId: string) => Promise<void>;
   revokeOtherSessions: () => Promise<void>;

@@ -8,10 +8,12 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 
 - Baseline oficial congelada em `v1.0.0-rc3`; a tag nao foi movida.
 - `v1.0.0-rc5` consolida a foundation funcional completa na `main`.
+- `v1.0.0-rc6` estabiliza runtime Vercel, avatar por provider, consulta CNPJ e contratos documentais.
 - A identidade visual, Design System e Brand Kit estao consolidados.
 - O Login Premium esta consolidado e nao deve receber alteracoes visuais sem aprovacao explicita.
 - O banco oficial e Railway PostgreSQL, acessado somente pelo servidor/API interna.
-- Railway e o runtime oficial. Vercel permanece somente como rollback temporario ate o cutover final.
+- Vercel e o runtime oficial da aplicacao.
+- Railway e usado exclusivamente como Railway PostgreSQL.
 - Better Auth e o provedor oficial de autenticacao.
 - O projeto Vercel `automy-dashboard` esta conectado ao GitHub e configurado com as variaveis da nova foundation.
 - A persistencia real em Railway PostgreSQL foi validada por TCP Proxy fora da rede Railway e por runtime interno Railway.
@@ -51,12 +53,19 @@ Automy Dashboard e a aplicacao oficial da Automy. A partir desta fase, o projeto
 - `src/shared`: componentes, tokens, constantes, utilitarios e infraestrutura compartilhada.
 - `src/shared/server/authz.ts`: sessao Better Auth, RBAC minimo e contexto de empresa para APIs internas.
 - `src/shared/server/app-urls.ts`: URL canonica e origens confiaveis do Better Auth.
+- `src/features/clients/server/company-lookup-api.ts`: consulta CNPJ server-side com provider configuravel, cache e rate limit.
+- `src/features/identity/server/avatar-storage.ts`: provider oficial de avatar com adapters `noop`, `local`, `railway_volume`, `s3` e `cloudflare_r2` preparados.
+- `src/features/contracts/server/contract-pdf-service.ts`: geracao server-side sob demanda de PDF de contrato.
 - `railway/migrations`: schema versionado da foundation oficial.
 - `railway/seeds`: configuracoes iniciais de sistema, sem dados ficticios.
 
 ## Fluxo de Dados
 
 Pagina -> React Query -> Service -> Repository -> API interna -> Railway PostgreSQL
+
+## Arquitetura Canonica RC6
+
+Vercel executa a aplicacao, as APIs internas e o Better Auth. Railway permanece como PostgreSQL oficial. O dominio canonico e `https://automy.dev.br`; `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` sao origens confiaveis secundarias para cookies, callbacks e transicao operacional.
 
 Componentes visuais nao acessam APIs, Railway, Prisma ou outros contratos externos diretamente.
 

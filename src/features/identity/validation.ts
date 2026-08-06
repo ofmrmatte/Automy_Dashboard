@@ -25,12 +25,6 @@ export const profileSchema = z.object({
   lastName: z.string().trim(),
   phone: z.string().trim(),
   jobTitle: z.string().trim(),
-  avatarUrl: z
-    .string()
-    .trim()
-    .refine((value) => !value || value.startsWith("https://"), {
-      message: "Informe uma URL HTTPS para o avatar.",
-    }),
 });
 
 export const preferencesSchema = z.object({

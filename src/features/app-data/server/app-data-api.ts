@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
+import { generateContractPdf } from "@/features/contracts/server/contract-pdf-service";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
   contractFormSchema,
@@ -61,6 +63,9 @@ type ProductTermsPayload = {
 const APP_DATA_PATHS = new Set([
   "/api/clients",
   "/api/contracts",
+  "/api/contracts/pdf",
+  "/api/contracts/versions",
+  "/api/contracts/signature",
   "/api/products",
   "/api/support/tickets",
   "/api/scheduled-calls",
@@ -174,6 +179,11 @@ async function handleCreateClient(request: Request, context: AuthenticatedUserCo
           document,
           state_registration,
           municipal_registration,
+          legal_nature,
+          cnae,
+          registration_status,
+          opened_at,
+          fiscal_lookup_snapshot,
           segment,
           email,
           phone,
@@ -188,7 +198,7 @@ async function handleCreateClient(request: Request, context: AuthenticatedUserCo
           created_by,
           updated_by
         )
-        values ($1, $2, $3, $4, $5, $6, $7, nullif($8, ''), nullif($9, ''), nullif($10, ''), nullif($11, ''), nullif($12, ''), $13, $14, $15, $16, $17, $18, $18)
+        values ($1, $2, $3, $4, $5, $6, nullif($7, ''), nullif($8, ''), nullif($9, ''), nullif($10, '')::date, $11, $12, nullif($13, ''), nullif($14, ''), nullif($15, ''), nullif($16, ''), nullif($17, ''), $18, $19, $20, $21, $22, $23, $23)
         on conflict do nothing
         returning *
       `,
@@ -199,6 +209,16 @@ async function handleCreateClient(request: Request, context: AuthenticatedUserCo
         parsed.data.document.replace(/\D/g, ""),
         parsed.data.stateRegistration,
         parsed.data.municipalRegistration,
+        parsed.data.legalNature,
+        parsed.data.cnae,
+        parsed.data.registrationStatus,
+        parsed.data.openedAt,
+        JSON.stringify({
+          legalNature: parsed.data.legalNature,
+          cnae: parsed.data.cnae,
+          registrationStatus: parsed.data.registrationStatus,
+          openedAt: parsed.data.openedAt,
+        }),
         parsed.data.segment,
         parsed.data.email,
         parsed.data.phone,
@@ -515,19 +535,24 @@ async function handleUpdateClient(request: Request, context: AuthenticatedUserCo
           document = $5,
           state_registration = $6,
           municipal_registration = $7,
-          segment = $8,
-          email = nullif($9, ''),
-          phone = nullif($10, ''),
-          website = nullif($11, ''),
-          notes = nullif($12, ''),
-          logo_url = nullif($13, ''),
-          city = $14,
-          state = $15,
-          owner_name = $16,
-          plan_name = $17,
-          status = $18,
+          legal_nature = nullif($8, ''),
+          cnae = nullif($9, ''),
+          registration_status = nullif($10, ''),
+          opened_at = nullif($11, '')::date,
+          fiscal_lookup_snapshot = $12,
+          segment = $13,
+          email = nullif($14, ''),
+          phone = nullif($15, ''),
+          website = nullif($16, ''),
+          notes = nullif($17, ''),
+          logo_url = nullif($18, ''),
+          city = $19,
+          state = $20,
+          owner_name = $21,
+          plan_name = $22,
+          status = $23,
           updated_at = now(),
-          updated_by = $19
+          updated_by = $24
         where id = $1
           and company_id = $2
           and deleted_at is null
@@ -541,6 +566,16 @@ async function handleUpdateClient(request: Request, context: AuthenticatedUserCo
         parsed.data.document.replace(/\D/g, ""),
         parsed.data.stateRegistration,
         parsed.data.municipalRegistration,
+        parsed.data.legalNature,
+        parsed.data.cnae,
+        parsed.data.registrationStatus,
+        parsed.data.openedAt,
+        JSON.stringify({
+          legalNature: parsed.data.legalNature,
+          cnae: parsed.data.cnae,
+          registrationStatus: parsed.data.registrationStatus,
+          openedAt: parsed.data.openedAt,
+        }),
         parsed.data.segment,
         parsed.data.email,
         parsed.data.phone,
@@ -1054,6 +1089,7 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
     }
 
     await upsertContractItem(client, context, created.id, parsed.data);
+    await persistContractSnapshot(client, context, created.id, parsed.data, true);
     await recordContractAudit(client, context, "contract.create", created.id, {
       clientId: parsed.data.clientId,
       productId: parsed.data.productId,
@@ -1143,25 +1179,43 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
       return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
     }
 
+    const normalizedContractPayload = {
+      ...parsed.data,
+      clientId: updated.client_id,
+      productId: updated.product_id,
+      name: updated.name ?? "",
+      monthlyValue: Number(updated.monthly_value ?? 0),
+      implementationValue: Number(updated.implementation_value ?? 0),
+      startsAt: updated.starts_at ?? "",
+      endsAt: updated.ends_at ?? "",
+      billingPeriod: updated.billing_period ?? "Mensal",
+      status: parsed.data.status ?? "Pendente",
+      signerName: updated.signer_name ?? "",
+      renewalAt: updated.renewal_at ?? "",
+      witnessName: updated.witness_name ?? "",
+      notes: updated.notes ?? "",
+      contractText: updated.contract_text ?? "",
+    };
+
     if (parsed.data.productId || parsed.data.monthlyValue !== undefined) {
-      await upsertContractItem(client, context, updated.id, {
-        ...parsed.data,
-        clientId: updated.client_id,
-        productId: updated.product_id,
-        name: updated.name ?? "",
-        monthlyValue: Number(updated.monthly_value ?? 0),
-        implementationValue: Number(updated.implementation_value ?? 0),
-        startsAt: updated.starts_at ?? "",
-        endsAt: updated.ends_at ?? "",
-        billingPeriod: updated.billing_period ?? "Mensal",
-        status: parsed.data.status ?? "Pendente",
-        signerName: updated.signer_name ?? "",
-        renewalAt: updated.renewal_at ?? "",
-        witnessName: updated.witness_name ?? "",
-        notes: updated.notes ?? "",
-        contractText: updated.contract_text ?? "",
-      });
+      await upsertContractItem(client, context, updated.id, normalizedContractPayload);
     }
+
+    await persistContractSnapshot(
+      client,
+      context,
+      updated.id,
+      normalizedContractPayload,
+      Boolean(
+        parsed.data.contractText !== undefined ||
+        parsed.data.productId ||
+        parsed.data.monthlyValue !== undefined ||
+        parsed.data.implementationValue !== undefined ||
+        parsed.data.name ||
+        parsed.data.signerName ||
+        parsed.data.witnessName !== undefined,
+      ),
+    );
 
     await recordContractAudit(client, context, "contract.update", updated.id, {
       status: updated.status,
@@ -1207,6 +1261,151 @@ async function handleDeleteContract(request: Request, context: AuthenticatedUser
   return jsonResponse({ ok: true });
 }
 
+async function handleContractPdf(request: Request, context: AuthenticatedUserContext) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  if (!id) return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
+  const row = await getContractSnapshotRow(db, context, id);
+  if (!row) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
+  if (!row.contract_text) {
+    return jsonResponse({ error: "Contrato ainda não possui minuta gerada." }, { status: 400 });
+  }
+
+  if (!row["contract_hash"]) {
+    await persistContractSnapshot(
+      db,
+      context,
+      id,
+      {
+        clientId: row.client_id,
+        productId: row.product_id ?? "",
+        name: row.name ?? "",
+        monthlyValue: Number(row.monthly_value ?? 0),
+        implementationValue: Number(row.implementation_value ?? 0),
+        startsAt: row.starts_at ?? "",
+        endsAt: row.ends_at ?? "",
+        renewalAt: row.renewal_at ?? "",
+        billingPeriod: "Mensal",
+        status: "Pendente",
+        signerName: row.signer_name ?? "",
+        witnessName: row.witness_name ?? "",
+        notes: row.notes ?? "",
+        contractText: row.contract_text,
+      },
+      true,
+    );
+  }
+
+  const refreshed = (await getContractSnapshotRow(db, context, id)) ?? row;
+  const generatedAt = new Date().toISOString();
+  const pdf = await generateContractPdf({
+    id: refreshed.id,
+    version: Number(refreshed.contract_version ?? 1),
+    hash: refreshed["contract_hash"] ?? contractHash(refreshed.contract_text),
+    generatedAt,
+    clientName: refreshed.client_trade_name ?? refreshed.client_legal_name ?? "Cliente",
+    productName: refreshed.product_name ?? "Produto",
+    plan: refreshed.name ?? "Contrato Automy",
+    status: refreshed.status,
+    contractText: refreshed.contract_text ?? "",
+  });
+
+  await db.query(
+    `
+      update public.contracts
+      set last_pdf_generated_at = now(),
+          updated_by = $3,
+          updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+    `,
+    [id, context.companyId, context.authUserId],
+  );
+  await recordContractAudit(db, context, "contract.pdf.generated", id, {
+    version: refreshed.contract_version,
+  });
+
+  const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
+  return new Response(new Uint8Array(pdf), {
+    headers: {
+      "content-disposition": `${disposition}; filename="automy-contrato-${id}.pdf"`,
+      "content-type": "application/pdf",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+async function handleGenerateContractVersion(request: Request, context: AuthenticatedUserContext) {
+  const payload = (await request.json().catch(() => null)) as { id?: string } | null;
+  if (!payload?.id) return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+
+  const db = await getRailwayPostgresPool();
+  await persistContractSnapshot(
+    db,
+    context,
+    payload.id,
+    {
+      clientId: "",
+      productId: "",
+      name: "",
+      monthlyValue: 0,
+      implementationValue: 0,
+      startsAt: "",
+      endsAt: "",
+      renewalAt: "",
+      billingPeriod: "Mensal",
+      status: "Pendente",
+      signerName: "",
+      witnessName: "",
+      notes: "",
+      contractText: "",
+    },
+    true,
+  );
+  await recordContractAudit(db, context, "contract.version.generated", payload.id);
+  return handleContractById(payload.id, context);
+}
+
+async function handleContractSignature(request: Request, context: AuthenticatedUserContext) {
+  const payload = (await request.json().catch(() => null)) as {
+    id?: string;
+    action?: string;
+  } | null;
+  if (!payload?.id) return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+
+  if (payload.action === "download-signed") {
+    return jsonResponse(
+      { error: "Nenhum contrato assinado foi preservado em storage ainda." },
+      { status: 409 },
+    );
+  }
+
+  const db = await getRailwayPostgresPool();
+  await db.query(
+    `
+      update public.contracts
+      set signature_status = 'sent',
+          signature_provider = 'noop',
+          updated_by = $3,
+          updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+    `,
+    [payload.id, context.companyId, context.authUserId],
+  );
+  await recordContractAudit(db, context, "contract.signature.prepared", payload.id, {
+    provider: "noop",
+  });
+  return jsonResponse({
+    ok: true,
+    message: "Provider de assinatura preparado. Envio real depende do adapter oficial.",
+  });
+}
+
 function contractQueryValues(payload: ContractFormData, context: AuthenticatedUserContext) {
   return [
     context.companyId,
@@ -1226,6 +1425,194 @@ function contractQueryValues(payload: ContractFormData, context: AuthenticatedUs
     payload.notes,
     context.authUserId,
   ];
+}
+
+type ContractSnapshotRow = QueryResultRow & {
+  id: string;
+  company_id: string;
+  client_id: string;
+  product_id: string | null;
+  name: string | null;
+  monthly_value: string | number | null;
+  implementation_value: string | number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  renewal_at: string | null;
+  billing_period: string | null;
+  status: string;
+  signer_name: string | null;
+  witness_name: string | null;
+  contract_text: string | null;
+  notes: string | null;
+  contract_version: number;
+  client_trade_name: string | null;
+  client_legal_name: string | null;
+  client_document: string | null;
+  product_name: string | null;
+  product_category: string | null;
+  product_version: string | null;
+  product_commercial_terms: unknown;
+  product_contract_template: string | null;
+};
+
+function contractHash(input: unknown) {
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
+async function getContractSnapshotRow(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  contractId: string,
+) {
+  const result = await db.query(
+    `
+      select
+        contracts.*,
+        clients.trade_name as client_trade_name,
+        clients.legal_name as client_legal_name,
+        clients.document as client_document,
+        products.name as product_name,
+        products.category as product_category,
+        products.version as product_version,
+        products.commercial_terms as product_commercial_terms,
+        products.contract_template as product_contract_template
+      from public.contracts
+      join public.clients
+        on clients.id = contracts.client_id
+        and clients.company_id = contracts.company_id
+        and clients.deleted_at is null
+      left join public.products
+        on products.id = contracts.product_id
+        and products.company_id = contracts.company_id
+        and products.deleted_at is null
+      where contracts.id = $2
+        and contracts.company_id = $1
+        and contracts.deleted_at is null
+      limit 1
+    `,
+    [context.companyId, contractId],
+  );
+
+  return result.rows[0] as ContractSnapshotRow | undefined;
+}
+
+function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
+  const negotiatedTerms = {
+    monthlyValue: Number(row.monthly_value ?? 0),
+    implementationValue: Number(row.implementation_value ?? 0),
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    renewalAt: row.renewal_at,
+    billingPeriod: row.billing_period,
+    signerName: row.signer_name,
+    witnessName: row.witness_name,
+  };
+  const productTerms = row.product_commercial_terms ?? {};
+  const snapshot = {
+    version: nextVersion,
+    contract: {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      text: row.contract_text,
+    },
+    client: {
+      id: row.client_id,
+      tradeName: row.client_trade_name,
+      legalName: row.client_legal_name,
+      document: row.client_document,
+    },
+    product: {
+      id: row.product_id,
+      name: row.product_name,
+      category: row.product_category,
+      version: row.product_version,
+      commercialTerms: productTerms,
+      contractTemplate: row.product_contract_template,
+    },
+    negotiatedTerms,
+  };
+
+  return {
+    snapshot,
+    productTerms,
+    negotiatedTerms,
+    hash: contractHash(snapshot),
+  };
+}
+
+async function persistContractSnapshot(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  contractId: string,
+  _payload: ContractFormData,
+  createNewVersion: boolean,
+) {
+  const row = await getContractSnapshotRow(db, context, contractId);
+  if (!row) return;
+  if (!createNewVersion && row["contract_hash"]) return;
+
+  const nextVersion = createNewVersion
+    ? Number(row.contract_version ?? 1) + (row["contract_hash"] ? 1 : 0)
+    : Number(row.contract_version ?? 1);
+  const { hash, negotiatedTerms, productTerms, snapshot } = buildContractSnapshot(row, nextVersion);
+
+  await db.query(
+    `
+      update public.contracts
+      set contract_version = $3,
+          contract_hash = $4,
+          product_terms_snapshot = $5,
+          negotiated_terms_snapshot = $6,
+          product_contract_template_snapshot = $7,
+          contract_snapshot = $8,
+          updated_by = $9,
+          updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+    `,
+    [
+      contractId,
+      context.companyId,
+      nextVersion,
+      hash,
+      JSON.stringify(productTerms),
+      JSON.stringify(negotiatedTerms),
+      row.product_contract_template,
+      JSON.stringify(snapshot),
+      context.authUserId,
+    ],
+  );
+
+  if (!createNewVersion) return;
+
+  await db.query(
+    `
+      insert into public.contract_versions (
+        company_id,
+        contract_id,
+        version,
+        hash,
+        contract_text,
+        contract_snapshot,
+        signature_status,
+        created_by,
+        updated_by
+      )
+      values ($1, $2, $3, $4, $5, $6, 'draft', $7, $7)
+      on conflict (contract_id, version) do nothing
+    `,
+    [
+      context.companyId,
+      contractId,
+      nextVersion,
+      hash,
+      row.contract_text ?? "",
+      JSON.stringify(snapshot),
+      context.authUserId,
+    ],
+  );
 }
 
 function mapContractStatusToDatabase(status: string) {
@@ -3270,6 +3657,9 @@ function requiredPermissionForRequest(pathname: string, method: string): Permiss
 
   if (pathname === "/api/clients") return isRead ? "clients.read" : "clients.manage";
   if (pathname === "/api/contracts") return isRead ? "contracts.read" : "contracts.manage";
+  if (pathname === "/api/contracts/pdf") return "contracts.read";
+  if (pathname === "/api/contracts/versions") return "contracts.manage";
+  if (pathname === "/api/contracts/signature") return "contracts.manage";
   if (pathname === "/api/products") return isRead ? "products.read" : "products.manage";
   if (pathname === "/api/support/tickets") return isRead ? "support.read" : "support.manage";
   if (pathname === "/api/scheduled-calls") return isRead ? "schedule.read" : "schedule.manage";
@@ -3387,6 +3777,18 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "DELETE" && url.pathname === "/api/contracts") {
     return handleDeleteContract(request, auth.context);
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/contracts/pdf") {
+    return handleContractPdf(request, auth.context);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/contracts/versions") {
+    return handleGenerateContractVersion(request, auth.context);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/contracts/signature") {
+    return handleContractSignature(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/support/tickets") {

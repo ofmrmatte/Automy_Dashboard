@@ -36,6 +36,7 @@ Este projeto e a aplicacao oficial da Automy em fase de producao. Codigo tempora
 - Services sao a fronteira de regras de aplicacao.
 - Prisma, quando adotado, deve ficar atras de repositories.
 - Railway PostgreSQL e a fonte oficial de dados.
+- Railway nao deve hospedar a aplicacao enquanto Vercel for o runtime canonico.
 - Autenticacao deve usar Better Auth.
 - Nao criar novos mocks.
 - Nao criar dados ficticios.
@@ -76,6 +77,14 @@ Todo CRUD deve possuir:
 - Error State
 - Toast
 - Confirmacao de exclusao
+
+## Arquivos e Documentos
+
+- Nunca armazenar imagens ou PDFs diretamente no PostgreSQL.
+- Avatares devem usar `AvatarStorageProvider`.
+- Contratos devem preservar snapshot, versao e hash antes de gerar PDF.
+- PDF de contrato deve ser gerado sob demanda a partir de `contract_text`.
+- Contratos assinados nunca devem ser sobrescritos.
 
 ## Usuarios
 

@@ -10,6 +10,10 @@ export type Client = AuditableEntity & {
   cnpj: string;
   stateRegistration: string;
   municipalRegistration: string;
+  legalNature: string;
+  cnae: string;
+  registrationStatus: string;
+  openedAt: string;
   segment: string;
   city: string;
   state: string;

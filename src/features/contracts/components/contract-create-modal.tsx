@@ -3,7 +3,10 @@ import { BadgeCheck, Building2, FileSignature, Save, ShieldCheck, Users } from "
 import { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Contract } from "@/features/contracts/types";
-import { buildContractDraft } from "@/features/contracts/utils/contract-template";
+import {
+  buildContractDraft,
+  normalizeProductTerms,
+} from "@/features/contracts/utils/contract-template";
 import {
   contractBillingPeriods,
   contractFormSchema,
@@ -84,16 +87,57 @@ export function ContractCreateModal({
 
   const selectedClient = clients.find((client) => client.id === values.clientId);
   const selectedProduct = products.find((product) => product.id === values.productId);
+
+  useEffect(() => {
+    if (isEditing || !selectedProduct) return;
+    const terms = normalizeProductTerms(selectedProduct);
+    const current = form.getValues();
+    if (Number(current.monthlyValue ?? 0) === 0) {
+      form.setValue("monthlyValue", terms.monthlyFee || selectedProduct.basePrice, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    if (Number(current.implementationValue ?? 0) === 0) {
+      form.setValue("implementationValue", terms.implementationFee, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [form, isEditing, selectedProduct]);
+
   const draft = useMemo(() => {
     if (!selectedProduct) return "Selecione um produto para gerar a minuta.";
 
-    return buildContractDraft(selectedProduct, {
-      companyName: selectedClient?.legal || selectedClient?.name || "Cliente",
-      document: selectedClient?.cnpj || "Documento",
-      signerName: values.signerName || "Responsável pela assinatura",
-      ...(values.witnessName ? { witnessName: values.witnessName } : {}),
-    });
-  }, [selectedClient, selectedProduct, values.signerName, values.witnessName]);
+    return buildContractDraft(
+      selectedProduct,
+      {
+        companyName: selectedClient?.legal || selectedClient?.name || "Cliente",
+        document: selectedClient?.cnpj || "Documento",
+        signerName: values.signerName || "Responsável pela assinatura",
+        ...(values.witnessName ? { witnessName: values.witnessName } : {}),
+      },
+      {
+        monthlyValue: Number(values.monthlyValue ?? 0),
+        implementationValue: Number(values.implementationValue ?? 0),
+        billingPeriod: values.billingPeriod,
+        startsAt: values.startsAt,
+        endsAt: values.endsAt,
+        renewalAt: values.renewalAt,
+      },
+    );
+  }, [
+    selectedClient,
+    selectedProduct,
+    values.billingPeriod,
+    values.endsAt,
+    values.implementationValue,
+    values.monthlyValue,
+    values.renewalAt,
+    values.signerName,
+    values.startsAt,
+    values.witnessName,
+  ]);
 
   async function handleSubmit(values: ContractFormValues) {
     await onSubmit({ ...values, contractText: draft });

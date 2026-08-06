@@ -97,7 +97,6 @@ export type ProfileUpdatePayload = {
   lastName: string;
   phone: string;
   jobTitle: string;
-  avatarUrl: string;
 };
 
 export type PreferencesUpdatePayload = {

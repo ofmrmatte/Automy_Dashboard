@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save } from "lucide-react";
-import { useEffect } from "react";
+import { Loader2, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { Client } from "@/features/clients/types";
 import { clientFormSchema, type ClientFormValues } from "@/features/clients/validation";
 import { Button, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
+import { onlyDigits } from "@/shared/utils/document";
 
 const defaultValues: ClientFormValues = {
   id: "",
@@ -13,6 +14,10 @@ const defaultValues: ClientFormValues = {
   document: "",
   stateRegistration: "",
   municipalRegistration: "",
+  legalNature: "",
+  cnae: "",
+  registrationStatus: "",
+  openedAt: "",
   segment: "",
   email: "",
   phone: "",
@@ -44,6 +49,10 @@ function valuesFromClient(client: Client | null | undefined): ClientFormValues {
     document: client.cnpj,
     stateRegistration: client.stateRegistration,
     municipalRegistration: client.municipalRegistration,
+    legalNature: client.legalNature,
+    cnae: client.cnae,
+    registrationStatus: client.registrationStatus,
+    openedAt: client.openedAt,
     segment: client.segment,
     email: client.email,
     phone: client.phone,
@@ -80,10 +89,15 @@ export function ClientCreateModal({
   onSubmit: (values: ClientFormValues) => Promise<unknown>;
 }) {
   const isEditing = Boolean(client);
+  const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle",
+  );
+  const [lookupMessage, setLookupMessage] = useState("");
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: valuesFromClient(client),
   });
+  const documentValue = form.watch("document");
 
   useEffect(() => {
     form.reset(valuesFromClient(client));
@@ -93,6 +107,80 @@ export function ClientCreateModal({
     await onSubmit(values);
     if (!isEditing) form.reset(defaultValues);
   }
+
+  useEffect(() => {
+    const document = onlyDigits(documentValue ?? "");
+    if (isEditing || document.length !== 14) {
+      setLookupStatus("idle");
+      setLookupMessage("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setLookupStatus("loading");
+      setLookupMessage("Consultando CNPJ...");
+      fetch(`/api/company-lookup/cnpj?document=${encodeURIComponent(document)}`, {
+        credentials: "include",
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as {
+            company?: Partial<ClientFormValues> & {
+              legalNature?: string;
+              cnae?: string;
+              registrationStatus?: string;
+              openedAt?: string;
+            };
+            error?: string;
+          } | null;
+          if (!response.ok) throw new Error(payload?.error ?? "Não foi possível consultar CNPJ.");
+          if (!payload?.company) return;
+
+          const company = payload.company;
+          const current = form.getValues();
+          const setIfEmpty = <TField extends keyof ClientFormValues>(
+            field: TField,
+            value: ClientFormValues[TField] | undefined,
+          ) => {
+            if (!value || current[field]) return;
+            form.setValue(field, value as never, { shouldDirty: true, shouldValidate: true });
+          };
+
+          setIfEmpty("legalName", company.legalName);
+          setIfEmpty("tradeName", company.tradeName || company.legalName);
+          setIfEmpty("email", company.email);
+          setIfEmpty("phone", company.phone);
+          setIfEmpty("postalCode", company.postalCode);
+          setIfEmpty("street", company.street);
+          setIfEmpty("number", company.number);
+          setIfEmpty("complement", company.complement);
+          setIfEmpty("district", company.district);
+          setIfEmpty("city", company.city);
+          setIfEmpty("state", company.state);
+          setIfEmpty("country", company.country || "BR");
+          setIfEmpty("segment", company.cnae);
+          setIfEmpty("legalNature", company.legalNature);
+          setIfEmpty("cnae", company.cnae);
+          setIfEmpty("registrationStatus", company.registrationStatus);
+          setIfEmpty("openedAt", company.openedAt);
+          setLookupStatus("success");
+          setLookupMessage("Dados cadastrais preenchidos pelo provider configurado.");
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return;
+          setLookupStatus("error");
+          setLookupMessage(
+            error instanceof Error ? error.message : "Não foi possível consultar o CNPJ.",
+          );
+        });
+    }, 650);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [documentValue, form, isEditing]);
 
   return (
     <Modal
@@ -116,6 +204,16 @@ export function ClientCreateModal({
           <Field label="CNPJ">
             <Input placeholder="00.000.000/0000-00" {...form.register("document")} />
             <FormError message={form.formState.errors.document?.message} />
+            {lookupMessage && (
+              <span
+                className={`inline-flex items-center gap-1 text-xs ${
+                  lookupStatus === "error" ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {lookupStatus === "loading" && <Loader2 className="size-3 animate-spin" />}
+                {lookupMessage}
+              </span>
+            )}
           </Field>
           <Field label="Inscrição estadual">
             <Input placeholder="Opcional" {...form.register("stateRegistration")} />
@@ -128,6 +226,22 @@ export function ClientCreateModal({
           <Field label="Segmento">
             <Input placeholder="Logística, transporte..." {...form.register("segment")} />
             <FormError message={form.formState.errors.segment?.message} />
+          </Field>
+          <Field label="Natureza jurídica">
+            <Input {...form.register("legalNature")} />
+            <FormError message={form.formState.errors.legalNature?.message} />
+          </Field>
+          <Field label="CNAE">
+            <Input {...form.register("cnae")} />
+            <FormError message={form.formState.errors.cnae?.message} />
+          </Field>
+          <Field label="Situação cadastral">
+            <Input {...form.register("registrationStatus")} />
+            <FormError message={form.formState.errors.registrationStatus?.message} />
+          </Field>
+          <Field label="Data de abertura">
+            <Input type="date" {...form.register("openedAt")} />
+            <FormError message={form.formState.errors.openedAt?.message} />
           </Field>
           <Field label="E-mail">
             <Input type="email" placeholder="contato@empresa.com" {...form.register("email")} />

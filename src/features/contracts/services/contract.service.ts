@@ -11,6 +11,8 @@ export const contractService = {
   updateContractStatus: (contractId: string, status: Contract["status"]) =>
     contractRepository.updateStatus(contractId, status),
   deleteContract: (contractId: string) => contractRepository.remove(contractId),
+  generateContractVersion: (contractId: string) => contractRepository.generateVersion(contractId),
+  sendContractToSignature: (contractId: string) => contractRepository.sendToSignature(contractId),
   filterContracts: (contracts: Contract[], filter: ContractFilter) => {
     const term = normalizeSearch(filter.search);
     return contracts.filter(

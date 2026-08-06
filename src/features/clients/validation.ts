@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidCnpj } from "@/shared/utils/document";
 
 const optionalTrimmed = z.string().trim().optional().default("");
 const optionalEmail = z
@@ -30,9 +31,13 @@ export const clientFormSchema = z.object({
     .string()
     .trim()
     .min(14, "Informe o CNPJ.")
-    .refine((value) => value.replace(/\D/g, "").length === 14, "Informe um CNPJ válido."),
+    .refine((value) => isValidCnpj(value), "Informe um CNPJ válido."),
   stateRegistration: optionalTrimmed,
   municipalRegistration: optionalTrimmed,
+  legalNature: optionalTrimmed,
+  cnae: optionalTrimmed,
+  registrationStatus: optionalTrimmed,
+  openedAt: optionalTrimmed,
   segment: optionalTrimmed,
   email: optionalEmail,
   phone: optionalTrimmed,

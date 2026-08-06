@@ -16,13 +16,17 @@ Este projeto e a aplicacao oficial da Automy. Nao utilize mocks, dados ficticios
 - Login Premium Automy consolidado e congelado.
 - Arquitetura feature-first consolidada com repositories, services, React Query e API interna.
 - Railway PostgreSQL e o banco oficial definido em codigo e migrations.
+- Runtime oficial da aplicacao: Vercel.
+- Dominio principal oficial: `https://automy.dev.br`.
+- Origens secundarias aceitas: `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app`.
 - Better Auth e o provedor oficial de autenticacao, usando Railway PostgreSQL.
 - Vercel esta conectado ao repositorio `ofmrmatte/Automy_Dashboard` e configurado com variaveis da nova foundation.
 - Ambiente local possui `.env.local` nao versionado para desenvolvimento com TCP Proxy Railway.
 - Variaveis legadas do provedor anterior foram removidas do Vercel.
 - Cadastro publico permanece desabilitado; usuarios devem ser criados por fluxo administrativo controlado.
-- Release Candidate atual em consolidacao: `v1.0.0-rc5`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc6`.
 - Fases funcionais consolidadas na `main`: Usuarios/Permissoes, Perfil/Preferencias, Configuracoes, Dashboard real, Clientes, Produtos, Contratos, Financeiro, Agenda, Suporte, Relatorios, Busca Global e Notificacoes in-app.
+- Sprint RC6 adiciona estabilizacao de CNPJ, avatar por provider e ciclo documental de contratos.
 - Proximo modulo operacional: Auditoria administrativa.
 
 # BASELINE v1.0.0-RC3

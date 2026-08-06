@@ -17,7 +17,7 @@ Atualizacao de correcao critica: branch `fix/security-and-railway-origin`.
 
 O projeto esta sincronizado com `origin/main` no commit `5db7d01 fix(auth): align Better Auth rate limit schema`. A branch atual e `main`, sem alteracoes locais antes da criacao deste relatorio. A tag mais recente publicada e `v1.0.0-rc3`, porem ela aponta para `32f12ea`, commit anterior a correcao `5db7d01`; portanto a tag RC3 nao representa integralmente o estado atual de `main`.
 
-Railway PostgreSQL esta online, com Postgres, TCP Proxy e migrations aplicadas. Vercel esta online e segue como producao real no dominio `https://automy-dashboard.vercel.app`. O app Railway tambem responde, mas o login direto em `https://automydashboard-production.up.railway.app` falha com `INVALID_ORIGIN`, porque `BETTER_AUTH_URL` e `trustedOrigins` estao alinhados com a URL canonica da Vercel.
+Railway PostgreSQL esta online, com Postgres, TCP Proxy e migrations aplicadas. A partir da RC6, Vercel e o runtime canonico e o dominio oficial da aplicacao e `https://automy.dev.br`. Railway nao deve ser usado para hospedar a aplicacao web enquanto esta arquitetura estiver vigente.
 
 O login Better Auth em Vercel foi validado com sucesso. O banco possui um usuario admin, uma linha correspondente de dominio e auditoria inicial. As APIs principais exigem sessao, mas `/api/finance/charges` ainda responde sem autenticacao.
 

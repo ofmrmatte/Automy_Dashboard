@@ -219,10 +219,7 @@ export function LandingPage() {
                     ))}
                   </ul>
                   <a href="#contato" className="mt-6">
-                    <Button
-                      variant={plan.highlighted ? "primary" : "outline"}
-                      className="w-full"
-                    >
+                    <Button variant={plan.highlighted ? "primary" : "outline"} className="w-full">
                       Falar com o time
                     </Button>
                   </a>

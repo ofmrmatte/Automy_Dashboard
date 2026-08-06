@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
   Eye,
+  FileDown,
+  FileSignature,
   FileText,
   PauseCircle,
   Pencil,
   PlayCircle,
   Plus,
   RotateCcw,
+  Send,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -101,6 +104,43 @@ export function ContractsPage() {
       );
     },
   });
+
+  const generateVersion = useMutation({
+    mutationFn: (contractId: string) => contractService.generateContractVersion(contractId),
+    onSuccess: async (contract) => {
+      await queryClient.invalidateQueries({ queryKey: contractQueryKeys.all });
+      setViewingContract(contract);
+      toast.success("Nova versão do contrato gerada.");
+    },
+    onError: (mutationError) => {
+      toast.danger(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Não foi possível gerar nova versão.",
+      );
+    },
+  });
+
+  const sendToSignature = useMutation({
+    mutationFn: (contractId: string) => contractService.sendContractToSignature(contractId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: contractQueryKeys.all });
+      toast.success("Envio para assinatura preparado.");
+    },
+    onError: (mutationError) => {
+      toast.danger(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Não foi possível enviar para assinatura.",
+      );
+    },
+  });
+
+  const openPdf = (contract: Contract, download = false) => {
+    const params = new URLSearchParams({ id: contract.id });
+    if (download) params.set("download", "1");
+    window.open(`/api/contracts/pdf?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
 
   const contractColumns = useMemo<Array<DataTableColumn<Contract>>>(
     () => [
@@ -292,7 +332,16 @@ export function ContractsPage() {
         }}
         onSubmit={(values) => saveContract.mutateAsync(values)}
       />
-      <ContractViewModal contract={viewingContract} onClose={() => setViewingContract(null)} />
+      <ContractViewModal
+        contract={viewingContract}
+        generatingVersion={generateVersion.isPending}
+        sendingToSignature={sendToSignature.isPending}
+        onClose={() => setViewingContract(null)}
+        onDownloadPdf={(contract) => openPdf(contract, true)}
+        onGenerateVersion={(contract) => generateVersion.mutate(contract.id)}
+        onSendToSignature={(contract) => sendToSignature.mutate(contract.id)}
+        onViewPdf={(contract) => openPdf(contract)}
+      />
       <Modal
         open={Boolean(deletingContract)}
         onClose={() => setDeletingContract(null)}
@@ -326,10 +375,22 @@ export function ContractsPage() {
 
 function ContractViewModal({
   contract,
+  generatingVersion,
+  sendingToSignature,
   onClose,
+  onDownloadPdf,
+  onGenerateVersion,
+  onSendToSignature,
+  onViewPdf,
 }: {
   contract: Contract | null;
+  generatingVersion: boolean;
+  sendingToSignature: boolean;
   onClose: () => void;
+  onDownloadPdf: (contract: Contract) => void;
+  onGenerateVersion: (contract: Contract) => void;
+  onSendToSignature: (contract: Contract) => void;
+  onViewPdf: (contract: Contract) => void;
 }) {
   return (
     <Modal open={Boolean(contract)} onClose={onClose} title="Detalhes do contrato" size="lg">
@@ -342,6 +403,38 @@ function ContractViewModal({
             </div>
             <Badge tone={toneForStatus(contract.status)}>{contract.status}</Badge>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => onViewPdf(contract)}>
+              <FileText className="size-4" />
+              Visualizar PDF
+            </Button>
+            <Button type="button" variant="outline" onClick={() => onDownloadPdf(contract)}>
+              <FileDown className="size-4" />
+              Baixar PDF
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={generatingVersion}
+              onClick={() => onGenerateVersion(contract)}
+            >
+              <FileSignature className="size-4" />
+              Gerar nova versão
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={sendingToSignature}
+              onClick={() => onSendToSignature(contract)}
+            >
+              <Send className="size-4" />
+              Enviar para assinatura
+            </Button>
+            <Button type="button" variant="ghost" disabled={!contract.signedDocumentPath}>
+              <FileDown className="size-4" />
+              Baixar contrato assinado
+            </Button>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="Plano" value={contract.plan} />
             <Info label="Valor mensal" value={formatCurrency(contract.monthlyValue)} />
@@ -349,6 +442,8 @@ function ContractViewModal({
             <Info label="Periodicidade" value={contract.billingPeriod || "Não informado"} />
             <Info label="Início" value={contract.start || "Não informado"} />
             <Info label="Vencimento" value={contract.renewal || "Não informado"} />
+            <Info label="Versão documental" value={`v${contract.contractVersion}`} />
+            <Info label="Hash" value={contract.contractHash?.slice(0, 16) || "Ainda não gerado"} />
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

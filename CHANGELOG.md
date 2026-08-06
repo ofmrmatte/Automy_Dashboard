@@ -2,7 +2,7 @@
 
 ## Current Project Status
 
-- Release Candidate atual em consolidacao: `v1.0.0-rc5`.
+- Release Candidate atual em consolidacao: `v1.0.0-rc6`.
 - `v1.0.0-rc4` permanece como release de correcao critica de seguranca e origem Railway.
 - Railway PostgreSQL definido como banco oficial.
 - Design System, Brand Kit e Login Premium congelados.
@@ -15,6 +15,22 @@
 ## Unreleased
 
 - Nenhuma alteracao pendente registrada.
+
+## v1.0.0-rc6
+
+- Alterada a arquitetura canonica para Vercel como runtime oficial da aplicacao, APIs internas e Better Auth.
+- Railway permanece como PostgreSQL oficial; runtime web Railway foi documentado como nao operacional para a aplicacao.
+- Atualizada resolucao de URL canonica para `https://automy.dev.br`, com `https://www.automy.dev.br` e `https://automy-dashboard.vercel.app` como origens secundarias confiaveis.
+- Removido o campo de avatar por URL do perfil.
+- Criado `AvatarStorageProvider` com adapters `noop`, `local`, `railway_volume`, `s3` e `cloudflare_r2` preparados.
+- Implementado processamento de avatar com MIME seguro, limite de 5 MB, imagem quadrada, WebP 256/512 e metadados em `avatar_assets`.
+- Criado endpoint backend de consulta CNPJ com provider configuravel, cache e rate limit.
+- Cliente passa a preencher dados fiscais/endereco a partir do provider de CNPJ sem chamada direta do frontend ao provider externo.
+- Adicionados campos fiscais reais em clientes: natureza juridica, CNAE, situacao cadastral, data de abertura e snapshot fiscal.
+- Contratos passam a preservar snapshot completo, termos originais do produto, termos negociados, versao e hash.
+- Criado `ContractPdfService` para gerar PDF A4 sob demanda a partir de `contract_text` usando o SVG oficial da Automy.
+- Adicionadas acoes de contrato: visualizar PDF, baixar PDF, gerar nova versao, preparar envio para assinatura e baixar contrato assinado quando existir storage futuro.
+- Criada base de `ElectronicSignatureProvider` via provider `noop`, sem sobrescrever contratos assinados.
 
 ## v1.0.0-rc5
 

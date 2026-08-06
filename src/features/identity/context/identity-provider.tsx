@@ -148,6 +148,12 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
         setAvatarUrl(await identityService.getAvatarUrl(nextProfile.avatarPath));
       },
+      removeAvatar: async () => {
+        if (!session) return;
+        const nextProfile = await identityService.removeAvatar(session.user.id);
+        setProfile(nextProfile);
+        setAvatarUrl(null);
+      },
       refreshSessions,
       revokeSession: async (sessionId) => {
         await identityService.revokeSession(sessionId);

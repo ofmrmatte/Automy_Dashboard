@@ -2,7 +2,18 @@
 
 Data: 2026-08-05.
 
-Este roadmap parte da baseline `v1.0.0-rc5`. O objetivo e continuar a evolucao do ERP operacional, sem alterar Design System, Brand Kit, Login Premium ou infraestrutura Railway.
+Este roadmap parte da baseline `v1.0.0-rc6`. O objetivo e continuar a evolucao do ERP operacional, sem alterar Design System, Brand Kit, Login Premium, Better Auth, runtime Vercel ou Railway PostgreSQL.
+
+## Sprint RC6 - Manutencao de Producao
+
+Status: implementado como consolidacao tecnica.
+
+- Vercel definido como runtime canonico.
+- Railway PostgreSQL mantido como banco oficial.
+- Consulta CNPJ server-side preparada com provider configuravel.
+- AvatarStorageProvider criado, com adapters preparados e metadados persistidos.
+- Contratos documentais preparados com snapshot, versao, hash e PDF sob demanda.
+- ElectronicSignatureProvider permanece em modo `noop` ate definicao do provedor oficial.
 
 ## Sprint 1 - Usuarios, permissoes e RBAC completo
 

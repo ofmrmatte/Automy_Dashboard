@@ -270,11 +270,18 @@ export const identityRepository = {
   uploadAvatar: async (_authUserId: string, _file: File): Promise<IdentityProfile> => {
     const body = new FormData();
     body.append("avatar", _file);
-    await apiRequest<{ avatarUrl: string }>("/api/identity/avatar", {
+    const result = await apiRequest<{ profile: IdentityProfile }>("/api/identity/avatar", {
       method: "POST",
       body,
     });
-    return identityRepository.getProfile(_authUserId);
+    return result.profile;
+  },
+
+  removeAvatar: async (_authUserId: string): Promise<IdentityProfile> => {
+    const result = await apiRequest<{ profile: IdentityProfile }>("/api/identity/avatar", {
+      method: "DELETE",
+    });
+    return result.profile;
   },
 
   getAvatarUrl: async (avatarPath: string | null) => avatarPath,
