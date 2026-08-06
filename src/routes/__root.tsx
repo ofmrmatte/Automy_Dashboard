@@ -20,7 +20,12 @@ import { ToastViewport } from "@/shared/components/toast";
 import { APP_DESCRIPTION, APP_NAME } from "@/shared/constants/app";
 import { LoadingScreen } from "@/shared/components/ui";
 
-const PUBLIC_ROUTES = new Set(["/login", "/recuperar-senha", "/redefinir-senha"]);
+const PUBLIC_ROUTES = new Set([
+  "/login",
+  "/recuperar-senha",
+  "/redefinir-senha",
+  "/solucoes",
+]);
 
 function NotFoundComponent() {
   return (
