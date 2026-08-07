@@ -31,13 +31,11 @@ const checks = [
   ["mapping de sessão usa client_portal_users", portalApi.includes("public.client_portal_users")],
   [
     "sessão de Portal rejeita sobreposição com usuário interno",
-    portalApi.includes(
-      "not exists (\n          select 1\n          from public.users internal_user",
-    ),
+    /not\s+exists\s*\(\s*select\s+1\s+from\s+public\.users\s+internal_user/i.test(portalApi),
   ],
   [
     "snapshot filtra company + client",
-    portalApi.includes("where company_id = $1\n          and client_id = $2"),
+    /where\s+company_id\s*=\s*\$1\s+and\s+client_id\s*=\s*\$2/i.test(portalApi),
   ],
   ["tickets filtram client_id", portalApi.includes("tickets.client_id = $2")],
   ["mensagens do Portal são client-visible", portalApi.includes("messages.visibility = 'client'")],
