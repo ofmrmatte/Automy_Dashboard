@@ -18,6 +18,10 @@ export const clientService = {
   updateClient: (payload: Parameters<typeof clientRepository.update>[0]) =>
     clientRepository.update(payload),
   deleteClient: (clientId: string) => clientRepository.remove(clientId),
+  portalAccessAction: (
+    portalUserId: string,
+    action: Parameters<typeof clientRepository.portalAccessAction>[1],
+  ) => clientRepository.portalAccessAction(portalUserId, action),
   filterClients: (clients: Client[], filter: ClientFilter) =>
     clients.filter((client) => matchesClientFilter(client, filter)),
 };

@@ -17,7 +17,31 @@ type ClientRow = Database["public"]["Tables"]["clients"]["Row"] & {
   address_state?: string | null;
   address_postal_code?: string | null;
   address_country?: string | null;
+  portal_accesses?: unknown;
 };
+
+type PortalAccessAction = "resend" | "generate" | "disable";
+
+function mapPortalAccesses(value: unknown): Client["portalAccesses"] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      name: String(item.name ?? ""),
+      email: String(item.email ?? ""),
+      role: String(item.role ?? ""),
+      status: String(item.status ?? ""),
+      lastLogin: typeof item.lastLogin === "string" ? item.lastLogin : null,
+      activatedAt: typeof item.activatedAt === "string" ? item.activatedAt : null,
+      provisioningStatus:
+        typeof item.provisioningStatus === "string" ? item.provisioningStatus : null,
+      sentAt: typeof item.sentAt === "string" ? item.sentAt : null,
+      failedAt: typeof item.failedAt === "string" ? item.failedAt : null,
+      failureReason: typeof item.failureReason === "string" ? item.failureReason : null,
+    }))
+    .filter((item) => item.id);
+}
 
 function mapClientStatus(status: string): ClientStatus {
   if (status === "active" || status === "Ativo") return "Ativo";
@@ -66,6 +90,7 @@ function mapClient(row: ClientRow): Client {
       postalCode: row.address_postal_code ?? "",
       country: row.address_country ?? "BR",
     },
+    portalAccesses: mapPortalAccesses(row.portal_accesses),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -137,5 +162,19 @@ export const clientRepository = {
     }
 
     return true;
+  },
+  portalAccessAction: async (portalUserId: string, action: PortalAccessAction) => {
+    const response = await fetch("/api/portal-admin/access", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ portalUserId, action }),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível atualizar o acesso.");
+    }
+
+    return response.json();
   },
 };

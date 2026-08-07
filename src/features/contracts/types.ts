@@ -43,6 +43,9 @@ export type Contract = AuditableEntity & {
   signerDocument?: string | null;
   signerEmail?: string | null;
   signerPhone?: string | null;
+  portalAccessEnabled: boolean;
+  portalContactName?: string | null;
+  portalContactEmail?: string | null;
   automyRepresentative?: string | null;
   witnessName?: string | null;
   witnessDocument?: string | null;

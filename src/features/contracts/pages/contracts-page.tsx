@@ -137,6 +137,21 @@ export function ContractsPage() {
     },
   });
 
+  const markSigned = useMutation({
+    mutationFn: (contractId: string) => contractService.markContractSigned(contractId),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: contractQueryKeys.all });
+      toast.success(result.message ?? "Contrato formalizado.");
+    },
+    onError: (mutationError) => {
+      toast.danger(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Não foi possível formalizar o contrato.",
+      );
+    },
+  });
+
   const openPdf = async (contract: Contract, download = false) => {
     if (!contract.contractText) {
       toast.danger("Contrato ainda não possui dados suficientes.");
@@ -369,12 +384,14 @@ export function ContractsPage() {
       />
       <ContractViewModal
         contract={viewingContract}
+        formalizing={markSigned.isPending}
         generatingVersion={generateVersion.isPending}
         pdfAction={pdfAction}
         sendingToSignature={sendToSignature.isPending}
         onClose={() => setViewingContract(null)}
         onDownloadPdf={(contract) => openPdf(contract, true)}
         onGenerateVersion={(contract) => generateVersion.mutate(contract.id)}
+        onMarkSigned={(contract) => markSigned.mutate(contract.id)}
         onSendToSignature={(contract) => sendToSignature.mutate(contract.id)}
         onViewPdf={(contract) => openPdf(contract)}
       />
@@ -411,22 +428,26 @@ export function ContractsPage() {
 
 function ContractViewModal({
   contract,
+  formalizing,
   generatingVersion,
   pdfAction,
   sendingToSignature,
   onClose,
   onDownloadPdf,
   onGenerateVersion,
+  onMarkSigned,
   onSendToSignature,
   onViewPdf,
 }: {
   contract: Contract | null;
+  formalizing: boolean;
   generatingVersion: boolean;
   pdfAction: "preview" | "download" | null;
   sendingToSignature: boolean;
   onClose: () => void;
   onDownloadPdf: (contract: Contract) => void;
   onGenerateVersion: (contract: Contract) => void;
+  onMarkSigned: (contract: Contract) => void;
   onSendToSignature: (contract: Contract) => void;
   onViewPdf: (contract: Contract) => void;
 }) {
@@ -488,6 +509,16 @@ function ContractViewModal({
             >
               <Send className="size-4" />
               Enviar para assinatura
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={formalizing}
+              disabled={contract.signatureStatus === "signed"}
+              onClick={() => onMarkSigned(contract)}
+            >
+              <BadgeCheck className="size-4" />
+              Formalizar contrato
             </Button>
             <Button type="button" variant="ghost" disabled={!contract.signedDocumentPath}>
               <FileDown className="size-4" />

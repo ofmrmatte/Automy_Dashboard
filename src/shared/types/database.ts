@@ -30,7 +30,7 @@ export type Database = {
           email: string;
           emailVerified: boolean;
           image: string | null;
-          role: "admin" | "manager" | "operator" | "read_only";
+          role: "admin" | "manager" | "operator" | "read_only" | "customer";
           status: "active" | "inactive" | "invited" | "suspended";
           last_login: string | null;
           createdAt: string;
@@ -43,7 +43,7 @@ export type Database = {
           email: string;
           emailVerified?: boolean;
           image?: string | null;
-          role?: "admin" | "manager" | "operator" | "read_only";
+          role?: "admin" | "manager" | "operator" | "read_only" | "customer";
           status?: "active" | "inactive" | "invited" | "suspended";
           last_login?: string | null;
           createdAt?: string;
@@ -56,7 +56,7 @@ export type Database = {
           email?: string;
           emailVerified?: boolean;
           image?: string | null;
-          role?: "admin" | "manager" | "operator" | "read_only";
+          role?: "admin" | "manager" | "operator" | "read_only" | "customer";
           status?: "active" | "inactive" | "invited" | "suspended";
           last_login?: string | null;
           createdAt?: string;
@@ -981,6 +981,9 @@ export type Database = {
           signer_document: string | null;
           signer_email: string | null;
           signer_phone: string | null;
+          portal_access_enabled: boolean;
+          portal_contact_name: string | null;
+          portal_contact_email: string | null;
           automy_representative: string | null;
           witness_name: string | null;
           witness_document: string | null;
@@ -1037,6 +1040,9 @@ export type Database = {
           signer_document?: string | null;
           signer_email?: string | null;
           signer_phone?: string | null;
+          portal_access_enabled?: boolean;
+          portal_contact_name?: string | null;
+          portal_contact_email?: string | null;
           automy_representative?: string | null;
           witness_name?: string | null;
           witness_document?: string | null;
@@ -1093,6 +1099,9 @@ export type Database = {
           signer_document?: string | null;
           signer_email?: string | null;
           signer_phone?: string | null;
+          portal_access_enabled?: boolean;
+          portal_contact_name?: string | null;
+          portal_contact_email?: string | null;
           automy_representative?: string | null;
           witness_name?: string | null;
           witness_document?: string | null;

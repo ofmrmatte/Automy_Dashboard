@@ -15,8 +15,11 @@
     "db:validate": "node scripts/db/validate-connection.mjs",
     "db:inspect": "node scripts/db/inspect-foundation.mjs",
     "security:verify": "node scripts/security/verify-critical-auth.mjs",
+    "security:verify-portal": "node scripts/security/verify-client-portal-safety.mjs",
     "test:hotfix": "tsx scripts/tests/hotfix-cnpj-pdf-test.mjs",
     "auth:bootstrap-admin": "node scripts/auth/bootstrap-admin.mjs",
+    "auth:provision-portal-user": "node scripts/auth/provision-portal-user.mjs",
+    "db:validate-portal": "node scripts/db/validate-client-portal.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

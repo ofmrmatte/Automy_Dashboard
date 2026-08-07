@@ -35,6 +35,7 @@ export const ticketFormSchema = z.object({
 export const ticketPatchSchema = ticketFormSchema.partial().extend({
   id: z.uuid("Ticket não informado."),
   message: optionalPatchText,
+  messageVisibility: z.enum(["internal", "client"]).optional(),
   attachmentName: optionalPatchText,
   attachmentUrl: optionalPatchText.refine(
     (value) => !value || z.url().safeParse(value).success,
