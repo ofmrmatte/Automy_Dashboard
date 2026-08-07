@@ -22,6 +22,12 @@ import {
   type ContractFormData,
 } from "@/features/contracts/validation";
 import {
+  disableClientPortalAccess,
+  listClientPortalAccesses,
+  processContractPortalProvisioning,
+  resendClientPortalInvitation,
+} from "@/features/portal/server/portal-provisioning";
+import {
   productFormSchema,
   productPatchSchema,
   type ProductFormData,
@@ -86,6 +92,8 @@ const APP_DATA_PATHS = new Set([
   "/api/contracts/pdf",
   "/api/contracts/versions",
   "/api/contracts/signature",
+  "/api/portal-admin/access",
+  "/api/portal-admin/provision-contract",
   "/api/products",
   "/api/support/tickets",
   "/api/scheduled-calls",
@@ -140,7 +148,8 @@ async function handleClients(url: URL, context: AuthenticatedUserContext) {
         primary_address.city as address_city,
         primary_address.state as address_state,
         primary_address.postal_code as address_postal_code,
-        primary_address.country as address_country
+        primary_address.country as address_country,
+        coalesce(portal_accesses.items, '[]'::jsonb) as portal_accesses
       from public.clients
       left join lateral (
         select name, email, phone
@@ -160,6 +169,40 @@ async function handleClients(url: URL, context: AuthenticatedUserContext) {
         order by addresses.created_at asc
         limit 1
       ) as primary_address on true
+      left join lateral (
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', portal.id,
+            'name', portal.name,
+            'email', portal.email,
+            'role', portal.role,
+            'status', portal.status,
+            'lastLogin', auth_user.last_login,
+            'activatedAt', coalesce(portal.activated_at, provisioning.activated_at),
+            'provisioningStatus', provisioning.status,
+            'sentAt', provisioning.sent_at,
+            'failedAt', provisioning.failed_at,
+            'failureReason', provisioning.failure_reason
+          )
+          order by portal.created_at desc
+        ) as items
+        from public.client_portal_users portal
+        join public."user" auth_user
+          on auth_user.id = portal.auth_user_id
+          and auth_user.deleted_at is null
+        left join lateral (
+          select status, sent_at, failed_at, failure_reason, activated_at
+          from public.client_portal_provisioning
+          where client_portal_provisioning.portal_user_id = portal.id
+            and client_portal_provisioning.company_id = portal.company_id
+            and client_portal_provisioning.deleted_at is null
+          order by client_portal_provisioning.updated_at desc
+          limit 1
+        ) provisioning on true
+        where portal.client_id = clients.id
+          and portal.company_id = clients.company_id
+          and portal.deleted_at is null
+      ) as portal_accesses on true
       where clients.deleted_at is null
         and clients.company_id = $2
         and ($1::uuid is null or clients.id = $1::uuid)
@@ -1049,6 +1092,9 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
           billing_period,
           status,
           signer_name,
+          portal_access_enabled,
+          portal_contact_name,
+          portal_contact_email,
           witness_name,
           contract_text,
           notes,
@@ -1068,11 +1114,14 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
           $10,
           $11,
           $12,
-          nullif($13, ''),
+          $13,
           nullif($14, ''),
           nullif($15, ''),
-          $16,
-          $16
+          nullif($16, ''),
+          nullif($17, ''),
+          nullif($18, ''),
+          $19,
+          $19
         from public.clients
         cross join public.products
         where clients.id = $2
@@ -1145,12 +1194,15 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
           billing_period = coalesce(nullif($11, ''), billing_period),
           status = coalesce(nullif($12, ''), status),
           signer_name = coalesce(nullif($13, ''), signer_name),
-          witness_name = $14,
-          contract_text = coalesce($15, contract_text),
-          notes = coalesce($16, notes),
+          portal_access_enabled = coalesce($14, portal_access_enabled),
+          portal_contact_name = coalesce($15, portal_contact_name),
+          portal_contact_email = coalesce($16, portal_contact_email),
+          witness_name = $17,
+          contract_text = coalesce($18, contract_text),
+          notes = coalesce($19, notes),
           cancelled_at = case when $12 = 'cancelled' then now() else cancelled_at end,
           ended_at = case when $12 = 'ended' then now() else ended_at end,
-          updated_by = $17,
+          updated_by = $20,
           updated_at = now()
         where id = $1
           and company_id = $2
@@ -1171,6 +1223,9 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
         parsed.data.billingPeriod ?? "",
         status,
         parsed.data.signerName ?? "",
+        parsed.data.portalAccessEnabled ?? null,
+        parsed.data.portalContactName ?? null,
+        parsed.data.portalContactEmail ?? null,
         parsed.data.witnessName ?? null,
         parsed.data.contractText ?? null,
         parsed.data.notes ?? null,
@@ -1198,6 +1253,9 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
       billingPeriod: updated.billing_period ?? "Mensal",
       status: parsed.data.status ?? "Pendente",
       signerName: updated.signer_name ?? "",
+      portalAccessEnabled: Boolean(updated.portal_access_enabled ?? true),
+      portalContactName: updated.portal_contact_name ?? "",
+      portalContactEmail: updated.portal_contact_email ?? "",
       renewalAt: updated.renewal_at ?? "",
       witnessName: updated.witness_name ?? "",
       notes: updated.notes ?? "",
@@ -1220,6 +1278,9 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
         parsed.data.implementationValue !== undefined ||
         parsed.data.name ||
         parsed.data.signerName ||
+        parsed.data.portalAccessEnabled !== undefined ||
+        parsed.data.portalContactName !== undefined ||
+        parsed.data.portalContactEmail !== undefined ||
         parsed.data.witnessName !== undefined,
       ),
     );
@@ -1483,6 +1544,10 @@ async function handleContractSignature(request: Request, context: AuthenticatedU
     );
   }
 
+  if (payload.action === "mark-signed") {
+    return handleFormalizeContract(payload.id, context);
+  }
+
   const db = await getRailwayPostgresPool();
   const row = await getContractSnapshotRow(db, context, payload.id);
   if (!row) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
@@ -1535,6 +1600,38 @@ async function handleContractSignature(request: Request, context: AuthenticatedU
   });
 }
 
+async function handleFormalizeContract(contractId: string, context: AuthenticatedUserContext) {
+  const db = await getRailwayPostgresPool();
+  const result = await db.query<{ id: string }>(
+    `
+      update public.contracts
+      set signature_status = 'signed',
+          signed_at = coalesce(signed_at, now()),
+          status = case when status = 'pending' then 'active' else status end,
+          updated_by = $3,
+          updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+      returning id
+    `,
+    [contractId, context.companyId, context.authUserId],
+  );
+
+  if (!result.rows[0]) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
+
+  await recordContractAudit(db, context, "contract.signature.signed", contractId);
+  const provisioning = await processContractPortalProvisioning(contractId, context);
+  return jsonResponse({
+    ok: true,
+    provisioning,
+    message:
+      provisioning.status === "sent"
+        ? "Contrato formalizado e convite do Portal enviado."
+        : "Contrato formalizado. Verifique o status do provisionamento do Portal.",
+  });
+}
+
 function contractQueryValues(payload: ContractFormData, context: AuthenticatedUserContext) {
   return [
     context.companyId,
@@ -1549,6 +1646,9 @@ function contractQueryValues(payload: ContractFormData, context: AuthenticatedUs
     payload.billingPeriod,
     mapContractStatusToDatabase(payload.status),
     payload.signerName,
+    payload.portalAccessEnabled,
+    payload.portalContactName,
+    payload.portalContactEmail,
     payload.witnessName,
     payload.contractText,
     payload.notes,
@@ -4092,6 +4192,8 @@ function requiredPermissionForRequest(pathname: string, method: string): Permiss
   if (pathname === "/api/contracts/pdf") return "contracts.read";
   if (pathname === "/api/contracts/versions") return "contracts.manage";
   if (pathname === "/api/contracts/signature") return "contracts.manage";
+  if (pathname === "/api/portal-admin/access") return isRead ? "clients.read" : "clients.manage";
+  if (pathname === "/api/portal-admin/provision-contract") return "contracts.manage";
   if (pathname === "/api/products") return isRead ? "products.read" : "products.manage";
   if (pathname === "/api/support/tickets") return isRead ? "support.read" : "support.manage";
   if (pathname === "/api/scheduled-calls") return isRead ? "schedule.read" : "schedule.manage";
@@ -4162,6 +4264,57 @@ async function handleUpdateSetting(request: Request, keyPrefix: string, currentU
   return jsonResponse({ value: result.rows[0]?.value ?? null });
 }
 
+async function handlePortalAdminAccess(request: Request, context: AuthenticatedUserContext) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  if (request.method === "GET") {
+    const clientId = url.searchParams.get("clientId") ?? "";
+    if (!clientId) return jsonResponse({ error: "Cliente não informado." }, { status: 400 });
+    const accesses = await listClientPortalAccesses(clientId, context);
+    return jsonResponse({ accesses });
+  }
+
+  const payload = (await request.json().catch(() => null)) as {
+    action?: string;
+    portalUserId?: string;
+  } | null;
+  if (!payload?.portalUserId) {
+    return jsonResponse({ error: "Acesso não informado." }, { status: 400 });
+  }
+
+  if (payload.action === "resend" || payload.action === "generate") {
+    const result = await resendClientPortalInvitation(payload.portalUserId, context);
+    return jsonResponse({ result });
+  }
+
+  if (payload.action === "disable") {
+    const result = await disableClientPortalAccess(payload.portalUserId, context);
+    return jsonResponse(result, { status: result.ok ? 200 : 404 });
+  }
+
+  return jsonResponse({ error: "Ação inválida." }, { status: 400 });
+}
+
+async function handleProvisionContractPortalAccess(
+  request: Request,
+  context: AuthenticatedUserContext,
+) {
+  if (!isRailwayPostgresConfigured()) {
+    return jsonResponse({ error: "Banco Railway não configurado." }, { status: 503 });
+  }
+
+  const payload = (await request.json().catch(() => null)) as { contractId?: string } | null;
+  if (!payload?.contractId) {
+    return jsonResponse({ error: "Contrato não informado." }, { status: 400 });
+  }
+
+  const result = await processContractPortalProvisioning(payload.contractId, context);
+  return jsonResponse({ result });
+}
+
 export async function handleAppDataApiRequest(request: Request) {
   const url = new URL(request.url);
   if (!APP_DATA_PATHS.has(url.pathname)) return null;
@@ -4221,6 +4374,17 @@ export async function handleAppDataApiRequest(request: Request) {
 
   if (request.method === "POST" && url.pathname === "/api/contracts/signature") {
     return handleContractSignature(request, auth.context);
+  }
+
+  if (
+    (request.method === "GET" || request.method === "POST") &&
+    url.pathname === "/api/portal-admin/access"
+  ) {
+    return handlePortalAdminAccess(request, auth.context);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/portal-admin/provision-contract") {
+    return handleProvisionContractPortalAccess(request, auth.context);
   }
 
   if (request.method === "POST" && url.pathname === "/api/support/tickets") {

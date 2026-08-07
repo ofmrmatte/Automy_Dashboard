@@ -13,6 +13,9 @@ type ContractRow = Omit<Database["public"]["Tables"]["contracts"]["Row"], "clien
   signer_document?: string | null;
   signer_email?: string | null;
   signer_phone?: string | null;
+  portal_access_enabled?: boolean | null;
+  portal_contact_name?: string | null;
+  portal_contact_email?: string | null;
   automy_representative?: string | null;
   witness_name?: string | null;
   witness_document?: string | null;
@@ -77,6 +80,9 @@ function mapContract(row: ContractRow): Contract {
     signerDocument: row.signer_document ?? null,
     signerEmail: row.signer_email ?? null,
     signerPhone: row.signer_phone ?? null,
+    portalAccessEnabled: Boolean(row.portal_access_enabled ?? true),
+    portalContactName: row.portal_contact_name ?? null,
+    portalContactEmail: row.portal_contact_email ?? null,
     automyRepresentative: row.automy_representative ?? null,
     witnessName: row.witness_name ?? null,
     witnessDocument: row.witness_document ?? null,
@@ -190,6 +196,24 @@ export const contractRepository = {
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new RepositoryError(result?.error ?? "Não foi possível enviar para assinatura.");
     }
+  },
+  markSigned: async (contractId: string) => {
+    const response = await fetch("/api/contracts/signature", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: contractId, action: "mark-signed" }),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new RepositoryError(result?.error ?? "Não foi possível formalizar o contrato.");
+    }
+
+    return response.json() as Promise<{
+      ok: boolean;
+      provisioning?: { status?: string; error?: string };
+      message?: string;
+    }>;
   },
   getPdf: async (contractId: string, download = false) => {
     const params = new URLSearchParams({ id: contractId });

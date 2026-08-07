@@ -13,6 +13,7 @@ export const contractService = {
   deleteContract: (contractId: string) => contractRepository.remove(contractId),
   generateContractVersion: (contractId: string) => contractRepository.generateVersion(contractId),
   sendContractToSignature: (contractId: string) => contractRepository.sendToSignature(contractId),
+  markContractSigned: (contractId: string) => contractRepository.markSigned(contractId),
   getContractPdf: (contractId: string, download = false) =>
     contractRepository.getPdf(contractId, download),
   filterContracts: (contracts: Contract[], filter: ContractFilter) => {

@@ -4,6 +4,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { APP_NAME } from "@/shared/constants/app";
+import { sendPasswordResetEmail } from "@/features/email/transactional-email";
 import { resolveBetterAuthBaseURL, resolveTrustedAppOrigins } from "@/shared/server/app-urls";
 import { loadLocalServerEnv } from "@/shared/server/env";
 
@@ -66,8 +67,12 @@ function createAutomyAuth() {
       disableSignUp: true,
       minPasswordLength: 8,
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async () => {
-        // Email delivery will be connected when Automy's transactional email provider is approved.
+      sendResetPassword: async ({ user, url }) => {
+        await sendPasswordResetEmail({
+          to: user.email,
+          name: user.name || user.email,
+          resetUrl: url,
+        });
       },
     },
     emailVerification: {

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Building2,
@@ -9,13 +9,18 @@ import {
   Phone,
   Globe,
   User,
+  Send,
+  ShieldOff,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { clientDetailQueryOptions } from "@/features/clients/api/client.queries";
+import { clientDetailQueryOptions, clientQueryKeys } from "@/features/clients/api/client.queries";
+import { clientService } from "@/features/clients/services/client.service";
+import type { ClientPortalAccess } from "@/features/clients/types";
 import { EmptyState } from "@/shared/components/empty-state";
-import { Badge, Card, Loader } from "@/shared/components/ui";
+import { Badge, Button, Card, Loader } from "@/shared/components/ui";
 import { toneForStatus } from "@/shared/types/status";
+import { toast } from "@/shared/components/toast";
 
 const CLIENT_DETAIL_TABS = [
   "Dados gerais",
@@ -23,13 +28,30 @@ const CLIENT_DETAIL_TABS = [
   "Produtos",
   "Contratos",
   "Financeiro",
+  "Acessos ao Portal",
   "Documentos",
   "Histórico",
 ];
 
 export function ClientDetailPage({ clientId }: { clientId: string }) {
   const [tab, setTab] = useState("Dados gerais");
+  const queryClient = useQueryClient();
   const { data: client, error, isLoading } = useQuery(clientDetailQueryOptions(clientId));
+  const portalAccessAction = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "resend" | "generate" | "disable" }) =>
+      clientService.portalAccessAction(id, action),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: clientQueryKeys.detail(clientId) });
+      toast.success("Acesso ao Portal atualizado.");
+    },
+    onError: (mutationError) => {
+      toast.danger(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Não foi possível atualizar o acesso ao Portal.",
+      );
+    },
+  });
 
   if (isLoading) {
     return (
@@ -147,6 +169,12 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
             </div>
           </Card>
         </div>
+      ) : tab === "Acessos ao Portal" ? (
+        <PortalAccessesPanel
+          accesses={client.portalAccesses}
+          loading={portalAccessAction.isPending}
+          onAction={(id, action) => portalAccessAction.mutate({ id, action })}
+        />
       ) : (
         <Card className="mt-6 p-8">
           <div className="mx-auto max-w-lg text-center">
@@ -161,5 +189,109 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
         </Card>
       )}
     </div>
+  );
+}
+
+function statusLabel(value: string | null) {
+  if (value === "sent") return "Convite enviado";
+  if (value === "activated" || value === "active") return "Ativo";
+  if (value === "delivery_failed") return "Falha no envio";
+  if (value === "conflict") return "Conflito";
+  if (value === "invited") return "Convidado";
+  if (value === "inactive" || value === "disabled") return "Inativo";
+  return value || "Pendente";
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "Não informado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function PortalAccessesPanel({
+  accesses,
+  loading,
+  onAction,
+}: {
+  accesses: ClientPortalAccess[];
+  loading: boolean;
+  onAction: (id: string, action: "resend" | "generate" | "disable") => void;
+}) {
+  return (
+    <Card className="mt-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-semibold">Acessos ao Portal</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Convites e usuários vinculados a este cliente.
+          </p>
+        </div>
+      </div>
+      {accesses.length === 0 ? (
+        <div className="mt-6 rounded-card border border-dashed border-border p-6 text-sm text-muted-foreground">
+          Nenhum acesso ao Portal foi provisionado para este cliente.
+        </div>
+      ) : (
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="border-b border-border text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="py-3 pr-4 font-medium">Nome</th>
+                <th className="py-3 pr-4 font-medium">E-mail</th>
+                <th className="py-3 pr-4 font-medium">Perfil</th>
+                <th className="py-3 pr-4 font-medium">Status</th>
+                <th className="py-3 pr-4 font-medium">Último acesso</th>
+                <th className="py-3 pr-4 font-medium">Ativado em</th>
+                <th className="py-3 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {accesses.map((access) => (
+                <tr key={access.id}>
+                  <td className="py-3 pr-4 font-medium">{access.name}</td>
+                  <td className="py-3 pr-4">{access.email}</td>
+                  <td className="py-3 pr-4">{access.role || "customer_admin"}</td>
+                  <td className="py-3 pr-4">
+                    <Badge tone={access.status === "active" ? "success" : "warning"}>
+                      {statusLabel(access.provisioningStatus ?? access.status)}
+                    </Badge>
+                    {access.failureReason && (
+                      <div className="mt-1 text-xs text-danger">{access.failureReason}</div>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4">{formatDateTime(access.lastLogin)}</td>
+                  <td className="py-3 pr-4">{formatDateTime(access.activatedAt)}</td>
+                  <td className="py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        loading={loading}
+                        onClick={() => onAction(access.id, "resend")}
+                      >
+                        <Send className="size-4" />
+                        Reenviar convite
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        loading={loading}
+                        disabled={access.status === "inactive"}
+                        onClick={() => onAction(access.id, "disable")}
+                      >
+                        <ShieldOff className="size-4" />
+                        Desativar
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

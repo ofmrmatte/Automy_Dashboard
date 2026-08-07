@@ -43,13 +43,15 @@ const email = requireEnv("PORTAL_USER_EMAIL").toLowerCase();
 const password = requireEnv("PORTAL_USER_PASSWORD");
 const name = process.env.PORTAL_USER_NAME?.trim() || email;
 const phone = process.env.PORTAL_USER_PHONE?.trim() || null;
-const portalRole = process.env.PORTAL_USER_ROLE?.trim() || "customer";
+const portalRole = process.env.PORTAL_USER_ROLE?.trim() || "customer_admin";
 const betterAuthSecret = requireEnv("BETTER_AUTH_SECRET");
 const betterAuthUrl = process.env.BETTER_AUTH_URL?.trim() || "http://localhost:8080";
 
 if (password.length < 8) throw new Error("PORTAL_USER_PASSWORD deve ter pelo menos 8 caracteres.");
-if (!new Set(["customer", "billing", "technical"]).has(portalRole)) {
-  throw new Error("PORTAL_USER_ROLE inválida. Use customer, billing ou technical.");
+if (!new Set(["customer_admin", "finance", "operations", "read_only"]).has(portalRole)) {
+  throw new Error(
+    "PORTAL_USER_ROLE inválida. Use customer_admin, finance, operations ou read_only.",
+  );
 }
 
 const pool = new Pool({
@@ -101,7 +103,7 @@ try {
     },
     user: {
       additionalFields: {
-        role: { type: "string", required: true, defaultValue: "read_only", input: false },
+        role: { type: "string", required: true, defaultValue: "customer", input: false },
         status: { type: "string", required: true, defaultValue: "active", input: false },
         lastLogin: { type: "date", required: false, input: false, fieldName: "last_login" },
         deletedAt: { type: "date", required: false, input: false, fieldName: "deleted_at" },
@@ -129,7 +131,7 @@ try {
 
   // Defense-in-depth: Portal users are auth-only and are never inserted into public.users.
   await pool.query(
-    `update public."user" set role = 'read_only', status = 'active', updated_at = now() where id = $1`,
+    `update public."user" set role = 'customer', status = 'active', "updatedAt" = now() where id = $1`,
     [createdAuthUserId],
   );
 

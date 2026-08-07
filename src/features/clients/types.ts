@@ -38,6 +38,21 @@ export type Client = AuditableEntity & {
     postalCode: string;
     country: string;
   };
+  portalAccesses: ClientPortalAccess[];
+};
+
+export type ClientPortalAccess = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  lastLogin: string | null;
+  activatedAt: string | null;
+  provisioningStatus: string | null;
+  sentAt: string | null;
+  failedAt: string | null;
+  failureReason: string | null;
 };
 
 export type ClientFilter = {

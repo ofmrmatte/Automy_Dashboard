@@ -71,6 +71,9 @@ const defaultValues: ContractFormValues = {
   signerDocument: "",
   signerEmail: "",
   signerPhone: "",
+  portalAccessEnabled: true,
+  portalContactName: "",
+  portalContactEmail: "",
   automyRepresentative: "",
   witnessName: "",
   witnessDocument: "",
@@ -134,6 +137,9 @@ function contractToFormValues(contract: Contract | null | undefined): ContractFo
     signerDocument: contract.signerDocument ?? "",
     signerEmail: contract.signerEmail ?? "",
     signerPhone: contract.signerPhone ?? "",
+    portalAccessEnabled: contract.portalAccessEnabled,
+    portalContactName: contract.portalContactName ?? contract.signerName ?? "",
+    portalContactEmail: contract.portalContactEmail ?? contract.signerEmail ?? "",
     automyRepresentative: contract.automyRepresentative ?? "",
     witnessName: contract.witnessName ?? "",
     witnessDocument: contract.witnessDocument ?? "",
@@ -167,6 +173,19 @@ export function ContractCreateModal({
   useEffect(() => {
     form.reset(contractToFormValues(contract));
   }, [contract, form, open]);
+
+  useEffect(() => {
+    const current = form.getValues();
+    if (!current.portalContactName && current.signerName) {
+      form.setValue("portalContactName", current.signerName, { shouldDirty: true });
+    }
+    if (!current.portalContactEmail && current.signerEmail) {
+      form.setValue("portalContactEmail", current.signerEmail, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [form, values.signerEmail, values.signerName]);
 
   const selectedClient = clients.find((client) => client.id === values.clientId);
   const selectedProduct = products.find((product) => product.id === values.productId);
@@ -608,6 +627,32 @@ export function ContractCreateModal({
                 <Input {...form.register("signerPhone")} />
                 <FormError message={form.formState.errors.signerPhone?.message} />
               </Field>
+              <div className="rounded-card border border-border bg-muted/20 p-4 sm:col-span-2">
+                <label className="flex items-start gap-3 text-sm text-foreground">
+                  <Checkbox {...form.register("portalAccessEnabled")} />
+                  <span>
+                    <span className="block font-medium">Criar acesso ao Portal ao formalizar</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      O convite sera enviado somente quando o contrato for formalizado.
+                    </span>
+                  </span>
+                </label>
+                {values.portalAccessEnabled && (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Field label="Responsável pelo Portal">
+                      <Input
+                        placeholder="Nome do contato"
+                        {...form.register("portalContactName")}
+                      />
+                      <FormError message={form.formState.errors.portalContactName?.message} />
+                    </Field>
+                    <Field label="E-mail de acesso">
+                      <Input type="email" {...form.register("portalContactEmail")} />
+                      <FormError message={form.formState.errors.portalContactEmail?.message} />
+                    </Field>
+                  </div>
+                )}
+              </div>
               <Field label="Representante da Automy">
                 <Input {...form.register("automyRepresentative")} />
                 <FormError message={form.formState.errors.automyRepresentative?.message} />

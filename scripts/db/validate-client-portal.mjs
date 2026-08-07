@@ -57,9 +57,37 @@ try {
     "phone",
     "role",
     "status",
+    "invited_at",
+    "last_access_at",
+    "activated_at",
   ];
   const missing = required.filter((column) => !available.has(column));
   if (missing.length) throw new Error(`Colunas ausentes: ${missing.join(", ")}`);
+
+  const provisioningTable = await pool.query(`
+    select to_regclass('public.client_portal_provisioning') as name
+  `);
+  if (!provisioningTable.rows[0]?.name) {
+    throw new Error("Tabela public.client_portal_provisioning ainda não existe.");
+  }
+
+  const contractColumns = await pool.query(`
+    select column_name
+    from information_schema.columns
+    where table_schema = 'public' and table_name = 'contracts'
+  `);
+  const contractAvailable = new Set(contractColumns.rows.map((row) => row.column_name));
+  const requiredContractColumns = [
+    "portal_access_enabled",
+    "portal_contact_name",
+    "portal_contact_email",
+  ];
+  const missingContractColumns = requiredContractColumns.filter(
+    (column) => !contractAvailable.has(column),
+  );
+  if (missingContractColumns.length) {
+    throw new Error(`Colunas de contrato ausentes: ${missingContractColumns.join(", ")}`);
+  }
 
   const crossTenant = await pool.query(`
     select count(*)::int as count
@@ -101,6 +129,7 @@ try {
       {
         ok: true,
         table: "public.client_portal_users",
+        provisioningTable: "public.client_portal_provisioning",
         portalUsers: Number(
           (
             await pool.query(

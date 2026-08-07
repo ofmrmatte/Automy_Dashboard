@@ -109,6 +109,15 @@ const contractFormBaseSchema = z.object({
     .or(z.literal(""))
     .default(""),
   signerPhone: z.string().trim().optional().default(""),
+  portalAccessEnabled: z.coerce.boolean().default(true),
+  portalContactName: z.string().trim().optional().default(""),
+  portalContactEmail: z
+    .string()
+    .trim()
+    .email("Informe um e-mail válido para acesso ao Portal.")
+    .optional()
+    .or(z.literal(""))
+    .default(""),
   automyRepresentative: z.string().trim().optional().default(""),
   witnessName: z.string().trim().optional().default(""),
   witnessDocument: optionalDocumentSchema,
@@ -131,6 +140,9 @@ type ContractRefinementValue = {
   startsAt?: string | undefined;
   endsAt?: string | undefined;
   renewalAt?: string | undefined;
+  portalAccessEnabled?: boolean | undefined;
+  portalContactName?: string | undefined;
+  portalContactEmail?: string | undefined;
 };
 
 function refineContractDatesAndPayment(value: ContractRefinementValue, ctx: z.RefinementCtx) {
@@ -241,6 +253,22 @@ function refineContractDatesAndPayment(value: ContractRefinementValue, ctx: z.Re
       message: "A renovação deve ser posterior ao início.",
       path: ["renewalAt"],
     });
+  }
+  if (value.portalAccessEnabled) {
+    if (!value.portalContactName?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe o responsável pelo Portal.",
+        path: ["portalContactName"],
+      });
+    }
+    if (!value.portalContactEmail?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe o e-mail de acesso ao Portal.",
+        path: ["portalContactEmail"],
+      });
+    }
   }
 }
 

@@ -176,6 +176,7 @@ const baseContractPayload = {
   startsAt: "2026-08-06",
   endsAt: "2027-08-06",
   signerName: "Responsável Teste",
+  portalAccessEnabled: false,
 };
 assert.equal(
   contractFormSchema.safeParse({

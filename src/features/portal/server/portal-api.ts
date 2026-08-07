@@ -12,6 +12,10 @@ import {
 } from "@/features/contracts/utils/contract-consistency";
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import { jsonResponse } from "@/shared/server/authz";
+import {
+  activatePortalInvitation,
+  verifyPortalActivationToken,
+} from "@/features/portal/server/portal-provisioning";
 
 function portalJson(payload: unknown, init?: ResponseInit) {
   return jsonResponse(payload, {
@@ -40,7 +44,14 @@ type PortalContext = {
   name: string;
   email: string;
   phone: string;
-  role: "customer" | "billing" | "technical";
+  role:
+    | "customer"
+    | "customer_admin"
+    | "finance"
+    | "operations"
+    | "read_only"
+    | "billing"
+    | "technical";
 };
 
 type PortalAuthResult =
@@ -123,6 +134,10 @@ const replySchema = z.object({ body: z.string().trim().min(1).max(10_000) });
 const profileSchema = z.object({
   name: z.string().trim().min(2).max(160),
   phone: z.string().trim().max(40),
+});
+const activationSchema = z.object({
+  token: z.string().trim().min(20),
+  password: z.string().min(8).max(128),
 });
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -767,7 +782,7 @@ async function handleUpdateProfile(request: Request, context: PortalContext) {
       return portalJson({ error: "Perfil não encontrado." }, { status: 404 });
     }
     await client.query(
-      `update public."user" set name = $2, updated_at = now() where id = $1 and deleted_at is null`,
+      `update public."user" set name = $2, "updatedAt" = now() where id = $1 and deleted_at is null`,
       [context.authUserId, parsed.data.name],
     );
     await recordPortalAudit(client, context, "portal.profile.update", "client", context.clientId, {
@@ -930,9 +945,52 @@ function matchContractPdf(pathname: string) {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+async function handleVerifyActivation(url: URL) {
+  const token = url.searchParams.get("token") ?? "";
+  const result = await verifyPortalActivationToken(token);
+  if (result.status === "valid") return portalJson(result);
+  if (result.status === "expired") {
+    return portalJson(
+      { status: "expired", error: "Este convite expirou. Solicite um novo acesso à Automy." },
+      { status: 410 },
+    );
+  }
+  if (result.status === "used") {
+    return portalJson({ status: "used", error: "Este convite já foi utilizado." }, { status: 409 });
+  }
+  return portalJson({ status: "invalid", error: "Convite inválido." }, { status: 400 });
+}
+
+async function handleCompleteActivation(request: Request) {
+  const parsed = activationSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return portalJson({ error: "Convite ou senha inválidos." }, { status: 400 });
+  }
+
+  const result = await activatePortalInvitation(parsed.data.token, parsed.data.password);
+  if (result.status === "activated") return portalJson({ ok: true });
+  if (result.status === "expired") {
+    return portalJson(
+      { error: "Este convite expirou. Solicite um novo acesso à Automy." },
+      { status: 410 },
+    );
+  }
+  if (result.status === "used") {
+    return portalJson({ error: "Este convite já foi utilizado." }, { status: 409 });
+  }
+  return portalJson({ error: "Convite inválido." }, { status: 400 });
+}
+
 export async function handlePortalApiRequest(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/portal/v1/")) return null;
+
+  if (request.method === "GET" && url.pathname === "/api/portal/v1/activation") {
+    return handleVerifyActivation(url);
+  }
+  if (request.method === "POST" && url.pathname === "/api/portal/v1/activation") {
+    return handleCompleteActivation(request);
+  }
 
   const auth = await requirePortalUser(request);
   if (auth.error) return auth.error;
