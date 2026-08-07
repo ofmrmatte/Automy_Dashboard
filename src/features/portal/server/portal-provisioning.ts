@@ -64,6 +64,21 @@ type PortalAccessRow = {
   failure_reason: string | null;
 };
 
+type PortalProvisioningConflict = {
+  status: "conflict";
+  provisioningId: string | null;
+  error: string;
+};
+
+type PortalUserProvisioningResult =
+  | PortalProvisioningConflict
+  | {
+      status: "ok";
+      authUserId: string;
+      portalUserId: string;
+      accountCreated: boolean;
+    };
+
 const INVITATION_TTL_HOURS = 48;
 
 function normalizeEmail(value: string) {
@@ -213,7 +228,7 @@ async function markProvisioningConflict(
   contactName: string,
   contactEmail: string,
   reason: string,
-) {
+): Promise<PortalProvisioningConflict> {
   const result = await db.query<ProvisioningRow>(
     `
       insert into public.client_portal_provisioning (
@@ -284,7 +299,7 @@ async function createOrReusePortalUser(
   contract: ContractProvisioningRow,
   contactName: string,
   contactEmail: string,
-) {
+): Promise<PortalUserProvisioningResult> {
   const existingAuth = await findAuthUserByEmail(db, contactEmail);
   let authUserId = existingAuth?.id ?? null;
   let accountCreated = false;
@@ -734,7 +749,7 @@ export async function resendClientPortalInvitation(
   const contractId = contractResult.rows[0]?.contract_id;
   if (!contractId) return { status: "not_found", error: "Convite anterior nao encontrado." };
   const result = await processContractPortalProvisioning(contractId, context);
-  if (result.status === "sent") {
+  if (result.status === "sent" && "provisioningId" in result) {
     await recordPortalProvisioningAudit(
       pool,
       context,

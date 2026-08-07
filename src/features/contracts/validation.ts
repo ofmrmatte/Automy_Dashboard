@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calculateContractTermDates } from "@/features/contracts/utils/contract-dates";
 import { isValidCpfOrCnpj, onlyDigits } from "@/shared/utils/document";
 import { parseBrazilianCurrency } from "@/shared/utils/formatters";
 
@@ -95,7 +96,7 @@ const contractFormBaseSchema = z.object({
   loyaltyMonths: integerSchema.default(0),
   currency: z.string().trim().min(3, "Informe a moeda.").default("BRL"),
   startsAt: z.string().trim().min(1, "Informe a data de início."),
-  endsAt: z.string().trim().min(1, "Informe a data de vencimento."),
+  endsAt: z.string().trim().optional().default(""),
   renewalAt: z.string().trim().optional().default(""),
   billingPeriod: z.enum(contractBillingPeriods).default("Mensal"),
   status: z.enum(contractStatuses).default("Pendente"),
@@ -138,12 +139,28 @@ type ContractRefinementValue = {
   gatewayInstallments?: number | undefined;
   customPaymentDescription?: string | undefined;
   startsAt?: string | undefined;
+  loyaltyMonths?: number | undefined;
   endsAt?: string | undefined;
   renewalAt?: string | undefined;
   portalAccessEnabled?: boolean | undefined;
   portalContactName?: string | undefined;
   portalContactEmail?: string | undefined;
 };
+
+function deriveContractTermDates<T extends ContractRefinementValue>(value: T): T {
+  if (!value.startsAt || value.loyaltyMonths === undefined) return value;
+
+  const termDates = calculateContractTermDates({
+    startsAt: value.startsAt,
+    loyaltyMonths: value.loyaltyMonths,
+  });
+
+  return {
+    ...value,
+    endsAt: termDates.minimumTermEndDate,
+    renewalAt: termDates.renewalDate,
+  };
+}
 
 function refineContractDatesAndPayment(value: ContractRefinementValue, ctx: z.RefinementCtx) {
   const totalAmount = Number(value.implementationValue ?? value.monthlyValue ?? 0);
@@ -272,13 +289,16 @@ function refineContractDatesAndPayment(value: ContractRefinementValue, ctx: z.Re
   }
 }
 
-export const contractFormSchema = contractFormBaseSchema.superRefine(refineContractDatesAndPayment);
+export const contractFormSchema = contractFormBaseSchema
+  .transform(deriveContractTermDates)
+  .superRefine(refineContractDatesAndPayment);
 
 export const contractPatchSchema = contractFormBaseSchema
   .partial()
   .extend({
     id: z.string().uuid("Contrato não informado."),
   })
+  .transform(deriveContractTermDates)
   .superRefine(refineContractDatesAndPayment);
 
 export type ContractFormValues = z.input<typeof contractFormSchema>;

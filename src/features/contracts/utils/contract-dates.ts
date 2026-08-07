@@ -22,16 +22,21 @@ export function addMonthsClamped(isoDate: string, months: number) {
   return formatIsoDate(new Date(Date.UTC(targetYear, targetMonth, clampedDay)));
 }
 
+export function calculateMinimumTermEndDate(
+  startDate: string | null | undefined,
+  minimumTermMonths: number | string | null | undefined,
+) {
+  const months = Number(minimumTermMonths ?? 0);
+  if (!startDate || !Number.isInteger(months) || months <= 0) return "";
+  return addMonthsClamped(startDate, months);
+}
+
 export function calculateContractTermDates(input: {
   startsAt: string | null | undefined;
-  loyaltyMonths: number | null | undefined;
+  loyaltyMonths: number | string | null | undefined;
   autoRenew?: boolean | null | undefined;
 }) {
-  const minimumTermMonths = Number(input.loyaltyMonths ?? 0);
-  const minimumTermEndDate =
-    input.startsAt && minimumTermMonths > 0
-      ? addMonthsClamped(input.startsAt, minimumTermMonths)
-      : "";
+  const minimumTermEndDate = calculateMinimumTermEndDate(input.startsAt, input.loyaltyMonths);
 
   return {
     minimumTermEndDate,

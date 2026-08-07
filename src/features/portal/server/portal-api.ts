@@ -205,13 +205,13 @@ function mapTicketPriority(priority: unknown) {
 
 function formatAddress(row: Record<string, unknown> | undefined) {
   if (!row) return "";
-  const street = asString(row.street);
-  const number = asString(row.number);
-  const complement = asString(row.complement);
-  const district = asString(row.district);
-  const city = asString(row.city);
-  const state = asString(row.state);
-  const postalCode = asString(row.postal_code);
+  const street = asString(row["street"]);
+  const number = asString(row["number"]);
+  const complement = asString(row["complement"]);
+  const district = asString(row["district"]);
+  const city = asString(row["city"]);
+  const state = asString(row["state"]);
+  const postalCode = asString(row["postal_code"]);
   const firstLine = [street, number].filter(Boolean).join(", ");
   const secondLine = [complement, district].filter(Boolean).join(" - ");
   const thirdLine = [city, state].filter(Boolean).join(" - ");
@@ -370,9 +370,9 @@ function mapContract(row: ContractRow | undefined) {
     monthlyValue: asNumber(row.monthly_value),
     implementationValue: asNumber(row.implementation_value),
     paymentMethod: row.payment_method ?? "Não informado",
-    paymentTerms: asString(paymentTerms.description, "Condição não detalhada"),
+    paymentTerms: asString(paymentTerms["description"], "Condição não detalhada"),
     installmentsCount: Math.max(1, asNumber(row.installments_count, 1)),
-    downPaymentAmount: asNumber(paymentTerms.downPaymentAmount),
+    downPaymentAmount: asNumber(paymentTerms["downPaymentAmount"]),
     signer: row.signer_name ?? "Não informado",
     pdfUrl: canRenderPdf ? `/api/portal/v1/contracts/${row.id}/pdf` : null,
   };
@@ -420,14 +420,14 @@ async function loadTicket(db: Queryable, context: PortalContext, ticketNumber: s
 
 function mapTicket(row: Record<string, unknown>) {
   return {
-    id: asString(row.ticket_number),
-    subject: asString(row.title),
-    category: asString(row.category, "Outro"),
-    status: mapTicketStatus(row.status),
-    priority: mapTicketPriority(row.priority),
-    createdAt: asString(row.created_at),
-    updatedAt: asString(row.updated_at),
-    messages: Array.isArray(row.messages) ? row.messages : [],
+    id: asString(row["ticket_number"]),
+    subject: asString(row["title"]),
+    category: asString(row["category"], "Outro"),
+    status: mapTicketStatus(row["status"]),
+    priority: mapTicketPriority(row["priority"]),
+    createdAt: asString(row["created_at"]),
+    updatedAt: asString(row["updated_at"]),
+    messages: Array.isArray(row["messages"]) ? row["messages"] : [],
   };
 }
 
@@ -520,13 +520,15 @@ async function handleSnapshot(context: PortalContext) {
   const contact = contactResult.rows[0];
   const address = addressResult.rows[0];
   const installments = chargeResult.rows.map((row) => ({
-    id: asString(row.id),
+    id: asString(row["id"]),
     description:
-      asString(row.description) || asString(row.reference) || asString(row.invoice, "Cobrança"),
-    dueDate: asString(row.due_date),
-    value: asNumber(row.amount),
-    status: mapChargeStatus(row.status, row.due_date),
-    paymentMethod: asString(row.method, "Não informado"),
+      asString(row["description"]) ||
+      asString(row["reference"]) ||
+      asString(row["invoice"], "Cobrança"),
+    dueDate: asString(row["due_date"]),
+    value: asNumber(row["amount"]),
+    status: mapChargeStatus(row["status"], row["due_date"]),
+    paymentMethod: asString(row["method"], "Não informado"),
     // Do not surface provider payload URLs until the billing provider contract is formally mapped.
     paymentUrl: null,
   }));
@@ -540,14 +542,14 @@ async function handleSnapshot(context: PortalContext) {
 
   return portalJson({
     customer: {
-      id: asString(customer.id),
-      legalName: asString(customer.legal_name),
-      tradeName: asString(customer.trade_name) || asString(customer.legal_name),
-      document: asString(customer.document),
-      email: asString(contact?.email),
-      phone: asString(contact?.phone),
+      id: asString(customer["id"]),
+      legalName: asString(customer["legal_name"]),
+      tradeName: asString(customer["trade_name"]) || asString(customer["legal_name"]),
+      document: asString(customer["document"]),
+      email: asString(contact?.["email"]),
+      phone: asString(contact?.["phone"]),
       address: formatAddress(address),
-      accountManager: asString(customer.owner_name),
+      accountManager: asString(customer["owner_name"]),
     },
     user: {
       id: context.portalUserId,
@@ -821,9 +823,9 @@ async function loadContractItems(
     [context.companyId, contractId],
   );
   return result.rows.map((row) => ({
-    name: asString(row.name, "Item contratado"),
-    quantity: asNumber(row.quantity, 1),
-    monthlyValue: asNumber(row.monthly_value),
+    name: asString(row["name"], "Item contratado"),
+    quantity: asNumber(row["quantity"], 1),
+    monthlyValue: asNumber(row["monthly_value"]),
   }));
 }
 
@@ -853,7 +855,7 @@ async function handleContractPdf(request: Request, context: PortalContext, contr
         basePriceReference: asNumber(row.base_price_reference),
         additionalUserAmount: asNumber(row.additional_user_amount),
         databaseCost: asNumber(row.database_cost),
-        downPaymentAmount: asNumber(paymentTerms.downPaymentAmount),
+        downPaymentAmount: asNumber(paymentTerms["downPaymentAmount"]),
         includedUsers: asNumber(row.included_users, 1),
         hostedByAutomy: Boolean(row.hosted_by_automy ?? true),
         customUrlEnabled: Boolean(row.custom_url_enabled ?? false),
@@ -898,7 +900,7 @@ async function handleContractPdf(request: Request, context: PortalContext, contr
       installmentsCount: asNumber(row.installments_count, 1),
       installmentDueDays: row.installment_due_days ?? [],
       paymentTerms: row.payment_terms ?? {},
-      paymentTermsDescription: asString(paymentTerms.description),
+      paymentTermsDescription: asString(paymentTerms["description"]),
       loyaltyMonths: asNumber(row.loyalty_months),
       monthlyValue: asNumber(row.monthly_value),
       implementationValue: asNumber(row.implementation_value),

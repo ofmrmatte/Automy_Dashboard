@@ -27,18 +27,18 @@ function mapPortalAccesses(value: unknown): Client["portalAccesses"] {
   return value
     .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
     .map((item) => ({
-      id: String(item.id ?? ""),
-      name: String(item.name ?? ""),
-      email: String(item.email ?? ""),
-      role: String(item.role ?? ""),
-      status: String(item.status ?? ""),
-      lastLogin: typeof item.lastLogin === "string" ? item.lastLogin : null,
-      activatedAt: typeof item.activatedAt === "string" ? item.activatedAt : null,
+      id: String(item["id"] ?? ""),
+      name: String(item["name"] ?? ""),
+      email: String(item["email"] ?? ""),
+      role: String(item["role"] ?? ""),
+      status: String(item["status"] ?? ""),
+      lastLogin: typeof item["lastLogin"] === "string" ? item["lastLogin"] : null,
+      activatedAt: typeof item["activatedAt"] === "string" ? item["activatedAt"] : null,
       provisioningStatus:
-        typeof item.provisioningStatus === "string" ? item.provisioningStatus : null,
-      sentAt: typeof item.sentAt === "string" ? item.sentAt : null,
-      failedAt: typeof item.failedAt === "string" ? item.failedAt : null,
-      failureReason: typeof item.failureReason === "string" ? item.failureReason : null,
+        typeof item["provisioningStatus"] === "string" ? item["provisioningStatus"] : null,
+      sentAt: typeof item["sentAt"] === "string" ? item["sentAt"] : null,
+      failedAt: typeof item["failedAt"] === "string" ? item["failedAt"] : null,
+      failureReason: typeof item["failureReason"] === "string" ? item["failureReason"] : null,
     }))
     .filter((item) => item.id);
 }

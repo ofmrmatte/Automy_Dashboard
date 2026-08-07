@@ -10,6 +10,7 @@ import {
   buildPaymentTerms,
   stripDuplicatedSignatureSection,
 } from "@/features/contracts/utils/contract-template";
+import { calculateContractTermDates } from "@/features/contracts/utils/contract-dates";
 import {
   ContractConsistencyError,
   validateContractConsistency,
@@ -1218,7 +1219,7 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
         parsed.data.monthlyValue ?? null,
         parsed.data.implementationValue ?? null,
         parsed.data.startsAt ?? null,
-        parsed.data.endsAt ?? null,
+        parsed.data.endsAt || null,
         parsed.data.renewalAt ?? "",
         parsed.data.billingPeriod ?? "",
         status,
@@ -1633,6 +1634,11 @@ async function handleFormalizeContract(contractId: string, context: Authenticate
 }
 
 function contractQueryValues(payload: ContractFormData, context: AuthenticatedUserContext) {
+  const termDates = calculateContractTermDates({
+    startsAt: payload.startsAt,
+    loyaltyMonths: payload.loyaltyMonths,
+  });
+
   return [
     context.companyId,
     payload.clientId,
@@ -1641,8 +1647,8 @@ function contractQueryValues(payload: ContractFormData, context: AuthenticatedUs
     payload.monthlyValue,
     payload.implementationValue,
     payload.startsAt,
-    payload.endsAt,
-    payload.renewalAt,
+    termDates.minimumTermEndDate || null,
+    termDates.renewalDate,
     payload.billingPeriod,
     mapContractStatusToDatabase(payload.status),
     payload.signerName,
@@ -1949,6 +1955,12 @@ async function getContractItems(
 }
 
 function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
+  const termDates = calculateContractTermDates({
+    startsAt: row.starts_at,
+    loyaltyMonths: Number(row.loyalty_months ?? 0),
+  });
+  const minimumTermEndDate = row.ends_at || termDates.minimumTermEndDate;
+  const renewalDate = row.renewal_at || termDates.renewalDate;
   const negotiatedTerms = {
     description: row.description ?? undefined,
     scope: row.scope ?? undefined,
@@ -1980,8 +1992,8 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
     loyaltyMonths: Number(row.loyalty_months ?? 0),
     currency: row.currency ?? "BRL",
     startsAt: row.starts_at ?? undefined,
-    endsAt: row.ends_at ?? undefined,
-    renewalAt: row.renewal_at ?? undefined,
+    endsAt: minimumTermEndDate || undefined,
+    renewalAt: renewalDate || undefined,
     billingPeriod: row.billing_period ?? undefined,
     signerName: row.signer_name ?? undefined,
     signerDocument: row.signer_document ?? undefined,

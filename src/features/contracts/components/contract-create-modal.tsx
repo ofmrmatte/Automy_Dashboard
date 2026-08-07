@@ -83,6 +83,10 @@ const defaultValues: ContractFormValues = {
 
 function contractToFormValues(contract: Contract | null | undefined): ContractFormValues {
   if (!contract) return defaultValues;
+  const termDates = calculateContractTermDates({
+    startsAt: contract.startsAt,
+    loyaltyMonths: contract.loyaltyMonths,
+  });
   const billingPeriod = contractBillingPeriods.find((period) => period === contract.billingPeriod);
   const paymentMethod = contractPaymentMethods.find((method) => method === contract.paymentMethod);
   const paymentTerms = normalizeLegacyPaymentTerms(contract.paymentTerms, {
@@ -129,8 +133,8 @@ function contractToFormValues(contract: Contract | null | undefined): ContractFo
     loyaltyMonths: contract.loyaltyMonths,
     currency: contract.currency,
     startsAt: contract.startsAt,
-    endsAt: contract.endsAt,
-    renewalAt: contract.renewalAt,
+    endsAt: contract.endsAt || termDates.minimumTermEndDate,
+    renewalAt: contract.renewalAt || termDates.renewalDate,
     billingPeriod: billingPeriod ?? "Mensal",
     status: contract.status,
     signerName: contract.signerName ?? "",
@@ -247,23 +251,29 @@ export function ContractCreateModal({
     if (Number(current.includedUsers ?? 1) === 1 && terms.userLimit) {
       form.setValue("includedUsers", terms.userLimit, { shouldDirty: true });
     }
+    if (Number(current.loyaltyMonths ?? 0) === 0 && Number(terms.loyaltyMonths ?? 0) > 0) {
+      form.setValue("loyaltyMonths", Number(terms.loyaltyMonths), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
   }, [form, isEditing, selectedProduct]);
 
   useEffect(() => {
-    if (!termDates.minimumTermEndDate) return;
     const current = form.getValues();
     if (current.endsAt !== termDates.minimumTermEndDate) {
       form.setValue("endsAt", termDates.minimumTermEndDate, {
         shouldDirty: true,
-        shouldValidate: true,
+        shouldValidate: Boolean(termDates.minimumTermEndDate),
       });
     }
     if (current.renewalAt !== termDates.renewalDate) {
       form.setValue("renewalAt", termDates.renewalDate, {
         shouldDirty: true,
-        shouldValidate: true,
+        shouldValidate: Boolean(termDates.renewalDate),
       });
     }
+    form.clearErrors(["endsAt", "renewalAt"]);
   }, [form, termDates.minimumTermEndDate, termDates.renewalDate]);
 
   const draft = useMemo(() => {
