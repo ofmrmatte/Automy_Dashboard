@@ -10,6 +10,14 @@ import {
 } from "../../src/features/clients/server/company-registry-provider.ts";
 import { contractPdfHeaders } from "../../src/features/contracts/server/contract-pdf-http.ts";
 import {
+  ContractConsistencyError,
+  validateContractConsistency,
+} from "../../src/features/contracts/utils/contract-consistency.ts";
+import {
+  addMonthsClamped,
+  calculateContractTermDates,
+} from "../../src/features/contracts/utils/contract-dates.ts";
+import {
   generateContractPdf,
   loadContractPdfBrandAssets,
 } from "../../src/features/contracts/server/contract-pdf-service.ts";
@@ -111,10 +119,21 @@ assert.equal(formatBrazilianCurrencyInput(7000), "R$ 7.000,00");
 assert.equal(formatBrazilianCurrencyInput(1234567.89), "R$ 1.234.567,89");
 assert.equal(parseBrazilianCurrency("R$ 1.234.567,89"), 1234567.89);
 assert.equal(parseBrazilianCurrency("7000"), 7000);
+assert.equal(parseBrazilianCurrency("21.000"), 21000);
+assert.equal(parseBrazilianCurrency("21.000,50"), 21000.5);
 assert.equal(formatCpf("52998224725"), "529.982.247-25");
 assert.equal(formatCnpj("27865757000102"), "27.865.757/0001-02");
 assert.equal(isValidCpf("529.982.247-25"), true);
 assert.equal(isValidCnpj("27.865.757/0001-02"), true);
+
+assert.equal(addMonthsClamped("2026-08-07", 6), "2027-02-07");
+assert.equal(addMonthsClamped("2026-08-07", 12), "2027-08-07");
+assert.equal(addMonthsClamped("2026-08-31", 6), "2027-02-28");
+assert.equal(addMonthsClamped("2024-02-29", 12), "2025-02-28");
+assert.deepEqual(calculateContractTermDates({ startsAt: "2026-08-07", loyaltyMonths: 6 }), {
+  minimumTermEndDate: "2027-02-07",
+  renewalDate: "2027-02-07",
+});
 
 const paymentTerms = buildPaymentTerms({
   paymentMethod: "Boleto parcelado",
@@ -221,6 +240,90 @@ const draftFromProduct = buildContractDraft(
 assert.match(draftFromProduct, /Mensalidade contratada: R\$ 9\.100,00/);
 assert.match(draftFromProduct, /30, 60 e 90 dias/);
 assert.doesNotMatch(draftFromProduct, /ASSINATURAS/);
+
+const draftFromUnsafeProductTemplate = buildContractDraft(
+  {
+    id: "product-id",
+    name: "Automy ERP",
+    category: "Logística",
+    version: "1.0",
+    clients: 0,
+    contracts: 0,
+    status: "Ativo",
+    basePrice: 7000,
+    billingMode: "Mensal",
+    description: "Gestão operacional",
+    commercialTerms: null,
+    contractTemplate: "1. IMPLANTAÇÃO\nA implantação custará R$ 100,00 e será feita em 30 dias.",
+    createdAt: "2026-08-06T00:00:00.000Z",
+    updatedAt: "2026-08-06T00:00:00.000Z",
+    deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+  },
+  {
+    companyName: "Cliente Teste",
+    document: "27865757000102",
+    signerName: "Responsável Teste",
+  },
+  {
+    monthlyValue: 7000,
+    implementationValue: 21000,
+    implementationDays: 30,
+    hostedByAutomy: false,
+    customUrlEnabled: true,
+    paymentMethod: "Boleto parcelado",
+    installmentsCount: 3,
+    firstDueInDays: 30,
+    loyaltyMonths: 6,
+    startsAt: "2026-08-07",
+    endsAt: "2027-02-07",
+    renewalAt: "2027-02-07",
+  },
+);
+assert.doesNotMatch(draftFromUnsafeProductTemplate, /R\$ 100,00/);
+assert.match(draftFromUnsafeProductTemplate, /Implantação contratada: R\$ 21\.000,00/);
+assert.doesNotThrow(() =>
+  validateContractConsistency({
+    snapshot: {
+      monthlyValue: 7000,
+      implementationValue: 21000,
+      implementationDays: 30,
+      includedUsers: 1,
+      hostedByAutomy: false,
+      customUrlEnabled: true,
+      paymentMethod: "Boleto parcelado",
+      installmentsCount: 3,
+      installmentDueDays: [30, 60, 90],
+      paymentTerms: buildPaymentTerms({
+        paymentMethod: "Boleto parcelado",
+        installmentsCount: 3,
+        firstDueInDays: 30,
+        implementationValue: 21000,
+      }),
+      loyaltyMonths: 6,
+      startsAt: "2026-08-07",
+      endsAt: "2027-02-07",
+      renewalAt: "2027-02-07",
+    },
+    contractText: draftFromUnsafeProductTemplate,
+  }),
+);
+assert.throws(
+  () =>
+    validateContractConsistency({
+      snapshot: {
+        monthlyValue: 7000,
+        implementationValue: 21000,
+        implementationDays: 30,
+        includedUsers: 1,
+        hostedByAutomy: false,
+        customUrlEnabled: true,
+      },
+      contractText: "Implantação contratada: R$ 100,00.",
+    }),
+  ContractConsistencyError,
+);
 
 const db = new FakeDb();
 assert.equal(await readCompanyRegistryCache(db, "cnpj_ws", mapped.document), null);
@@ -360,6 +463,8 @@ console.log(
     paymentTerms: "ok",
     paymentConditionals: "ok",
     paymentSchedule: "ok",
+    contractDates: "ok",
+    contractConsistency: "ok",
     contractDraftSnapshot: "ok",
   }),
 );

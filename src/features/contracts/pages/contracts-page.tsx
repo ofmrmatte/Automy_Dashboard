@@ -29,7 +29,7 @@ import { PageHeader } from "@/shared/components/page-header";
 import { toast } from "@/shared/components/toast";
 import { Badge, Button, Modal, Pagination, Select } from "@/shared/components/ui";
 import { toneForStatus } from "@/shared/types/status";
-import { formatCurrency } from "@/shared/utils/formatters";
+import { formatCurrency, formatDate } from "@/shared/utils/formatters";
 
 const PAGE_SIZE = 10;
 
@@ -161,9 +161,13 @@ export function ContractsPage() {
 
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (!opened) {
-        URL.revokeObjectURL(url);
-        toast.danger("Não foi possível abrir o PDF. Verifique o bloqueador de pop-ups.");
-        return;
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
       }
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
@@ -199,7 +203,7 @@ export function ContractsPage() {
       { key: "start", header: "Início", cell: (contract) => contract.start || "Não informado" },
       {
         key: "renewal",
-        header: "Vencimento",
+        header: "Fim da permanência",
         cell: (contract) => contract.renewal || "Não informado",
       },
       {
@@ -471,6 +475,15 @@ function ContractViewModal({
               type="button"
               variant="secondary"
               loading={sendingToSignature}
+              disabled={
+                !contract.contractText ||
+                !contract.contractHash ||
+                !contract.automyRepresentative ||
+                !contract.signerEmail ||
+                !contract.startsAt ||
+                !contract.endsAt ||
+                contract.monthlyValue <= 0
+              }
               onClick={() => onSendToSignature(contract)}
             >
               <Send className="size-4" />
@@ -502,7 +515,11 @@ function ContractViewModal({
               value={contract.billingPeriod || "Não informado"}
             />
             <Info label="Início" value={contract.start || "Não informado"} />
-            <Info label="Vencimento" value={contract.renewal || "Não informado"} />
+            <Info label="Fim da permanência" value={contract.renewal || "Não informado"} />
+            <Info
+              label="Próxima renovação"
+              value={contract.renewalAt ? formatDate(contract.renewalAt) : "Não informado"}
+            />
             <Info label="Versão documental" value={`v${contract.contractVersion}`} />
             <Info label="Hash" value={contract.contractHash?.slice(0, 16) || "Ainda não gerado"} />
           </div>

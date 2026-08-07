@@ -12,6 +12,7 @@ import {
   formatDueDaysList,
   normalizeLegacyPaymentTerms,
 } from "@/features/contracts/utils/payment-terms";
+import { calculateContractTermDates } from "@/features/contracts/utils/contract-dates";
 import {
   contractBillingPeriods,
   contractFormSchema,
@@ -170,6 +171,14 @@ export function ContractCreateModal({
   const selectedClient = clients.find((client) => client.id === values.clientId);
   const selectedProduct = products.find((product) => product.id === values.productId);
   const selectedPaymentMethod = values.paymentMethod ?? "Boleto";
+  const termDates = useMemo(
+    () =>
+      calculateContractTermDates({
+        startsAt: values.startsAt,
+        loyaltyMonths: Number(values.loyaltyMonths ?? 0),
+      }),
+    [values.loyaltyMonths, values.startsAt],
+  );
   const paymentTerms = useMemo(
     () =>
       buildStructuredPaymentTerms({
@@ -220,6 +229,23 @@ export function ContractCreateModal({
       form.setValue("includedUsers", terms.userLimit, { shouldDirty: true });
     }
   }, [form, isEditing, selectedProduct]);
+
+  useEffect(() => {
+    if (!termDates.minimumTermEndDate) return;
+    const current = form.getValues();
+    if (current.endsAt !== termDates.minimumTermEndDate) {
+      form.setValue("endsAt", termDates.minimumTermEndDate, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    if (current.renewalAt !== termDates.renewalDate) {
+      form.setValue("renewalAt", termDates.renewalDate, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [form, termDates.minimumTermEndDate, termDates.renewalDate]);
 
   const draft = useMemo(() => {
     if (!selectedProduct) return "Selecione um produto para gerar a minuta.";
@@ -544,12 +570,12 @@ export function ContractCreateModal({
                 <Input type="date" {...form.register("startsAt")} />
                 <FormError message={form.formState.errors.startsAt?.message} />
               </Field>
-              <Field label="Vencimento">
-                <Input type="date" {...form.register("endsAt")} />
+              <Field label="Fim da permanência">
+                <Input type="date" readOnly {...form.register("endsAt")} />
                 <FormError message={form.formState.errors.endsAt?.message} />
               </Field>
-              <Field label="Renovação">
-                <Input type="date" {...form.register("renewalAt")} />
+              <Field label="Próxima renovação">
+                <Input type="date" readOnly {...form.register("renewalAt")} />
                 <FormError message={form.formState.errors.renewalAt?.message} />
               </Field>
               <Field label="Status">
@@ -611,9 +637,77 @@ export function ContractCreateModal({
             </Field>
           </section>
 
+          <section className="grid gap-4">
+            <h3 className="text-sm font-semibold text-foreground">Resumo da negociação</h3>
+            <div className="grid gap-3 rounded-card border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
+              <ReviewInfo label="Cliente" value={selectedClient?.name ?? selectedClient?.legal} />
+              <ReviewInfo label="Produto" value={selectedProduct?.name} />
+              <ReviewInfo label="Plano" value={values.name} />
+              <ReviewInfo
+                label="Mensalidade"
+                value={formatCurrency(Number(values.monthlyValue ?? 0))}
+              />
+              <ReviewInfo
+                label="Implantação"
+                value={formatCurrency(Number(values.implementationValue ?? 0))}
+              />
+              <ReviewInfo label="Pagamento" value={paymentTerms.description} />
+              <ReviewInfo
+                label="Entrada"
+                value={
+                  selectedPaymentMethod === "Entrada + parcelamento"
+                    ? formatCurrency(paymentTerms.downPaymentAmount ?? 0)
+                    : ""
+                }
+              />
+              <ReviewInfo
+                label="Saldo"
+                value={
+                  selectedPaymentMethod === "Entrada + parcelamento"
+                    ? formatCurrency(paymentTerms.remainingAmount ?? 0)
+                    : ""
+                }
+              />
+              <ReviewInfo
+                label="Parcelas"
+                value={
+                  paymentTerms.installments > 1
+                    ? `${paymentTerms.installments} parcelas`
+                    : "Parcela única"
+                }
+              />
+              <ReviewInfo
+                label="Cronograma"
+                value={
+                  (paymentTerms.calculatedDueDays ?? paymentTerms.dueDays).length
+                    ? `${formatDueDaysList(paymentTerms.calculatedDueDays ?? paymentTerms.dueDays)} dias`
+                    : ""
+                }
+              />
+              <ReviewInfo label="Frequência" value={values.billingPeriod} />
+              <ReviewInfo
+                label="Permanência mínima"
+                value={values.loyaltyMonths ? `${values.loyaltyMonths} meses` : ""}
+              />
+              <ReviewInfo label="Início" value={values.startsAt} />
+              <ReviewInfo label="Fim da permanência" value={values.endsAt} />
+              <ReviewInfo label="Renovação" value={values.renewalAt} />
+              <ReviewInfo label="Hospedagem" value={values.hostedByAutomy ? "Sim" : "Não"} />
+              <ReviewInfo
+                label="URL personalizada"
+                value={values.customUrlEnabled ? "Sim" : "Não"}
+              />
+              <ReviewInfo label="Usuários incluídos" value={String(values.includedUsers ?? "")} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Revise as condições acima antes de confirmar. O PDF será gerado exclusivamente a
+              partir destes dados congelados no contrato.
+            </p>
+          </section>
+
           <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background py-4">
             <Button type="button" variant="secondary" onClick={onClose}>
-              Cancelar
+              Voltar e editar
             </Button>
             <Button
               type="submit"
@@ -621,7 +715,7 @@ export function ContractCreateModal({
               disabled={clients.length === 0 || products.length === 0}
             >
               <Save className="size-4" />
-              {isEditing ? "Salvar alterações" : "Salvar contrato"}
+              {isEditing ? "Salvar alterações" : "Confirmar contrato"}
             </Button>
           </div>
         </div>
@@ -746,6 +840,17 @@ function PaymentPreview({ paymentTerms }: { paymentTerms: ContractPaymentTerms }
 }
 
 function PreviewInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function ReviewInfo({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!String(value ?? "").trim()) return null;
+
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>

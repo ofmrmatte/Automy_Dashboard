@@ -36,6 +36,14 @@ export function formatBrazilianCurrencyInput(value: number | null | undefined): 
   return brazilCurrencyFormatter.format(Number(value)).replace(/\u00a0/g, " ");
 }
 
+export function formatBrazilianCurrencyDraft(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "";
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  }).format(Number(value));
+}
+
 export function parseBrazilianCurrency(value: string | number | null | undefined): number {
   if (value === null || value === undefined || value === "") return 0;
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -43,11 +51,17 @@ export function parseBrazilianCurrency(value: string | number | null | undefined
   const normalized = value.trim();
   if (!normalized) return 0;
 
-  const hasComma = normalized.includes(",");
   const cleaned = normalized.replace(/[^\d,.-]/g, "");
-  const numeric = hasComma
-    ? cleaned.replace(/\./g, "").replace(",", ".")
-    : cleaned.replace(/,/g, "");
+  const hasComma = cleaned.includes(",");
+  const hasDot = cleaned.includes(".");
+  const numeric =
+    hasComma && hasDot
+      ? cleaned.replace(/\./g, "").replace(",", ".")
+      : hasComma
+        ? cleaned.replace(",", ".")
+        : hasDot
+          ? cleaned.replace(/\./g, "")
+          : cleaned;
   const parsed = Number(numeric);
 
   return Number.isFinite(parsed) ? parsed : 0;
