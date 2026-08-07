@@ -2,6 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
 import SVGtoPDF from "svg-to-pdfkit";
+import type { ContractPaymentTerms } from "@/features/contracts/types";
+import {
+  formatDueDaysList,
+  normalizeLegacyPaymentTerms,
+} from "@/features/contracts/utils/payment-terms";
 import { formatCpfCnpj } from "@/shared/utils/document";
 
 export type ContractPdfItem = {
@@ -16,6 +21,7 @@ export type ContractPdfInput = {
   hash: string;
   generatedAt: string;
   companyName: string;
+  contractSigningCity?: string | null;
   clientName: string;
   clientDocument: string;
   productName: string;
@@ -33,8 +39,10 @@ export type ContractPdfInput = {
   basePriceReference?: number;
   discountPercent?: number;
   paymentMethod?: string;
+  billingPeriod?: string | null;
   installmentsCount?: number;
   installmentDueDays?: number[];
+  paymentTerms?: unknown;
   paymentTermsDescription?: string;
   loyaltyMonths?: number;
   signerDocument?: string;
@@ -223,6 +231,16 @@ function stripDuplicatedSignatureSection(contractText: string) {
   return contractText.replace(/\n+\s*ASSINATURAS\s*\n+[\s\S]*?(?=\n*$)/i, "").trim();
 }
 
+function stripLegacyStructuredSections(contractText: string) {
+  return stripDuplicatedSignatureSection(contractText)
+    .replace(
+      /\n+\s*QUADRO DE CONDIÇÕES NEGOCIADAS\s*\n+[\s\S]*?(?=\n+\s*QUADRO DE CONTRATAÇÃO|\n*$)/i,
+      "",
+    )
+    .replace(/\n+\s*QUADRO DE CONTRATAÇÃO\s*\n+[\s\S]*?(?=\n*$)/i, "")
+    .trim();
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Não informado";
@@ -231,6 +249,37 @@ function formatDateTime(value: string) {
     timeStyle: "short",
     timeZone: "America/Sao_Paulo",
   }).format(date);
+}
+
+function formatLongDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+  }).format(date);
+}
+
+function paymentTermsFromInput(input: ContractPdfInput): ContractPaymentTerms {
+  return normalizeLegacyPaymentTerms(input.paymentTerms, {
+    method: input.paymentMethod,
+    installments: input.installmentsCount,
+    firstDueInDays: input.installmentDueDays?.[0] ?? 30,
+    installmentDueDays: input.installmentDueDays,
+    totalAmount: input.implementationValue || input.monthlyValue,
+  });
+}
+
+function safeRows(rows: Array<[string, string | null | undefined]>) {
+  return rows
+    .map(([label, value]) => [label, String(value ?? "").trim()] as [string, string])
+    .filter(([, value]) => value && value !== "Não informado" && value !== "R$ 0,00");
+}
+
+function formatTechnicalHash(value: string) {
+  return value.match(/.{1,32}/g)?.join("\n") ?? value;
 }
 
 function contentBottom(doc: PDFKit.PDFDocument) {
@@ -386,16 +435,16 @@ function addInfoGrid(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
     ],
     [
       ["Status", statusLabel(input.status)],
-      ["Identificador", input.id],
+      ["Versão", String(input.version)],
     ],
     [
-      ["Versão", String(input.version)],
-      ["Hash", safeText(input.hash)],
+      ["Identificador", input.id],
+      ["Hash", formatTechnicalHash(safeText(input.hash))],
     ],
   ];
   const gap = 12;
   const columnWidth = (CONTENT_WIDTH - gap) / 2;
-  const rowHeight = 42;
+  const rowHeight = 46;
   const top = doc.y;
   const height = rows.length * rowHeight + 20;
 
@@ -412,27 +461,59 @@ function addInfoGrid(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
         width: columnWidth,
       });
       doc
-        .font("Helvetica-Bold")
-        .fontSize(9.5)
+        .font(label === "Hash" ? "Courier" : "Helvetica-Bold")
+        .fontSize(label === "Hash" ? 7.4 : 9.5)
         .fillColor(BRAND.secondary)
-        .text(value, x, y + 12, { ellipsis: true, width: columnWidth });
+        .text(value, x, y + 12, {
+          lineGap: 1.2,
+          width: columnWidth,
+        });
     });
   });
   doc.y = top + height + 20;
 }
 
 function addCommercialBox(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
-  const metrics: Array<[string, string]> = [
+  const paymentTerms = paymentTermsFromInput(input);
+  const schedule = paymentTerms.calculatedDueDays ?? paymentTerms.dueDays;
+  const metrics = safeRows([
     ["Valor mensal", formatCurrency(input.monthlyValue)],
     ["Implantação", formatCurrency(input.implementationValue)],
+    ["Forma de pagamento", paymentTerms.method],
+    paymentTerms.method === "Entrada + parcelamento"
+      ? ["Entrada", formatCurrency(paymentTerms.downPaymentAmount ?? 0)]
+      : ["", ""],
+    paymentTerms.method === "Entrada + parcelamento"
+      ? ["Saldo parcelado", formatCurrency(paymentTerms.remainingAmount ?? 0)]
+      : ["", ""],
+    paymentTerms.method === "Entrada + parcelamento"
+      ? ["Parcelamento", `${paymentTerms.installments} parcelas`]
+      : paymentTerms.method === "Boleto parcelado"
+        ? [
+            "Parcelamento",
+            `${paymentTerms.installments} parcelas - ${formatDueDaysList(schedule)} dias`,
+          ]
+        : paymentTerms.method === "Cartão"
+          ? [
+              "Parcelamento",
+              `${paymentTerms.gatewayInstallments ?? paymentTerms.installments} parcelas`,
+            ]
+          : ["", ""],
+    paymentTerms.method === "Entrada + parcelamento"
+      ? ["Cronograma", `${schedule.join(" • ")} dias`]
+      : ["", ""],
+    ["Frequência", input.paymentMethod === "À vista" ? "" : (input.billingPeriod ?? "Mensal")],
+    ["Permanência mínima", input.loyaltyMonths ? `${input.loyaltyMonths} meses` : ""],
     ["Início", formatDate(input.startsAt)],
-    ["Vencimento", formatDate(input.endsAt)],
-  ];
+    ["Renovação", formatDate(input.endsAt)],
+  ]);
   const gap = 10;
-  const cardWidth = (CONTENT_WIDTH - gap * 3) / 4;
+  const columns = 4;
+  const cardWidth = (CONTENT_WIDTH - gap * (columns - 1)) / columns;
   const cardHeight = 62;
+  const rows = Math.max(1, Math.ceil(metrics.length / columns));
 
-  ensureSpace(doc, cardHeight + 28);
+  ensureSpace(doc, rows * (cardHeight + gap) + 28);
   doc
     .font("Helvetica-Bold")
     .fontSize(11)
@@ -444,25 +525,29 @@ function addCommercialBox(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
 
   const top = doc.y;
   metrics.forEach(([label, value], index) => {
-    const x = PAGE.marginLeft + index * (cardWidth + gap);
-    doc.roundedRect(x, top, cardWidth, cardHeight, 10).fillAndStroke(BRAND.surface, BRAND.border);
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = PAGE.marginLeft + column * (cardWidth + gap);
+    const y = top + row * (cardHeight + gap);
+    doc.roundedRect(x, y, cardWidth, cardHeight, 10).fillAndStroke(BRAND.surface, BRAND.border);
     doc
       .font("Helvetica")
       .fontSize(7.6)
       .fillColor(BRAND.muted)
-      .text(label, x + 12, top + 13, {
+      .text(label, x + 12, y + 13, {
         width: cardWidth - 24,
       });
     doc
       .font("Helvetica-Bold")
-      .fontSize(10.6)
+      .fontSize(value.length > 24 ? 8.6 : 10.6)
       .fillColor(BRAND.secondary)
-      .text(value, x + 12, top + 30, {
+      .text(value, x + 12, y + 30, {
+        lineGap: 1.2,
         width: cardWidth - 24,
       });
   });
 
-  doc.y = top + cardHeight + 20;
+  doc.y = top + rows * (cardHeight + gap) + 10;
 }
 
 function addItems(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
@@ -514,9 +599,9 @@ function addItems(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
 }
 
 function addKeyValueCard(doc: PDFKit.PDFDocument, title: string, rows: Array<[string, string]>) {
-  const padding = 14;
-  const rowGap = 9;
-  const labelWidth = 112;
+  const padding = 16;
+  const rowGap = 10;
+  const labelWidth = 118;
   const valueWidth = CONTENT_WIDTH - padding * 2 - labelWidth - 10;
   const contentHeight = rows.reduce((height, [label, value]) => {
     doc.font("Helvetica").fontSize(8);
@@ -562,7 +647,10 @@ function addKeyValueCard(doc: PDFKit.PDFDocument, title: string, rows: Array<[st
 }
 
 function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
-  ensureSpace(doc, 56);
+  const paymentTerms = paymentTermsFromInput(input);
+  const schedule = paymentTerms.calculatedDueDays ?? paymentTerms.dueDays;
+
+  ensureSpace(doc, 230);
   doc
     .font("Helvetica-Bold")
     .fontSize(12)
@@ -570,43 +658,55 @@ function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
     .text("Quadro de contratação", PAGE.marginLeft, doc.y, { width: CONTENT_WIDTH });
   doc.y += 10;
 
-  addKeyValueCard(doc, "Contratante", [
-    ["Razão social / nome", safeText(input.clientName)],
-    ["CPF/CNPJ", formatDocument(input.clientDocument)],
-    ["Responsável", safeText(input.signerName)],
-    ["Documento do responsável", formatDocument(input.signerDocument ?? "")],
-    ["E-mail", safeText(input.signerEmail)],
-    ["Telefone", safeText(input.signerPhone)],
-  ]);
+  addKeyValueCard(
+    doc,
+    "Contratante",
+    safeRows([
+      ["Razão social / nome", safeText(input.clientName)],
+      ["CPF/CNPJ", formatDocument(input.clientDocument)],
+      ["Responsável", safeText(input.signerName)],
+      ["Documento do responsável", formatDocument(input.signerDocument ?? "")],
+      ["E-mail", input.signerEmail],
+      ["Telefone", input.signerPhone],
+    ]),
+  );
 
-  addKeyValueCard(doc, "Contratada", [
-    ["Empresa", safeText(input.companyName, "Automy")],
-    ["Representante", safeText(input.automyRepresentative, "Representante Automy")],
-    ["Contato", "Automy - Plataforma inteligente para controle e gestão operacional."],
-  ]);
+  addKeyValueCard(
+    doc,
+    "Contratada",
+    safeRows([
+      ["Empresa", safeText(input.companyName, "Automy")],
+      ["Representante", safeText(input.automyRepresentative, "Representante Automy")],
+      ["Contato", "Automy - Plataforma inteligente para controle e gestão operacional."],
+    ]),
+  );
 
-  addKeyValueCard(doc, "Serviço contratado", [
-    ["Produto", safeText(input.productName)],
-    ["Plano", safeText(input.plan)],
-    ["Escopo", safeText(input.scope ?? input.description)],
-    ["Entregáveis", safeText(input.deliverables)],
-    ["Usuários incluídos", String(input.includedUsers ?? 1)],
-    ["Hospedagem", yesNo(input.hostedByAutomy)],
-    ["URL personalizada", yesNo(input.customUrlEnabled)],
-    [
-      "Implantação",
-      `${input.implementationDays ?? 0} dias - ${formatCurrency(input.implementationValue)}`,
-    ],
-    ["Mensalidade", formatCurrency(input.monthlyValue)],
-    ["Forma de pagamento", safeText(input.paymentTermsDescription ?? input.paymentMethod)],
-    [
-      "Parcelas",
-      `${input.installmentsCount ?? 1}${input.installmentDueDays?.length ? ` (${input.installmentDueDays.join(", ")} dias)` : ""}`,
-    ],
-    ["Fidelidade", `${input.loyaltyMonths ?? 0} meses`],
-    ["Início", formatDate(input.startsAt)],
-    ["Renovação", formatDate(input.endsAt)],
-  ]);
+  addKeyValueCard(
+    doc,
+    "Serviço contratado",
+    safeRows([
+      ["Produto", safeText(input.productName)],
+      ["Plano", safeText(input.plan)],
+      ["Escopo", safeText(input.scope ?? input.description)],
+      ["Entregáveis", input.deliverables],
+      ["Usuários incluídos", String(input.includedUsers ?? 1)],
+      ["Hospedagem", yesNo(input.hostedByAutomy)],
+      ["URL personalizada", yesNo(input.customUrlEnabled)],
+      [
+        "Implantação",
+        `${input.implementationDays ?? 0} dias - ${formatCurrency(input.implementationValue)}`,
+      ],
+      ["Mensalidade", formatCurrency(input.monthlyValue)],
+      ["Pagamento", paymentTerms.description],
+      [
+        "Parcelas",
+        schedule.length ? `${paymentTerms.installments} (${formatDueDaysList(schedule)} dias)` : "",
+      ],
+      ["Permanência mínima", input.loyaltyMonths ? `${input.loyaltyMonths} meses` : ""],
+      ["Início", formatDate(input.startsAt)],
+      ["Renovação", formatDate(input.endsAt)],
+    ]),
+  );
 }
 
 function isHeading(text: string) {
@@ -620,7 +720,7 @@ function isHeading(text: string) {
 }
 
 function normalizedContractLines(contractText: string) {
-  return stripDuplicatedSignatureSection(contractText)
+  return stripLegacyStructuredSections(contractText)
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((line) => line.trim())
@@ -687,8 +787,27 @@ function addClauses(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
 
 function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
   const hasWitness = Boolean(input.witnessName.trim());
-  const blockHeight = hasWitness ? 190 : 138;
+  const hasSigningCity = Boolean(input.contractSigningCity?.trim());
+  const blockHeight = (hasWitness ? 300 : 220) + (hasSigningCity ? 34 : 0);
   ensureSpace(doc, blockHeight);
+  const preferredTop = contentBottom(doc) - blockHeight;
+  if (doc.y < preferredTop) {
+    doc.y = preferredTop;
+  }
+
+  if (hasSigningCity) {
+    doc
+      .font("Helvetica")
+      .fontSize(9.4)
+      .fillColor(BRAND.body)
+      .text(
+        `${input.contractSigningCity?.trim()}, ${formatLongDate(input.generatedAt)}.`,
+        PAGE.marginLeft,
+        doc.y,
+        { width: CONTENT_WIDTH },
+      );
+    doc.y += 28;
+  }
 
   doc
     .font("Helvetica-Bold")

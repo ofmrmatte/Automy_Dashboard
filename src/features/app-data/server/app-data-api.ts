@@ -1319,6 +1319,7 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       hash,
       generatedAt,
       companyName: refreshed.company_trade_name ?? refreshed.company_legal_name ?? "Automy",
+      contractSigningCity: refreshed.company_city ?? "",
       clientName: refreshed.client_trade_name ?? refreshed.client_legal_name ?? "Cliente",
       clientDocument: refreshed.client_document ?? "",
       productName: refreshed.product_name ?? "Produto",
@@ -1336,8 +1337,10 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       basePriceReference: Number(refreshed.base_price_reference ?? 0),
       discountPercent: Number(refreshed.discount_percent ?? 0),
       paymentMethod: refreshed.payment_method ?? "Boleto",
+      billingPeriod: refreshed.billing_period ?? "Mensal",
       installmentsCount: Number(refreshed.installments_count ?? 1),
       installmentDueDays: refreshed.installment_due_days ?? [],
+      paymentTerms: refreshed.payment_terms ?? {},
       paymentTermsDescription: paymentTerms.description ?? "",
       loyaltyMonths: Number(refreshed.loyalty_months ?? 0),
       monthlyValue: Number(refreshed.monthly_value ?? 0),
@@ -1507,9 +1510,15 @@ async function updateContractNegotiatedFields(
     "paymentMethod",
     "installmentsCount",
     "firstDueInDays",
+    "paymentDueInDays",
     "installmentIntervalDays",
     "installmentDueDays",
     "specificDueDates",
+    "downPaymentAmount",
+    "recurrenceDueDay",
+    "recurrenceStartDate",
+    "gatewayInstallments",
+    "customPaymentDescription",
     "loyaltyMonths",
     "currency",
     "signerDocument",
@@ -1526,8 +1535,17 @@ async function updateContractNegotiatedFields(
     installmentsCount: payload.installmentsCount,
     installmentDueDays: payload.installmentDueDays,
     firstDueInDays: payload.firstDueInDays,
+    paymentDueInDays: payload.paymentDueInDays,
     intervalDays: payload.installmentIntervalDays,
     specificDates: payload.specificDueDates,
+    downPaymentAmount: payload.downPaymentAmount,
+    monthlyValue: payload.monthlyValue,
+    implementationValue: payload.implementationValue,
+    recurrenceFrequency: payload.billingPeriod,
+    recurrenceDueDay: payload.recurrenceDueDay,
+    recurrenceStartDate: payload.recurrenceStartDate,
+    gatewayInstallments: payload.gatewayInstallments,
+    customPaymentDescription: payload.customPaymentDescription,
   });
   const negotiatedTerms = {
     description: payload.description ?? null,
@@ -1546,6 +1564,12 @@ async function updateContractNegotiatedFields(
     monthlyValue: payload.monthlyValue ?? null,
     discountPercent: payload.discountPercent ?? null,
     paymentTerms,
+    downPaymentAmount: payload.downPaymentAmount ?? null,
+    paymentDueInDays: payload.paymentDueInDays ?? null,
+    recurrenceDueDay: payload.recurrenceDueDay ?? null,
+    recurrenceStartDate: payload.recurrenceStartDate ?? null,
+    gatewayInstallments: payload.gatewayInstallments ?? null,
+    customPaymentDescription: payload.customPaymentDescription ?? null,
     billingPeriod: payload.billingPeriod ?? null,
     loyaltyMonths: payload.loyaltyMonths ?? null,
     currency: payload.currency ?? null,
@@ -1679,6 +1703,7 @@ type ContractSnapshotRow = QueryResultRow & {
   product_contract_template: string | null;
   company_trade_name: string | null;
   company_legal_name: string | null;
+  company_city: string | null;
 };
 
 function contractHash(input: unknown) {
@@ -1703,7 +1728,8 @@ async function getContractSnapshotRow(
         products.commercial_terms as product_commercial_terms,
         products.contract_template as product_contract_template,
         companies.trade_name as company_trade_name,
-        companies.legal_name as company_legal_name
+        companies.legal_name as company_legal_name,
+        companies.city as company_city
       from public.contracts
       join public.companies
         on companies.id = contracts.company_id
@@ -1772,6 +1798,14 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
     installmentsCount: Number(row.installments_count ?? 1),
     installmentDueDays: row.installment_due_days ?? [],
     paymentTerms: row.payment_terms ?? {},
+    downPaymentAmount:
+      typeof row.payment_terms === "object" && row.payment_terms !== null
+        ? Number((row.payment_terms as { downPaymentAmount?: number }).downPaymentAmount ?? 0)
+        : 0,
+    paymentDueInDays:
+      typeof row.payment_terms === "object" && row.payment_terms !== null
+        ? Number((row.payment_terms as { paymentDueInDays?: number }).paymentDueInDays ?? 0)
+        : 0,
     loyaltyMonths: Number(row.loyalty_months ?? 0),
     currency: row.currency ?? "BRL",
     startsAt: row.starts_at,

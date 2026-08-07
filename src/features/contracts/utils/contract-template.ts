@@ -1,4 +1,5 @@
 import type { ContractPaymentMethod, ContractPaymentTerms } from "@/features/contracts/types";
+import { buildStructuredPaymentTerms } from "@/features/contracts/utils/payment-terms";
 import type { Product, ProductCommercialTerms } from "@/features/products/types";
 import { formatCpfCnpj } from "@/shared/utils/document";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
@@ -32,7 +33,15 @@ export type NegotiatedContractTerms = {
   discountPercent?: number | undefined;
   paymentMethod?: ContractPaymentMethod | string | undefined;
   installmentsCount?: number | undefined;
+  firstDueInDays?: number | undefined;
+  paymentDueInDays?: number | undefined;
   installmentDueDays?: number[] | undefined;
+  downPaymentAmount?: number | undefined;
+  recurrenceFrequency?: string | undefined;
+  recurrenceDueDay?: number | undefined;
+  recurrenceStartDate?: string | undefined;
+  gatewayInstallments?: number | undefined;
+  customPaymentDescription?: string | undefined;
   billingPeriod?: string | undefined;
   loyaltyMonths?: number | undefined;
   currency?: string | undefined;
@@ -69,11 +78,6 @@ function yesNo(value: boolean | undefined) {
 
 function safeDate(value: string | undefined) {
   return value ? formatDate(value) : "A definir";
-}
-
-function numberWord(value: number) {
-  const words = ["zero", "uma", "duas", "três", "quatro", "cinco", "seis"];
-  return words[value] ?? String(value);
 }
 
 export function normalizeProductTerms(product?: Product | null): ProductCommercialTerms {
@@ -141,35 +145,40 @@ CONTRATANTE: pessoa jurídica identificada no quadro de contratação do contrat
 export function buildPaymentTerms(
   input: Pick<
     NegotiatedContractTerms,
-    "installmentDueDays" | "installmentsCount" | "paymentMethod"
+    | "downPaymentAmount"
+    | "firstDueInDays"
+    | "installmentDueDays"
+    | "installmentsCount"
+    | "monthlyValue"
+    | "implementationValue"
+    | "paymentDueInDays"
+    | "paymentMethod"
+    | "recurrenceDueDay"
+    | "recurrenceFrequency"
+    | "recurrenceStartDate"
+    | "gatewayInstallments"
+    | "customPaymentDescription"
   > & {
     firstDueInDays?: number | undefined;
     intervalDays?: number | undefined;
     specificDates?: string[] | undefined;
   },
 ): ContractPaymentTerms {
-  const method = (input.paymentMethod || "Boleto") as ContractPaymentMethod;
-  const installments = Math.max(1, Number(input.installmentsCount ?? 1));
-  const intervalDays = Math.max(1, Number(input.intervalDays ?? 30));
-  const firstDueInDays = Math.max(0, Number(input.firstDueInDays ?? 30));
-  const dueDays = input.installmentDueDays?.length
-    ? input.installmentDueDays
-    : Array.from({ length: installments }, (_, index) => firstDueInDays + index * intervalDays);
-  const specificDates = input.specificDates?.filter(Boolean) ?? [];
-  const description =
-    method === "Boleto parcelado"
-      ? `O valor de implantação será pago por boleto bancário, em ${numberWord(installments)} parcelas, com vencimentos em ${dueDays.join(", ")} dias contados da assinatura deste instrumento.`
-      : `A forma de pagamento acordada é ${method}.`;
-
-  return {
-    method,
-    installments,
-    firstDueInDays,
-    intervalDays,
-    dueDays,
-    specificDates,
-    description,
-  };
+  return buildStructuredPaymentTerms({
+    method: input.paymentMethod,
+    installments: input.installmentsCount,
+    firstDueInDays: input.firstDueInDays,
+    paymentDueInDays: input.paymentDueInDays,
+    installmentDueDays: input.installmentDueDays,
+    specificDates: input.specificDates,
+    downPaymentAmount: input.downPaymentAmount,
+    totalAmount: Number(input.implementationValue ?? 0) || Number(input.monthlyValue ?? 0),
+    recurrenceFrequency: input.recurrenceFrequency,
+    recurrenceDueDay: input.recurrenceDueDay,
+    recurrenceStartDate: input.recurrenceStartDate,
+    gatewayInstallments: input.gatewayInstallments,
+    customDescription: input.customPaymentDescription,
+  });
 }
 
 export function stripDuplicatedSignatureSection(contractText: string) {
@@ -192,7 +201,17 @@ export function buildContractDraft(
   const paymentTerms = buildPaymentTerms({
     paymentMethod: negotiatedTerms.paymentMethod,
     installmentsCount: negotiatedTerms.installmentsCount,
+    firstDueInDays: negotiatedTerms.firstDueInDays,
+    paymentDueInDays: negotiatedTerms.paymentDueInDays,
     installmentDueDays: negotiatedTerms.installmentDueDays,
+    downPaymentAmount: negotiatedTerms.downPaymentAmount,
+    monthlyValue: negotiatedTerms.monthlyValue,
+    implementationValue: negotiatedTerms.implementationValue,
+    recurrenceFrequency: negotiatedTerms.recurrenceFrequency,
+    recurrenceDueDay: negotiatedTerms.recurrenceDueDay,
+    recurrenceStartDate: negotiatedTerms.recurrenceStartDate,
+    gatewayInstallments: negotiatedTerms.gatewayInstallments,
+    customPaymentDescription: negotiatedTerms.customPaymentDescription,
   });
 
   const commercialBlock = `
@@ -205,9 +224,9 @@ Mensalidade contratada: ${formatCurrency(negotiatedTerms.monthlyValue ?? 0)}.
 Implantação contratada: ${formatCurrency(negotiatedTerms.implementationValue ?? 0)}.
 Prazo de implantação: ${negotiatedTerms.implementationDays ?? 0} dias corridos.
 Forma de pagamento: ${paymentTerms.description}
-Periodicidade: ${negotiatedTerms.billingPeriod || "Mensal"}.
+Frequência da mensalidade: ${negotiatedTerms.billingPeriod || "Mensal"}.
 Desconto: ${negotiatedTerms.discountPercent ?? 0}%.
-Fidelidade: ${negotiatedTerms.loyaltyMonths ?? 0} meses.
+Permanência mínima: ${negotiatedTerms.loyaltyMonths ?? 0} meses.
 Limite de usuários incluídos: ${negotiatedTerms.includedUsers ?? 1}.
 Usuários adicionais: ${negotiatedTerms.additionalUsers ?? 0}, a ${formatCurrency(negotiatedTerms.additionalUserAmount ?? 0)} por usuário.
 Hospedagem em URL Automy: ${yesNo(negotiatedTerms.hostedByAutomy)}.
