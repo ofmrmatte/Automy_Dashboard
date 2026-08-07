@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
 import SVGtoPDF from "svg-to-pdfkit";
+import { formatCpfCnpj } from "@/shared/utils/document";
 
 export type ContractPdfItem = {
   name: string;
@@ -20,6 +21,27 @@ export type ContractPdfInput = {
   productName: string;
   plan: string;
   status: string;
+  description?: string | null;
+  scope?: string | null;
+  deliverables?: string | null;
+  includedUsers?: number;
+  hostedByAutomy?: boolean;
+  customUrlEnabled?: boolean;
+  implementationDays?: number;
+  databaseCost?: number;
+  databaseQuantity?: number;
+  basePriceReference?: number;
+  discountPercent?: number;
+  paymentMethod?: string;
+  installmentsCount?: number;
+  installmentDueDays?: number[];
+  paymentTermsDescription?: string;
+  loyaltyMonths?: number;
+  signerDocument?: string;
+  signerEmail?: string;
+  signerPhone?: string;
+  automyRepresentative?: string;
+  witnessDocument?: string;
   monthlyValue: number;
   implementationValue: number;
   startsAt: string;
@@ -167,11 +189,38 @@ function formatCurrency(value: number) {
   );
 }
 
+function formatDocument(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits ? formatCpfCnpj(digits) : "Não informado";
+}
+
+function statusLabel(value: string) {
+  const labels: Record<string, string> = {
+    active: "Ativo",
+    onboarding: "Implantação",
+    pending: "Pendente",
+    renewal: "Renovação",
+    suspended: "Suspenso",
+    cancelled: "Cancelado",
+    ended: "Encerrado",
+    inactive: "Inativo",
+  };
+  return labels[value] ?? (value || "Pendente");
+}
+
+function yesNo(value: boolean | null | undefined) {
+  return value ? "Sim" : "Não";
+}
+
 function formatDate(value: string) {
   if (!value) return "Não informado";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
+}
+
+function stripDuplicatedSignatureSection(contractText: string) {
+  return contractText.replace(/\n+\s*ASSINATURAS\s*\n+[\s\S]*?(?=\n*$)/i, "").trim();
 }
 
 function formatDateTime(value: string) {
@@ -332,11 +381,11 @@ function addInfoGrid(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
       ["Contratante", safeText(input.clientName, "Cliente")],
     ],
     [
-      ["Documento", safeText(input.clientDocument)],
+      ["Documento", formatDocument(input.clientDocument)],
       ["Produto", safeText(input.productName)],
     ],
     [
-      ["Status", safeText(input.status)],
+      ["Status", statusLabel(input.status)],
       ["Identificador", input.id],
     ],
     [
@@ -464,6 +513,102 @@ function addItems(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
   doc.y += 8;
 }
 
+function addKeyValueCard(doc: PDFKit.PDFDocument, title: string, rows: Array<[string, string]>) {
+  const padding = 14;
+  const rowGap = 9;
+  const labelWidth = 112;
+  const valueWidth = CONTENT_WIDTH - padding * 2 - labelWidth - 10;
+  const contentHeight = rows.reduce((height, [label, value]) => {
+    doc.font("Helvetica").fontSize(8);
+    const labelHeight = doc.heightOfString(label, { width: labelWidth });
+    doc.font("Helvetica").fontSize(8.6);
+    const valueHeight = doc.heightOfString(value, { width: valueWidth });
+    return height + Math.max(labelHeight, valueHeight) + rowGap;
+  }, 24);
+  const height = contentHeight + padding * 2;
+
+  ensureSpace(doc, height + 10);
+  const top = doc.y;
+  doc
+    .roundedRect(PAGE.marginLeft, top, CONTENT_WIDTH, height, 12)
+    .fillAndStroke(BRAND.surface, BRAND.border);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10.5)
+    .fillColor(BRAND.secondary)
+    .text(title, PAGE.marginLeft + padding, top + padding, { width: CONTENT_WIDTH - padding * 2 });
+
+  let y = top + padding + 24;
+  rows.forEach(([label, value]) => {
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(BRAND.muted)
+      .text(label, PAGE.marginLeft + padding, y, { width: labelWidth });
+    doc
+      .font("Helvetica")
+      .fontSize(8.6)
+      .fillColor(BRAND.body)
+      .text(value, PAGE.marginLeft + padding + labelWidth + 10, y, {
+        lineGap: 2,
+        width: valueWidth,
+      });
+    const labelHeight = doc.heightOfString(label, { width: labelWidth });
+    const valueHeight = doc.heightOfString(value, { width: valueWidth });
+    y += Math.max(labelHeight, valueHeight) + rowGap;
+  });
+
+  doc.y = top + height + 12;
+}
+
+function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
+  ensureSpace(doc, 56);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(BRAND.secondary)
+    .text("Quadro de contratação", PAGE.marginLeft, doc.y, { width: CONTENT_WIDTH });
+  doc.y += 10;
+
+  addKeyValueCard(doc, "Contratante", [
+    ["Razão social / nome", safeText(input.clientName)],
+    ["CPF/CNPJ", formatDocument(input.clientDocument)],
+    ["Responsável", safeText(input.signerName)],
+    ["Documento do responsável", formatDocument(input.signerDocument ?? "")],
+    ["E-mail", safeText(input.signerEmail)],
+    ["Telefone", safeText(input.signerPhone)],
+  ]);
+
+  addKeyValueCard(doc, "Contratada", [
+    ["Empresa", safeText(input.companyName, "Automy")],
+    ["Representante", safeText(input.automyRepresentative, "Representante Automy")],
+    ["Contato", "Automy - Plataforma inteligente para controle e gestão operacional."],
+  ]);
+
+  addKeyValueCard(doc, "Serviço contratado", [
+    ["Produto", safeText(input.productName)],
+    ["Plano", safeText(input.plan)],
+    ["Escopo", safeText(input.scope ?? input.description)],
+    ["Entregáveis", safeText(input.deliverables)],
+    ["Usuários incluídos", String(input.includedUsers ?? 1)],
+    ["Hospedagem", yesNo(input.hostedByAutomy)],
+    ["URL personalizada", yesNo(input.customUrlEnabled)],
+    [
+      "Implantação",
+      `${input.implementationDays ?? 0} dias - ${formatCurrency(input.implementationValue)}`,
+    ],
+    ["Mensalidade", formatCurrency(input.monthlyValue)],
+    ["Forma de pagamento", safeText(input.paymentTermsDescription ?? input.paymentMethod)],
+    [
+      "Parcelas",
+      `${input.installmentsCount ?? 1}${input.installmentDueDays?.length ? ` (${input.installmentDueDays.join(", ")} dias)` : ""}`,
+    ],
+    ["Fidelidade", `${input.loyaltyMonths ?? 0} meses`],
+    ["Início", formatDate(input.startsAt)],
+    ["Renovação", formatDate(input.endsAt)],
+  ]);
+}
+
 function isHeading(text: string) {
   const normalized = text.trim();
   if (!normalized) return false;
@@ -475,7 +620,7 @@ function isHeading(text: string) {
 }
 
 function normalizedContractLines(contractText: string) {
-  return contractText
+  return stripDuplicatedSignatureSection(contractText)
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((line) => line.trim())
@@ -560,11 +705,13 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
       label: "Contratante",
       name: safeText(input.clientName, "Cliente"),
       person: safeText(input.signerName),
+      document: input.signerDocument ? formatDocument(input.signerDocument) : "",
     },
     {
       label: "Contratada",
       name: safeText(input.companyName, "Automy"),
-      person: "Representante Automy",
+      person: safeText(input.automyRepresentative, "Representante Automy"),
+      document: "",
     },
   ];
 
@@ -601,6 +748,17 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
         height: 12,
         width: columnWidth,
       });
+    if (party.document) {
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(BRAND.muted)
+        .text(`Documento: ${party.document}`, x, top + 110, {
+          ellipsis: true,
+          height: 12,
+          width: columnWidth,
+        });
+    }
   });
 
   doc.y = top + 126;
@@ -627,6 +785,22 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
         height: 12,
         width: columnWidth,
       });
+    if (input.witnessDocument) {
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(BRAND.muted)
+        .text(
+          `Documento: ${formatDocument(input.witnessDocument)}`,
+          PAGE.marginLeft,
+          witnessTop + 72,
+          {
+            ellipsis: true,
+            height: 12,
+            width: columnWidth,
+          },
+        );
+    }
     doc.y = witnessTop + 88;
   } else {
     doc.y = top + 126;
@@ -685,6 +859,7 @@ export async function generateContractPdf(input: ContractPdfInput) {
   addInfoGrid(doc, input);
   addCommercialBox(doc, input);
   addItems(doc, input);
+  addHiringSummary(doc, input);
   addClauses(doc, input);
   addSignatureBlock(doc, input);
 

@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Save } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import type { Client } from "@/features/clients/types";
 import { clientFormSchema, type ClientFormValues } from "@/features/clients/validation";
+import { DocumentInput } from "@/shared/components/masked-inputs";
 import { Button, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
 import { cn } from "@/shared/utils/cn";
 import { isValidCnpj, onlyDigits } from "@/shared/utils/document";
@@ -247,9 +248,19 @@ export function ClientCreateModal({
             />
             <FormError message={form.formState.errors.legalName?.message} />
           </Field>
-          <Field label="CNPJ">
+          <Field label="CPF/CNPJ">
             <div className="flex gap-2">
-              <Input placeholder="00.000.000/0000-00" {...form.register("document")} />
+              <Controller
+                control={form.control}
+                name="document"
+                render={({ field }) => (
+                  <DocumentInput
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
               {!isEditing && (
                 <Button
                   type="button"

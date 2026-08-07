@@ -483,8 +483,16 @@ function ContractViewModal({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="Plano" value={contract.plan} />
+            <Info label="Preço-base" value={formatCurrency(contract.basePriceReference)} />
             <Info label="Valor mensal" value={formatCurrency(contract.monthlyValue)} />
             <Info label="Implantação" value={formatCurrency(contract.implementationValue)} />
+            <Info label="Forma de pagamento" value={contract.paymentMethod || "Não informado"} />
+            <Info
+              label="Parcelas"
+              value={`${contract.installmentsCount}${contract.installmentDueDays.length ? ` (${contract.installmentDueDays.join(", ")} dias)` : ""}`}
+            />
+            <Info label="Usuários incluídos" value={String(contract.includedUsers)} />
+            <Info label="Fidelidade" value={`${contract.loyaltyMonths} meses`} />
             <Info label="Periodicidade" value={contract.billingPeriod || "Não informado"} />
             <Info label="Início" value={contract.start || "Não informado"} />
             <Info label="Vencimento" value={contract.renewal || "Não informado"} />
@@ -497,6 +505,15 @@ function ContractViewModal({
             </p>
             <p className="mt-2 rounded-card border border-border bg-muted/30 p-4 text-sm text-foreground">
               {contract.notes || "Nenhuma observação cadastrada."}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Escopo e entregáveis
+            </p>
+            <p className="mt-2 whitespace-pre-wrap rounded-card border border-border bg-muted/30 p-4 text-sm text-foreground">
+              {[contract.scope, contract.deliverables].filter(Boolean).join("\n\n") ||
+                "Nenhum escopo cadastrado."}
             </p>
           </div>
         </div>

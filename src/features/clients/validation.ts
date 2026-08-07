@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isValidCnpj } from "@/shared/utils/document";
+import { isValidCpfOrCnpj, onlyDigits } from "@/shared/utils/document";
 
 const optionalTrimmed = z.string().trim().optional().default("");
 const optionalEmail = z
@@ -30,8 +30,8 @@ export const clientFormSchema = z.object({
   document: z
     .string()
     .trim()
-    .min(14, "Informe o CNPJ.")
-    .refine((value) => isValidCnpj(value), "Informe um CNPJ válido."),
+    .transform((value) => onlyDigits(value))
+    .refine((value) => isValidCpfOrCnpj(value), "Informe um CPF ou CNPJ válido."),
   stateRegistration: optionalTrimmed,
   municipalRegistration: optionalTrimmed,
   legalNature: optionalTrimmed,

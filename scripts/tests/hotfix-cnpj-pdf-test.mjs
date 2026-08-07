@@ -13,6 +13,16 @@ import {
   generateContractPdf,
   loadContractPdfBrandAssets,
 } from "../../src/features/contracts/server/contract-pdf-service.ts";
+import {
+  buildContractDraft,
+  buildPaymentTerms,
+  stripDuplicatedSignatureSection,
+} from "../../src/features/contracts/utils/contract-template.ts";
+import { formatCpf, formatCnpj, isValidCpf, isValidCnpj } from "../../src/shared/utils/document.ts";
+import {
+  formatBrazilianCurrencyInput,
+  parseBrazilianCurrency,
+} from "../../src/shared/utils/formatters.ts";
 
 const context = {
   authUserId: "00000000-0000-4000-8000-000000000001",
@@ -91,6 +101,67 @@ assert.equal(mapped.postalCode, "22460-901");
 assert.equal(mapped.cnae, "5911101 - Estúdios cinematográficos");
 assert.equal(mapped.provider, "cnpj_ws");
 
+assert.equal(formatBrazilianCurrencyInput(7000), "R$ 7.000,00");
+assert.equal(formatBrazilianCurrencyInput(1234567.89), "R$ 1.234.567,89");
+assert.equal(parseBrazilianCurrency("R$ 1.234.567,89"), 1234567.89);
+assert.equal(parseBrazilianCurrency("7000"), 7000);
+assert.equal(formatCpf("52998224725"), "529.982.247-25");
+assert.equal(formatCnpj("27865757000102"), "27.865.757/0001-02");
+assert.equal(isValidCpf("529.982.247-25"), true);
+assert.equal(isValidCnpj("27.865.757/0001-02"), true);
+
+const paymentTerms = buildPaymentTerms({
+  paymentMethod: "Boleto parcelado",
+  installmentsCount: 3,
+  installmentDueDays: [30, 60, 90],
+});
+assert.deepEqual(paymentTerms.dueDays, [30, 60, 90]);
+assert.match(paymentTerms.description, /30, 60, 90 dias/);
+
+assert.equal(
+  stripDuplicatedSignatureSection(
+    "1. CLÁUSULA\nTexto válido.\n\nASSINATURAS\nCONTRATANTE: Cliente\nAssinatura: ___",
+  ),
+  "1. CLÁUSULA\nTexto válido.",
+);
+
+const draftFromProduct = buildContractDraft(
+  {
+    id: "product-id",
+    name: "Automy ERP",
+    category: "Logística",
+    version: "1.0",
+    clients: 0,
+    contracts: 0,
+    status: "Ativo",
+    basePrice: 7000,
+    billingMode: "Mensal",
+    description: "Gestão operacional",
+    commercialTerms: null,
+    contractTemplate: "1. OBJETO\nContrato-base do produto.",
+    createdAt: "2026-08-06T00:00:00.000Z",
+    updatedAt: "2026-08-06T00:00:00.000Z",
+    deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+  },
+  {
+    companyName: "Cliente Teste",
+    document: "27865757000102",
+    signerName: "Responsável Teste",
+  },
+  {
+    monthlyValue: 9100,
+    implementationValue: 3000,
+    paymentMethod: "Boleto parcelado",
+    installmentsCount: 3,
+    installmentDueDays: [30, 60, 90],
+  },
+);
+assert.match(draftFromProduct, /Mensalidade contratada: R\$ 9\.100,00/);
+assert.match(draftFromProduct, /30, 60, 90 dias/);
+assert.doesNotMatch(draftFromProduct, /ASSINATURAS/);
+
 const db = new FakeDb();
 assert.equal(await readCompanyRegistryCache(db, "cnpj_ws", mapped.document), null);
 await writeCompanyRegistryCache(db, context, mapped, 86_400_000);
@@ -143,6 +214,20 @@ const minimalPdfInput = {
   productName: "Automy ERP",
   plan: "Plano Teste",
   status: "pending",
+  scope: "Escopo operacional com nomes longos e acentuação.",
+  deliverables: "Implantação, treinamento e suporte.",
+  includedUsers: 10,
+  hostedByAutomy: true,
+  customUrlEnabled: false,
+  implementationDays: 30,
+  paymentMethod: "Boleto parcelado",
+  installmentsCount: 3,
+  installmentDueDays: [30, 60, 90],
+  paymentTermsDescription: paymentTerms.description,
+  loyaltyMonths: 12,
+  signerDocument: "52998224725",
+  signerEmail: "responsavel@cliente.com",
+  signerPhone: "(11) 99999-9999",
   monthlyValue: 1000,
   implementationValue: 500,
   startsAt: "2026-08-06",
@@ -163,7 +248,7 @@ const noWitnessPdf = await generateContractPdf({
   signerName: "Responsável Teste",
   witnessName: "",
 });
-assert.equal(countPdfPages(noWitnessPdf), 1);
+assert.ok(countPdfPages(noWitnessPdf) <= 2);
 
 const originalConsoleWarn = console.warn;
 console.warn = () => {};
@@ -209,5 +294,9 @@ console.log(
     pdfGeneration: "ok",
     pdfNoWitness: "ok",
     pdfPagination: "ok",
+    currencyFormatting: "ok",
+    documentFormatting: "ok",
+    paymentTerms: "ok",
+    contractDraftSnapshot: "ok",
   }),
 );
