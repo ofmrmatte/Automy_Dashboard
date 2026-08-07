@@ -8,6 +8,7 @@ import {
   normalizeLegacyPaymentTerms,
 } from "@/features/contracts/utils/payment-terms";
 import { formatCpfCnpj } from "@/shared/utils/document";
+import { formatPhone as formatBrazilianPhone } from "@/shared/utils/formatters";
 
 export type ContractPdfItem = {
   name: string;
@@ -54,6 +55,7 @@ export type ContractPdfInput = {
   implementationValue: number;
   startsAt: string;
   endsAt: string;
+  renewalAt?: string | null;
   signerName: string;
   witnessName: string;
   items: ContractPdfItem[];
@@ -200,6 +202,11 @@ function formatCurrency(value: number) {
 function formatDocument(value: string) {
   const digits = value.replace(/\D/g, "");
   return digits ? formatCpfCnpj(digits) : "Não informado";
+}
+
+function formatPhone(value: string | null | undefined) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits ? formatBrazilianPhone(digits) : "";
 }
 
 function statusLabel(value: string) {
@@ -505,7 +512,8 @@ function addCommercialBox(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
     ["Frequência", input.paymentMethod === "À vista" ? "" : (input.billingPeriod ?? "Mensal")],
     ["Permanência mínima", input.loyaltyMonths ? `${input.loyaltyMonths} meses` : ""],
     ["Início", formatDate(input.startsAt)],
-    ["Renovação", formatDate(input.endsAt)],
+    ["Fim da permanência", formatDate(input.endsAt)],
+    ["Próxima renovação", formatDate(input.renewalAt ?? "")],
   ]);
   const gap = 10;
   const columns = 4;
@@ -667,7 +675,7 @@ function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
       ["Responsável", safeText(input.signerName)],
       ["Documento do responsável", formatDocument(input.signerDocument ?? "")],
       ["E-mail", input.signerEmail],
-      ["Telefone", input.signerPhone],
+      ["Telefone", formatPhone(input.signerPhone)],
     ]),
   );
 
@@ -676,7 +684,7 @@ function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
     "Contratada",
     safeRows([
       ["Empresa", safeText(input.companyName, "Automy")],
-      ["Representante", safeText(input.automyRepresentative, "Representante Automy")],
+      ["Representante", input.automyRepresentative],
       ["Contato", "Automy - Plataforma inteligente para controle e gestão operacional."],
     ]),
   );
@@ -704,7 +712,8 @@ function addHiringSummary(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
       ],
       ["Permanência mínima", input.loyaltyMonths ? `${input.loyaltyMonths} meses` : ""],
       ["Início", formatDate(input.startsAt)],
-      ["Renovação", formatDate(input.endsAt)],
+      ["Fim da permanência", formatDate(input.endsAt)],
+      ["Próxima renovação", formatDate(input.renewalAt ?? "")],
     ]),
   );
 }
@@ -829,7 +838,7 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
     {
       label: "Contratada",
       name: safeText(input.companyName, "Automy"),
-      person: safeText(input.automyRepresentative, "Representante Automy"),
+      person: input.automyRepresentative?.trim() ?? "",
       document: "",
     },
   ];
@@ -858,15 +867,17 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, input: ContractPdfInput) {
         height: 20,
         width: columnWidth,
       });
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .fillColor(BRAND.muted)
-      .text(`Responsável: ${party.person}`, x, top + 96, {
-        ellipsis: true,
-        height: 12,
-        width: columnWidth,
-      });
+    if (party.person) {
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(BRAND.muted)
+        .text(`Responsável: ${party.person}`, x, top + 96, {
+          ellipsis: true,
+          height: 12,
+          width: columnWidth,
+        });
+    }
     if (party.document) {
       doc
         .font("Helvetica")

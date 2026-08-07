@@ -6,9 +6,15 @@ import {
 } from "@/features/contracts/server/contract-pdf-service";
 import { contractPdfHeaders } from "@/features/contracts/server/contract-pdf-http";
 import {
+  buildContractDraft,
   buildPaymentTerms,
   stripDuplicatedSignatureSection,
 } from "@/features/contracts/utils/contract-template";
+import {
+  ContractConsistencyError,
+  validateContractConsistency,
+  validateContractReadyForSignature,
+} from "@/features/contracts/utils/contract-consistency";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
   contractFormSchema,
@@ -1275,9 +1281,6 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
   const db = await getRailwayPostgresPool();
   const row = await getContractSnapshotRow(db, context, id);
   if (!row) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
-  if (!row.contract_text) {
-    return jsonResponse({ error: "Contrato ainda não possui dados suficientes." }, { status: 409 });
-  }
 
   try {
     if (!row["contract_hash"]) {
@@ -1299,13 +1302,19 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
           signerName: row.signer_name ?? "",
           witnessName: row.witness_name ?? "",
           notes: row.notes ?? "",
-          contractText: row.contract_text,
+          contractText: row.contract_text ?? "",
         },
         true,
       );
     }
 
     const refreshed = (await getContractSnapshotRow(db, context, id)) ?? row;
+    if (!refreshed.contract_text) {
+      return jsonResponse(
+        { error: "Contrato ainda não possui dados suficientes." },
+        { status: 409 },
+      );
+    }
     const items = await getContractItems(db, context, id);
     const generatedAt = new Date().toISOString();
     const hash = refreshed["contract_hash"] ?? contractHash(refreshed.contract_text);
@@ -1313,6 +1322,34 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       typeof refreshed.payment_terms === "object" && refreshed.payment_terms !== null
         ? (refreshed.payment_terms as { description?: string })
         : {};
+    validateContractConsistency({
+      snapshot: {
+        monthlyValue: Number(refreshed.monthly_value ?? 0),
+        implementationValue: Number(refreshed.implementation_value ?? 0),
+        implementationDays: Number(refreshed.implementation_days ?? 0),
+        basePriceReference: Number(refreshed.base_price_reference ?? 0),
+        additionalUserAmount: Number(refreshed.additional_user_amount ?? 0),
+        databaseCost: Number(refreshed.database_cost ?? 0),
+        downPaymentAmount:
+          typeof refreshed.payment_terms === "object" && refreshed.payment_terms !== null
+            ? Number(
+                (refreshed.payment_terms as { downPaymentAmount?: number }).downPaymentAmount ?? 0,
+              )
+            : 0,
+        includedUsers: Number(refreshed.included_users ?? 1),
+        hostedByAutomy: Boolean(refreshed.hosted_by_automy ?? true),
+        customUrlEnabled: Boolean(refreshed.custom_url_enabled ?? false),
+        paymentMethod: refreshed.payment_method,
+        installmentsCount: Number(refreshed.installments_count ?? 1),
+        installmentDueDays: refreshed.installment_due_days ?? [],
+        paymentTerms: refreshed.payment_terms ?? {},
+        loyaltyMonths: Number(refreshed.loyalty_months ?? 0),
+        startsAt: refreshed.starts_at,
+        endsAt: refreshed.ends_at,
+        renewalAt: refreshed.renewal_at,
+      },
+      contractText: refreshed.contract_text ?? "",
+    });
     const pdf = await generateContractPdf({
       id: refreshed.id,
       version: Number(refreshed.contract_version ?? 1),
@@ -1347,6 +1384,7 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       implementationValue: Number(refreshed.implementation_value ?? 0),
       startsAt: refreshed.starts_at ?? "",
       endsAt: refreshed.ends_at ?? "",
+      renewalAt: refreshed.renewal_at ?? "",
       signerName: refreshed.signer_name ?? "",
       signerDocument: refreshed.signer_document ?? "",
       signerEmail: refreshed.signer_email ?? "",
@@ -1388,6 +1426,10 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       headers: contractPdfHeaders(id, disposition),
     });
   } catch (error) {
+    if (error instanceof ContractConsistencyError) {
+      console.error("Inconsistência crítica no contrato:", error.details);
+      return jsonResponse({ error: error.message }, { status: 409 });
+    }
     console.error(
       "Falha ao gerar PDF do contrato:",
       error instanceof Error ? error.message : error,
@@ -1442,6 +1484,35 @@ async function handleContractSignature(request: Request, context: AuthenticatedU
   }
 
   const db = await getRailwayPostgresPool();
+  const row = await getContractSnapshotRow(db, context, payload.id);
+  if (!row) return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
+  const readiness = validateContractReadyForSignature({
+    clientName: row.client_trade_name ?? row.client_legal_name ?? "",
+    clientDocument: row.client_document ?? "",
+    productName: row.product_name ?? "",
+    plan: row.name ?? "",
+    signerName: row.signer_name ?? "",
+    signerEmail: row.signer_email,
+    monthlyValue: Number(row.monthly_value ?? 0),
+    implementationValue: Number(row.implementation_value ?? 0),
+    paymentMethod: row.payment_method,
+    startsAt: row.starts_at ?? "",
+    endsAt: row.ends_at ?? "",
+    loyaltyMonths: Number(row.loyalty_months ?? 0),
+    contractText: row.contract_text,
+    contractHash: row["contract_hash"] as string | null,
+    contractVersion: Number(row.contract_version ?? 0),
+    automyRepresentative: row.automy_representative,
+  });
+  if (!readiness.ok) {
+    return jsonResponse(
+      {
+        error: `Complete os seguintes dados antes de enviar para assinatura: ${readiness.missing.join(", ")}.`,
+      },
+      { status: 409 },
+    );
+  }
+
   await db.query(
     `
       update public.contracts
@@ -1779,9 +1850,9 @@ async function getContractItems(
 
 function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
   const negotiatedTerms = {
-    description: row.description,
-    scope: row.scope,
-    deliverables: row.deliverables,
+    description: row.description ?? undefined,
+    scope: row.scope ?? undefined,
+    deliverables: row.deliverables ?? undefined,
     includedUsers: Number(row.included_users ?? 1),
     additionalUsers: Number(row.additional_users ?? 0),
     additionalUserAmount: Number(row.additional_user_amount ?? 0),
@@ -1794,7 +1865,7 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
     databaseQuantity: Number(row.database_quantity ?? 0),
     basePriceReference: Number(row.base_price_reference ?? 0),
     discountPercent: Number(row.discount_percent ?? 0),
-    paymentMethod: row.payment_method,
+    paymentMethod: row.payment_method ?? undefined,
     installmentsCount: Number(row.installments_count ?? 1),
     installmentDueDays: row.installment_due_days ?? [],
     paymentTerms: row.payment_terms ?? {},
@@ -1808,27 +1879,61 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
         : 0,
     loyaltyMonths: Number(row.loyalty_months ?? 0),
     currency: row.currency ?? "BRL",
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    renewalAt: row.renewal_at,
-    billingPeriod: row.billing_period,
-    signerName: row.signer_name,
-    signerDocument: row.signer_document,
-    signerEmail: row.signer_email,
-    signerPhone: row.signer_phone,
-    automyRepresentative: row.automy_representative,
-    witnessName: row.witness_name,
-    witnessDocument: row.witness_document,
-    operationalNotes: row.operational_notes,
+    startsAt: row.starts_at ?? undefined,
+    endsAt: row.ends_at ?? undefined,
+    renewalAt: row.renewal_at ?? undefined,
+    billingPeriod: row.billing_period ?? undefined,
+    signerName: row.signer_name ?? undefined,
+    signerDocument: row.signer_document ?? undefined,
+    signerEmail: row.signer_email ?? undefined,
+    signerPhone: row.signer_phone ?? undefined,
+    automyRepresentative: row.automy_representative ?? undefined,
+    witnessName: row.witness_name ?? undefined,
+    witnessDocument: row.witness_document ?? undefined,
+    operationalNotes: row.operational_notes ?? undefined,
   };
   const productTerms = row.product_commercial_terms ?? {};
+  const contractText = buildContractDraft(
+    {
+      id: row.product_id ?? "",
+      name: row.product_name ?? row.name ?? "Produto Automy",
+      category: row.product_category ?? "Software",
+      version: row.product_version ?? "1",
+      clients: 0,
+      contracts: 0,
+      status: "Ativo",
+      basePrice: Number(row.base_price_reference ?? row.monthly_value ?? 0),
+      billingMode: row.billing_period ?? "Mensal",
+      description: row.description ?? "",
+      notes: "",
+      commercialTerms:
+        typeof productTerms === "object" && productTerms !== null ? productTerms : null,
+      contractTemplate: row.product_contract_template,
+      createdAt: "",
+      updatedAt: "",
+      deletedAt: null,
+      createdBy: null,
+      updatedBy: null,
+    },
+    {
+      companyName: row.client_trade_name ?? row.client_legal_name ?? "Cliente",
+      document: row.client_document ?? "",
+      signerName: row.signer_name ?? "",
+      signerDocument: row.signer_document ?? undefined,
+      signerEmail: row.signer_email ?? undefined,
+      signerPhone: row.signer_phone ?? undefined,
+      witnessName: row.witness_name ?? undefined,
+      witnessDocument: row.witness_document ?? undefined,
+    },
+    negotiatedTerms,
+  );
   const snapshot = {
     version: nextVersion,
     contract: {
       id: row.id,
       name: row.name,
       status: row.status,
-      text: row.contract_text,
+      text: contractText,
     },
     client: {
       id: row.client_id,
@@ -1852,6 +1957,7 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
     productTerms,
     negotiatedTerms,
     hash: contractHash(snapshot),
+    contractText,
   };
 }
 
@@ -1869,7 +1975,10 @@ async function persistContractSnapshot(
   const nextVersion = createNewVersion
     ? Number(row.contract_version ?? 1) + (row["contract_hash"] ? 1 : 0)
     : Number(row.contract_version ?? 1);
-  const { hash, negotiatedTerms, productTerms, snapshot } = buildContractSnapshot(row, nextVersion);
+  const { contractText, hash, negotiatedTerms, productTerms, snapshot } = buildContractSnapshot(
+    row,
+    nextVersion,
+  );
 
   await db.query(
     `
@@ -1880,7 +1989,8 @@ async function persistContractSnapshot(
           negotiated_terms_snapshot = $6,
           product_contract_template_snapshot = $7,
           contract_snapshot = $8,
-          updated_by = $9,
+          contract_text = $9,
+          updated_by = $10,
           updated_at = now()
       where id = $1
         and company_id = $2
@@ -1895,6 +2005,7 @@ async function persistContractSnapshot(
       JSON.stringify(negotiatedTerms),
       row.product_contract_template,
       JSON.stringify(snapshot),
+      contractText,
       context.authUserId,
     ],
   );
@@ -1922,7 +2033,7 @@ async function persistContractSnapshot(
       contractId,
       nextVersion,
       hash,
-      row.contract_text ?? "",
+      contractText,
       JSON.stringify(snapshot),
       context.authUserId,
     ],

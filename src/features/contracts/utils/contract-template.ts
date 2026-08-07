@@ -1,5 +1,10 @@
 import type { ContractPaymentMethod, ContractPaymentTerms } from "@/features/contracts/types";
 import { buildStructuredPaymentTerms } from "@/features/contracts/utils/payment-terms";
+import {
+  resolveContractTemplate,
+  sanitizeContractContent,
+  shouldIgnoreLegacyCommercialTemplate,
+} from "@/features/contracts/utils/contract-consistency";
 import type { Product, ProductCommercialTerms } from "@/features/products/types";
 import { formatCpfCnpj } from "@/shared/utils/document";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
@@ -117,8 +122,8 @@ CONTRATANTE: pessoa jurídica identificada no quadro de contratação do contrat
 3.1. O uso da solução observará os limites, acessos, hospedagem e condições comerciais definidos no quadro de contratação.
 3.2. Usuários adicionais, bancos de dados adicionais, customizações, integrações e demandas fora do escopo poderão ser orçados separadamente.
 
-4. MENSALIDADE, COBRANÇA E FIDELIDADE
-4.1. Valores, forma de pagamento, periodicidade, descontos, fidelidade e vencimentos serão aqueles congelados no contrato.
+4. MENSALIDADE, COBRANÇA E PERMANÊNCIA MÍNIMA
+4.1. Valores, forma de pagamento, periodicidade, descontos, prazo mínimo de permanência e vencimentos serão aqueles congelados no contrato.
 4.2. A inadimplência poderá acarretar suspensão de acesso após comunicação prévia, sem prejuízo dos valores vencidos.
 
 5. ENTREGAS
@@ -135,7 +140,7 @@ CONTRATANTE: pessoa jurídica identificada no quadro de contratação do contrat
 
 8. SUPORTE, SUSPENSÃO E RESCISÃO
 8.1. O suporte seguirá as condições comerciais contratadas.
-8.2. A rescisão deverá respeitar valores vencidos, serviços já executados e eventual fidelidade contratada.
+8.2. A rescisão deverá respeitar valores vencidos, serviços já executados e eventual prazo mínimo de permanência contratado.
 
 9. DISPOSIÇÕES GERAIS
 9.1. Este modelo é uma minuta operacional e pode exigir adequação jurídica conforme caso concreto, setor, risco, forma de cobrança e legislação aplicável.
@@ -191,13 +196,14 @@ export function buildContractDraft(
   negotiatedTerms: NegotiatedContractTerms = {},
 ) {
   const legacyTerms = normalizeProductTerms(product);
-  const template =
-    product.contractTemplate?.trim() ||
-    buildProductContractTemplate({
-      name: product.name,
-      category: product.category,
-      ...(product.description ? { description: product.description } : {}),
-    });
+  const baseTemplate = buildProductContractTemplate({
+    name: product.name,
+    category: product.category,
+    ...(product.description ? { description: product.description } : {}),
+  });
+  const template = shouldIgnoreLegacyCommercialTemplate(product.contractTemplate)
+    ? baseTemplate
+    : product.contractTemplate?.trim() || baseTemplate;
   const paymentTerms = buildPaymentTerms({
     paymentMethod: negotiatedTerms.paymentMethod,
     installmentsCount: negotiatedTerms.installmentsCount,
@@ -233,7 +239,7 @@ Hospedagem em URL Automy: ${yesNo(negotiatedTerms.hostedByAutomy)}.
 Personalização de URL: ${yesNo(negotiatedTerms.customUrlEnabled)}.
 Bancos de dados adicionais: ${negotiatedTerms.databaseQuantity ?? 0}, a ${formatCurrency(negotiatedTerms.databaseCost ?? 0)} por banco.
 Início: ${safeDate(negotiatedTerms.startsAt)}.
-Vencimento: ${safeDate(negotiatedTerms.endsAt)}.
+Fim da permanência: ${safeDate(negotiatedTerms.endsAt)}.
 Renovação: ${safeDate(negotiatedTerms.renewalAt)}.`;
 
   const hiringBlock = `
@@ -246,9 +252,28 @@ E-MAIL DO RESPONSÁVEL: ${party.signerEmail || "Não informado"}
 TELEFONE DO RESPONSÁVEL: ${party.signerPhone || "Não informado"}
 SISTEMA CONTRATADO: ${product.name}`;
 
-  return stripDuplicatedSignatureSection(`${template}
+  const resolvedTemplate = resolveContractTemplate(template, {
+    monthlyValue: Number(negotiatedTerms.monthlyValue ?? 0),
+    implementationValue: Number(negotiatedTerms.implementationValue ?? 0),
+    implementationDays: Number(negotiatedTerms.implementationDays ?? 0),
+    includedUsers: Number(negotiatedTerms.includedUsers ?? 1),
+    hostedByAutomy: Boolean(negotiatedTerms.hostedByAutomy),
+    customUrlEnabled: Boolean(negotiatedTerms.customUrlEnabled),
+    paymentMethod: negotiatedTerms.paymentMethod,
+    installmentsCount: negotiatedTerms.installmentsCount,
+    installmentDueDays: negotiatedTerms.installmentDueDays,
+    paymentTerms,
+    loyaltyMonths: negotiatedTerms.loyaltyMonths,
+    startsAt: negotiatedTerms.startsAt,
+    endsAt: negotiatedTerms.endsAt,
+    renewalAt: negotiatedTerms.renewalAt,
+  });
+
+  return sanitizeContractContent(
+    stripDuplicatedSignatureSection(`${resolvedTemplate}
 
 ${commercialBlock}
 
-${hiringBlock}`);
+${hiringBlock}`),
+  );
 }
