@@ -56,6 +56,7 @@ export function SupportPage() {
   const [deletingTicket, setDeletingTicket] = useState<Ticket | null>(null);
   const [messageTicket, setMessageTicket] = useState<Ticket | null>(null);
   const [message, setMessage] = useState("");
+  const [messageVisibility, setMessageVisibility] = useState<"internal" | "client">("internal");
   const userFilters = useMemo(
     () => ({ search: "", role: "all" as const, status: "active" as const, page: 1, pageSize: 100 }),
     [],
@@ -111,12 +112,21 @@ export function SupportPage() {
   });
 
   const addMessage = useMutation({
-    mutationFn: ({ ticket, body }: { ticket: Ticket; body: string }) =>
-      supportService.updateTicket({ id: ticket.id, message: body }),
+    mutationFn: ({
+      ticket,
+      body,
+      visibility,
+    }: {
+      ticket: Ticket;
+      body: string;
+      visibility: "internal" | "client";
+    }) =>
+      supportService.updateTicket({ id: ticket.id, message: body, messageVisibility: visibility }),
     onSuccess: async (ticket) => {
       await queryClient.invalidateQueries({ queryKey: supportQueryKeys.all });
       toast.success("Mensagem registrada.");
       setMessage("");
+      setMessageVisibility("internal");
       setMessageTicket(null);
       if (ticket) setViewingTicket(ticket);
     },
@@ -201,7 +211,10 @@ export function SupportPage() {
               variant="ghost"
               size="icon"
               aria-label={`Adicionar mensagem em ${ticket.number}`}
-              onClick={() => setMessageTicket(ticket)}
+              onClick={() => {
+                setMessageVisibility("internal");
+                setMessageTicket(ticket);
+              }}
             >
               <MessageSquarePlus className="size-4" />
             </Button>
@@ -347,13 +360,25 @@ export function SupportPage() {
         onClose={() => {
           setMessageTicket(null);
           setMessage("");
+          setMessageVisibility("internal");
         }}
         title="Adicionar mensagem"
-        description="Registre uma atualização interna no histórico do ticket."
+        description="Registre uma atualização e escolha explicitamente se o cliente poderá visualizá-la."
       >
         <div className="grid gap-5">
           <Field label="Mensagem">
             <Textarea value={message} onChange={(event) => setMessage(event.target.value)} />
+          </Field>
+          <Field label="Visibilidade">
+            <Select
+              value={messageVisibility}
+              onChange={(event) =>
+                setMessageVisibility(event.target.value as "internal" | "client")
+              }
+            >
+              <option value="internal">Somente equipe Automy</option>
+              <option value="client">Visível ao cliente no Portal</option>
+            </Select>
           </Field>
           <div className="flex justify-end gap-2">
             <Button
@@ -362,6 +387,7 @@ export function SupportPage() {
               onClick={() => {
                 setMessageTicket(null);
                 setMessage("");
+                setMessageVisibility("internal");
               }}
             >
               Cancelar
@@ -370,7 +396,12 @@ export function SupportPage() {
               type="button"
               loading={addMessage.isPending}
               onClick={() =>
-                messageTicket && addMessage.mutate({ ticket: messageTicket, body: message })
+                messageTicket &&
+                addMessage.mutate({
+                  ticket: messageTicket,
+                  body: message,
+                  visibility: messageVisibility,
+                })
               }
             >
               <MessageSquarePlus className="size-4" />

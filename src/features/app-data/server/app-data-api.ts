@@ -3798,7 +3798,13 @@ async function handleUpdateTicket(request: Request, context: AuthenticatedUserCo
     }
 
     if (parsed.data.message) {
-      await insertTicketMessage(client, context, updated.id, parsed.data.message);
+      await insertTicketMessage(
+        client,
+        context,
+        updated.id,
+        parsed.data.message,
+        parsed.data.messageVisibility ?? "internal",
+      );
     }
 
     if (parsed.data.attachmentName && parsed.data.attachmentUrl) {
@@ -3930,6 +3936,7 @@ async function insertTicketMessage(
   context: AuthenticatedUserContext,
   ticketId: string,
   body: string,
+  visibility: "internal" | "client" = "internal",
 ) {
   await db.query(
     `
@@ -3943,14 +3950,14 @@ async function insertTicketMessage(
       created_by,
       updated_by
     )
-    select $1, $2, users.id, users.name, $3, 'internal', $4, $4
+    select $1, $2, users.id, users.name, $3, $4, $5, $5
     from public.users
-    where users.id = $5
+    where users.id = $6
       and users.company_id = $1
       and users.deleted_at is null
     limit 1
     `,
-    [context.companyId, ticketId, body, context.authUserId, context.domainUserId],
+    [context.companyId, ticketId, body, visibility, context.authUserId, context.domainUserId],
   );
 }
 
