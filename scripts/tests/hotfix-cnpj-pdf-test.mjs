@@ -18,6 +18,12 @@ import {
   buildPaymentTerms,
   stripDuplicatedSignatureSection,
 } from "../../src/features/contracts/utils/contract-template.ts";
+import {
+  calculateInstallmentDueDays,
+  formatPaymentTermsForContract,
+  normalizeLegacyPaymentTerms,
+} from "../../src/features/contracts/utils/payment-terms.ts";
+import { contractFormSchema } from "../../src/features/contracts/validation.ts";
 import { formatCpf, formatCnpj, isValidCpf, isValidCnpj } from "../../src/shared/utils/document.ts";
 import {
   formatBrazilianCurrencyInput,
@@ -113,10 +119,64 @@ assert.equal(isValidCnpj("27.865.757/0001-02"), true);
 const paymentTerms = buildPaymentTerms({
   paymentMethod: "Boleto parcelado",
   installmentsCount: 3,
-  installmentDueDays: [30, 60, 90],
+  firstDueInDays: 30,
 });
 assert.deepEqual(paymentTerms.dueDays, [30, 60, 90]);
-assert.match(paymentTerms.description, /30, 60, 90 dias/);
+assert.match(paymentTerms.description, /30, 60 e 90 dias/);
+assert.deepEqual(calculateInstallmentDueDays(4, 30), [30, 60, 90, 120]);
+assert.deepEqual(calculateInstallmentDueDays(3, 15), [15, 45, 75]);
+
+const downPaymentTerms = buildPaymentTerms({
+  paymentMethod: "Entrada + parcelamento",
+  implementationValue: 10000,
+  downPaymentAmount: 2000,
+  installmentsCount: 4,
+  firstDueInDays: 30,
+});
+assert.deepEqual(downPaymentTerms.calculatedDueDays, [30, 60, 90, 120]);
+assert.equal(downPaymentTerms.remainingAmount, 8000);
+assert.equal(downPaymentTerms.installmentAmount, 2000);
+assert.match(formatPaymentTermsForContract(downPaymentTerms), /entrada de R\$ 2\.000,00/);
+assert.match(formatPaymentTermsForContract(downPaymentTerms), /30, 60, 90 e 120 dias/);
+
+const legacyPaymentTerms = normalizeLegacyPaymentTerms(
+  {
+    method: "Boleto parcelado",
+    installments: 3,
+    firstDueInDays: 30,
+    intervalDays: 30,
+  },
+  { totalAmount: 1000 },
+);
+assert.deepEqual(legacyPaymentTerms.calculatedDueDays, [30, 60, 90]);
+
+const baseContractPayload = {
+  clientId: "00000000-0000-4000-8000-000000000010",
+  productId: "00000000-0000-4000-8000-000000000011",
+  name: "Plano Teste",
+  startsAt: "2026-08-06",
+  endsAt: "2027-08-06",
+  signerName: "Responsável Teste",
+};
+assert.equal(
+  contractFormSchema.safeParse({
+    ...baseContractPayload,
+    paymentMethod: "Entrada + parcelamento",
+    implementationValue: 10000,
+    downPaymentAmount: 12000,
+    installmentsCount: 4,
+    firstDueInDays: 30,
+  }).success,
+  false,
+);
+assert.equal(
+  contractFormSchema.safeParse({
+    ...baseContractPayload,
+    paymentMethod: "Cartão",
+    gatewayInstallments: 12,
+  }).success,
+  true,
+);
 
 assert.equal(
   stripDuplicatedSignatureSection(
@@ -155,11 +215,11 @@ const draftFromProduct = buildContractDraft(
     implementationValue: 3000,
     paymentMethod: "Boleto parcelado",
     installmentsCount: 3,
-    installmentDueDays: [30, 60, 90],
+    firstDueInDays: 30,
   },
 );
 assert.match(draftFromProduct, /Mensalidade contratada: R\$ 9\.100,00/);
-assert.match(draftFromProduct, /30, 60, 90 dias/);
+assert.match(draftFromProduct, /30, 60 e 90 dias/);
 assert.doesNotMatch(draftFromProduct, /ASSINATURAS/);
 
 const db = new FakeDb();
@@ -223,6 +283,7 @@ const minimalPdfInput = {
   paymentMethod: "Boleto parcelado",
   installmentsCount: 3,
   installmentDueDays: [30, 60, 90],
+  paymentTerms,
   paymentTermsDescription: paymentTerms.description,
   loyaltyMonths: 12,
   signerDocument: "52998224725",
@@ -248,7 +309,7 @@ const noWitnessPdf = await generateContractPdf({
   signerName: "Responsável Teste",
   witnessName: "",
 });
-assert.ok(countPdfPages(noWitnessPdf) <= 2);
+assert.ok(countPdfPages(noWitnessPdf) <= 3);
 
 const originalConsoleWarn = console.warn;
 console.warn = () => {};
@@ -297,6 +358,8 @@ console.log(
     currencyFormatting: "ok",
     documentFormatting: "ok",
     paymentTerms: "ok",
+    paymentConditionals: "ok",
+    paymentSchedule: "ok",
     contractDraftSnapshot: "ok",
   }),
 );

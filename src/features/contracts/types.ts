@@ -61,6 +61,7 @@ export type ContractPaymentMethod =
   | "À vista"
   | "Boleto"
   | "Boleto parcelado"
+  | "Entrada + parcelamento"
   | "PIX"
   | "Cartão"
   | "Transferência"
@@ -73,6 +74,18 @@ export type ContractPaymentTerms = {
   firstDueInDays: number | null;
   intervalDays: number | null;
   dueDays: number[];
+  calculatedDueDays?: number[];
+  paymentDueInDays?: number | null;
+  downPaymentAmount?: number | null;
+  remainingAmount?: number | null;
+  installmentAmount?: number | null;
+  lastInstallmentAmount?: number | null;
+  recurrenceFrequency?: string | null;
+  recurrenceDueDay?: number | null;
+  recurrenceStartDate?: string | null;
+  gateway?: string | null;
+  gatewayInstallments?: number | null;
+  customDescription?: string | null;
   specificDates: string[];
   description: string;
   createdAt?: string;
@@ -98,6 +111,12 @@ export type ContractNegotiatedTerms = {
   paymentMethod: ContractPaymentMethod;
   installmentsCount: number;
   installmentDueDays: number[];
+  downPaymentAmount?: number | null;
+  paymentDueInDays?: number | null;
+  recurrenceDueDay?: number | null;
+  recurrenceStartDate?: string | null;
+  gatewayInstallments?: number | null;
+  customPaymentDescription?: string | null;
   billingPeriod: string;
   loyaltyMonths: number;
   currency: string;

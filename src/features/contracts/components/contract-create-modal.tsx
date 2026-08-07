@@ -2,11 +2,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { BadgeCheck, Building2, FileSignature, Save, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Controller, type Control, useForm, useWatch } from "react-hook-form";
-import type { Contract } from "@/features/contracts/types";
+import type { Contract, ContractPaymentTerms } from "@/features/contracts/types";
 import {
   buildContractDraft,
   normalizeProductTerms,
 } from "@/features/contracts/utils/contract-template";
+import {
+  buildStructuredPaymentTerms,
+  formatDueDaysList,
+  normalizeLegacyPaymentTerms,
+} from "@/features/contracts/utils/payment-terms";
 import {
   contractBillingPeriods,
   contractFormSchema,
@@ -19,6 +24,7 @@ import { productsQueryOptions } from "@/features/products/api/product.queries";
 import { useQuery } from "@tanstack/react-query";
 import { CurrencyInput, DocumentInput } from "@/shared/components/masked-inputs";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "@/shared/components/ui";
+import { formatCurrency } from "@/shared/utils/formatters";
 
 const defaultValues: ContractFormValues = {
   id: "",
@@ -44,9 +50,15 @@ const defaultValues: ContractFormValues = {
   paymentMethod: "Boleto",
   installmentsCount: 1,
   firstDueInDays: 30,
+  paymentDueInDays: 30,
   installmentIntervalDays: 30,
   installmentDueDays: [],
   specificDueDates: [],
+  downPaymentAmount: 0,
+  recurrenceDueDay: 1,
+  recurrenceStartDate: new Date().toISOString().slice(0, 10),
+  gatewayInstallments: 1,
+  customPaymentDescription: "",
   loyaltyMonths: 0,
   currency: "BRL",
   startsAt: new Date().toISOString().slice(0, 10),
@@ -69,6 +81,13 @@ function contractToFormValues(contract: Contract | null | undefined): ContractFo
   if (!contract) return defaultValues;
   const billingPeriod = contractBillingPeriods.find((period) => period === contract.billingPeriod);
   const paymentMethod = contractPaymentMethods.find((method) => method === contract.paymentMethod);
+  const paymentTerms = normalizeLegacyPaymentTerms(contract.paymentTerms, {
+    method: paymentMethod ?? "Boleto",
+    installments: contract.installmentsCount,
+    firstDueInDays: contract.paymentTerms?.firstDueInDays ?? 30,
+    installmentDueDays: contract.installmentDueDays,
+    totalAmount: contract.implementationValue || contract.monthlyValue,
+  });
 
   return {
     id: contract.id,
@@ -92,11 +111,17 @@ function contractToFormValues(contract: Contract | null | undefined): ContractFo
     implementationValue: contract.implementationValue,
     discountPercent: contract.discountPercent,
     paymentMethod: paymentMethod ?? "Boleto",
-    installmentsCount: contract.installmentsCount,
-    firstDueInDays: contract.paymentTerms?.firstDueInDays ?? 30,
+    installmentsCount: paymentTerms.installments,
+    firstDueInDays: paymentTerms.firstDueInDays ?? 30,
+    paymentDueInDays: paymentTerms.paymentDueInDays ?? paymentTerms.firstDueInDays ?? 30,
     installmentIntervalDays: contract.paymentTerms?.intervalDays ?? 30,
-    installmentDueDays: contract.installmentDueDays,
+    installmentDueDays: paymentTerms.calculatedDueDays ?? paymentTerms.dueDays,
     specificDueDates: contract.paymentTerms?.specificDates ?? [],
+    downPaymentAmount: paymentTerms.downPaymentAmount ?? 0,
+    recurrenceDueDay: paymentTerms.recurrenceDueDay ?? 1,
+    recurrenceStartDate: paymentTerms.recurrenceStartDate ?? contract.startsAt,
+    gatewayInstallments: paymentTerms.gatewayInstallments ?? paymentTerms.installments,
+    customPaymentDescription: paymentTerms.customDescription ?? "",
     loyaltyMonths: contract.loyaltyMonths,
     currency: contract.currency,
     startsAt: contract.startsAt,
@@ -144,6 +169,27 @@ export function ContractCreateModal({
 
   const selectedClient = clients.find((client) => client.id === values.clientId);
   const selectedProduct = products.find((product) => product.id === values.productId);
+  const selectedPaymentMethod = values.paymentMethod ?? "Boleto";
+  const paymentTerms = useMemo(
+    () =>
+      buildStructuredPaymentTerms({
+        method: selectedPaymentMethod,
+        installments:
+          selectedPaymentMethod === "Cartão"
+            ? Number(values.gatewayInstallments ?? values.installmentsCount ?? 1)
+            : Number(values.installmentsCount ?? 1),
+        firstDueInDays: Number(values.firstDueInDays ?? 30),
+        paymentDueInDays: Number(values.paymentDueInDays ?? 30),
+        downPaymentAmount: Number(values.downPaymentAmount ?? 0),
+        totalAmount: Number(values.implementationValue ?? 0) || Number(values.monthlyValue ?? 0),
+        recurrenceFrequency: values.billingPeriod,
+        recurrenceDueDay: Number(values.recurrenceDueDay ?? 1),
+        recurrenceStartDate: values.recurrenceStartDate,
+        gatewayInstallments: Number(values.gatewayInstallments ?? values.installmentsCount ?? 1),
+        customDescription: values.customPaymentDescription,
+      }),
+    [selectedPaymentMethod, values],
+  );
 
   useEffect(() => {
     if (isEditing || !selectedProduct) return;
@@ -207,10 +253,16 @@ export function ContractCreateModal({
         monthlyValue: Number(values.monthlyValue ?? 0),
         discountPercent: Number(values.discountPercent ?? 0),
         paymentMethod: values.paymentMethod,
-        installmentsCount: Number(values.installmentsCount ?? 1),
-        installmentDueDays: Array.isArray(values.installmentDueDays)
-          ? values.installmentDueDays
-          : [],
+        installmentsCount: paymentTerms.installments,
+        firstDueInDays: paymentTerms.firstDueInDays ?? undefined,
+        paymentDueInDays: paymentTerms.paymentDueInDays ?? undefined,
+        installmentDueDays: paymentTerms.calculatedDueDays ?? paymentTerms.dueDays,
+        downPaymentAmount: paymentTerms.downPaymentAmount ?? undefined,
+        recurrenceFrequency: paymentTerms.recurrenceFrequency ?? undefined,
+        recurrenceDueDay: paymentTerms.recurrenceDueDay ?? undefined,
+        recurrenceStartDate: paymentTerms.recurrenceStartDate ?? undefined,
+        gatewayInstallments: paymentTerms.gatewayInstallments ?? undefined,
+        customPaymentDescription: paymentTerms.customDescription ?? undefined,
         billingPeriod: values.billingPeriod,
         loyaltyMonths: Number(values.loyaltyMonths ?? 0),
         currency: values.currency,
@@ -219,10 +271,19 @@ export function ContractCreateModal({
         renewalAt: values.renewalAt,
       },
     );
-  }, [selectedClient, selectedProduct, values]);
+  }, [paymentTerms, selectedClient, selectedProduct, values]);
 
   async function handleSubmit(values: ContractFormValues) {
-    await onSubmit({ ...values, contractText: draft });
+    await onSubmit({
+      ...values,
+      installmentsCount: paymentTerms.installments,
+      firstDueInDays: paymentTerms.firstDueInDays ?? 0,
+      installmentIntervalDays: paymentTerms.intervalDays ?? 30,
+      installmentDueDays: paymentTerms.calculatedDueDays ?? paymentTerms.dueDays,
+      paymentDueInDays: paymentTerms.paymentDueInDays ?? 0,
+      gatewayInstallments: paymentTerms.gatewayInstallments ?? values.gatewayInstallments,
+      contractText: draft,
+    });
     if (!isEditing) form.reset(defaultValues);
   }
 
@@ -358,39 +419,122 @@ export function ContractCreateModal({
                 </Select>
                 <FormError message={form.formState.errors.paymentMethod?.message} />
               </Field>
-              <Field label="Parcelas">
-                <Input type="number" min={1} {...form.register("installmentsCount")} />
-                <FormError message={form.formState.errors.installmentsCount?.message} />
-              </Field>
-              <Field label="Primeira parcela em dias">
-                <Input type="number" min={0} {...form.register("firstDueInDays")} />
-                <FormError message={form.formState.errors.firstDueInDays?.message} />
-              </Field>
-              <Field label="Intervalo entre parcelas">
-                <Input type="number" min={1} {...form.register("installmentIntervalDays")} />
-                <FormError message={form.formState.errors.installmentIntervalDays?.message} />
-              </Field>
-              <Field label="Vencimentos em dias">
-                <Input placeholder="30, 60, 90" {...form.register("installmentDueDays")} />
-                <FormError message={form.formState.errors.installmentDueDays?.message} />
-              </Field>
-              <Field label="Periodicidade">
-                <Select {...form.register("billingPeriod")}>
-                  {contractBillingPeriods.map((period) => (
-                    <option key={period}>{period}</option>
-                  ))}
-                </Select>
-                <FormError message={form.formState.errors.billingPeriod?.message} />
-              </Field>
-              <Field label="Fidelidade (meses)">
+              {(selectedPaymentMethod === "À vista" ||
+                selectedPaymentMethod === "Boleto" ||
+                selectedPaymentMethod === "PIX" ||
+                selectedPaymentMethod === "Transferência") && (
+                <Field
+                  label={
+                    selectedPaymentMethod === "Boleto"
+                      ? "Prazo para vencimento"
+                      : "Prazo para pagamento"
+                  }
+                >
+                  <Input type="number" min={0} {...form.register("paymentDueInDays")} />
+                  <span className="text-xs text-muted-foreground">
+                    Quantidade de dias após a formalização do contrato.
+                  </span>
+                  <FormError message={form.formState.errors.paymentDueInDays?.message} />
+                </Field>
+              )}
+              {selectedPaymentMethod === "Boleto parcelado" && (
+                <>
+                  <Field label="Quantidade de parcelas">
+                    <Input type="number" min={2} {...form.register("installmentsCount")} />
+                    <FormError message={form.formState.errors.installmentsCount?.message} />
+                  </Field>
+                  <Field label="Primeiro vencimento">
+                    <Input type="number" min={0} {...form.register("firstDueInDays")} />
+                    <span className="text-xs text-muted-foreground">
+                      Quantidade de dias após a formalização do contrato.
+                    </span>
+                    <FormError message={form.formState.errors.firstDueInDays?.message} />
+                  </Field>
+                </>
+              )}
+              {selectedPaymentMethod === "Entrada + parcelamento" && (
+                <>
+                  <Field label="Valor da entrada">
+                    <MoneyController control={form.control} name="downPaymentAmount" />
+                    <FormError message={form.formState.errors.downPaymentAmount?.message} />
+                  </Field>
+                  <Field label="Parcelas do saldo">
+                    <Input type="number" min={2} {...form.register("installmentsCount")} />
+                    <FormError message={form.formState.errors.installmentsCount?.message} />
+                  </Field>
+                  <Field label="Primeiro vencimento">
+                    <Input type="number" min={0} {...form.register("firstDueInDays")} />
+                    <span className="text-xs text-muted-foreground">
+                      Quantidade de dias após a formalização do contrato.
+                    </span>
+                    <FormError message={form.formState.errors.firstDueInDays?.message} />
+                  </Field>
+                </>
+              )}
+              {selectedPaymentMethod === "Cartão" && (
+                <>
+                  <Field label="Quantidade de parcelas">
+                    <Input type="number" min={1} {...form.register("gatewayInstallments")} />
+                    <FormError message={form.formState.errors.gatewayInstallments?.message} />
+                  </Field>
+                  <p className="self-end rounded-input bg-muted px-3 py-2 text-xs text-muted-foreground">
+                    As condições finais do cartão poderão ser determinadas pelo gateway de
+                    pagamento.
+                  </p>
+                </>
+              )}
+              {selectedPaymentMethod === "Recorrência" && (
+                <>
+                  <Field label="Frequência da cobrança">
+                    <Select {...form.register("billingPeriod")}>
+                      {contractBillingPeriods.map((period) => (
+                        <option key={period}>{period}</option>
+                      ))}
+                    </Select>
+                    <FormError message={form.formState.errors.billingPeriod?.message} />
+                  </Field>
+                  <Field label="Dia de vencimento">
+                    <Input type="number" min={1} max={31} {...form.register("recurrenceDueDay")} />
+                    <FormError message={form.formState.errors.recurrenceDueDay?.message} />
+                  </Field>
+                  <Field label="Data de início da cobrança">
+                    <Input type="date" {...form.register("recurrenceStartDate")} />
+                    <FormError message={form.formState.errors.recurrenceStartDate?.message} />
+                  </Field>
+                </>
+              )}
+              {selectedPaymentMethod === "Outro" && (
+                <Field label="Condições de pagamento">
+                  <Textarea
+                    placeholder="Descreva as condições acordadas."
+                    {...form.register("customPaymentDescription")}
+                  />
+                  <FormError message={form.formState.errors.customPaymentDescription?.message} />
+                </Field>
+              )}
+              {selectedPaymentMethod !== "Recorrência" && (
+                <Field label="Frequência da mensalidade">
+                  <Select {...form.register("billingPeriod")}>
+                    {contractBillingPeriods.map((period) => (
+                      <option key={period}>{period}</option>
+                    ))}
+                  </Select>
+                  <FormError message={form.formState.errors.billingPeriod?.message} />
+                </Field>
+              )}
+              <Field label="Permanência mínima">
                 <Input type="number" min={0} {...form.register("loyaltyMonths")} />
+                <span className="text-xs text-muted-foreground">
+                  Prazo mínimo de permanência previsto no contrato.
+                </span>
                 <FormError message={form.formState.errors.loyaltyMonths?.message} />
               </Field>
               <Field label="Moeda">
-                <Input maxLength={3} {...form.register("currency")} />
+                <Input maxLength={3} readOnly {...form.register("currency")} />
                 <FormError message={form.formState.errors.currency?.message} />
               </Field>
             </div>
+            <PaymentPreview paymentTerms={paymentTerms} />
           </section>
 
           <section className="grid gap-4">
@@ -535,7 +679,8 @@ function MoneyController({
     | "databaseCost"
     | "basePriceReference"
     | "monthlyValue"
-    | "implementationValue";
+    | "implementationValue"
+    | "downPaymentAmount";
 }) {
   return (
     <Controller
@@ -545,6 +690,67 @@ function MoneyController({
         <CurrencyInput value={Number(field.value ?? 0)} onChange={field.onChange} />
       )}
     />
+  );
+}
+
+function PaymentPreview({ paymentTerms }: { paymentTerms: ContractPaymentTerms }) {
+  const schedule = paymentTerms.calculatedDueDays ?? paymentTerms.dueDays;
+
+  return (
+    <div className="rounded-card border border-border bg-muted/30 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Preview do pagamento
+      </p>
+      <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <PreviewInfo label="Forma" value={paymentTerms.method} />
+        {paymentTerms.paymentDueInDays !== null &&
+          paymentTerms.method !== "Boleto parcelado" &&
+          paymentTerms.method !== "Entrada + parcelamento" && (
+            <PreviewInfo label="Prazo" value={`${paymentTerms.paymentDueInDays} dias`} />
+          )}
+        {paymentTerms.method === "Entrada + parcelamento" && (
+          <>
+            <PreviewInfo
+              label="Entrada"
+              value={formatCurrency(paymentTerms.downPaymentAmount ?? 0)}
+            />
+            <PreviewInfo label="Saldo" value={formatCurrency(paymentTerms.remainingAmount ?? 0)} />
+            <PreviewInfo
+              label="Parcelamento"
+              value={`${paymentTerms.installments}x de ${formatCurrency(paymentTerms.installmentAmount ?? 0)}`}
+            />
+          </>
+        )}
+        {(paymentTerms.method === "Boleto parcelado" ||
+          paymentTerms.method === "Entrada + parcelamento") && (
+          <PreviewInfo label="Cronograma" value={`${formatDueDaysList(schedule)} dias`} />
+        )}
+        {paymentTerms.method === "Cartão" && (
+          <PreviewInfo
+            label="Parcelamento"
+            value={`${paymentTerms.gatewayInstallments ?? paymentTerms.installments}x no cartão`}
+          />
+        )}
+        {paymentTerms.method === "Recorrência" && (
+          <>
+            <PreviewInfo label="Frequência" value={paymentTerms.recurrenceFrequency ?? "Mensal"} />
+            <PreviewInfo label="Vencimento" value={`Dia ${paymentTerms.recurrenceDueDay ?? 1}`} />
+          </>
+        )}
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        {paymentTerms.description}
+      </p>
+    </div>
+  );
+}
+
+function PreviewInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium text-foreground">{value}</p>
+    </div>
   );
 }
 

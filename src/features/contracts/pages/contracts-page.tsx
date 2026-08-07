@@ -488,12 +488,19 @@ function ContractViewModal({
             <Info label="Implantação" value={formatCurrency(contract.implementationValue)} />
             <Info label="Forma de pagamento" value={contract.paymentMethod || "Não informado"} />
             <Info
-              label="Parcelas"
-              value={`${contract.installmentsCount}${contract.installmentDueDays.length ? ` (${contract.installmentDueDays.join(", ")} dias)` : ""}`}
+              label="Cronograma"
+              value={
+                contract.installmentDueDays.length
+                  ? `${contract.installmentsCount} parcelas (${contract.installmentDueDays.join(", ")} dias)`
+                  : contract.paymentTerms?.description || "Não informado"
+              }
             />
             <Info label="Usuários incluídos" value={String(contract.includedUsers)} />
-            <Info label="Fidelidade" value={`${contract.loyaltyMonths} meses`} />
-            <Info label="Periodicidade" value={contract.billingPeriod || "Não informado"} />
+            <Info label="Permanência mínima" value={`${contract.loyaltyMonths} meses`} />
+            <Info
+              label="Frequência da mensalidade"
+              value={contract.billingPeriod || "Não informado"}
+            />
             <Info label="Início" value={contract.start || "Não informado"} />
             <Info label="Vencimento" value={contract.renewal || "Não informado"} />
             <Info label="Versão documental" value={`v${contract.contractVersion}`} />
