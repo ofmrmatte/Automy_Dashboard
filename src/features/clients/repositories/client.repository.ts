@@ -2,7 +2,7 @@ import type { Client, ClientStatus } from "@/features/clients/types";
 import type { ClientFormData } from "@/features/clients/validation";
 import type { Database } from "@/shared/types/database";
 import { RepositoryError } from "@/shared/api/errors";
-import { formatCnpj, formatDate, getInitials } from "@/shared/utils/formatters";
+import { formatCpfCnpj, formatDate, getInitials } from "@/shared/utils/formatters";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"] & {
   owner_name?: string | null;
@@ -35,7 +35,7 @@ function mapClient(row: ClientRow): Client {
     initials: getInitials(name),
     name,
     legal: row.legal_name,
-    cnpj: row.document ? formatCnpj(row.document) : "",
+    cnpj: row.document ? formatCpfCnpj(row.document) : "",
     stateRegistration: row.state_registration ?? "",
     municipalRegistration: row.municipal_registration ?? "",
     legalNature: row.legal_nature ?? "",

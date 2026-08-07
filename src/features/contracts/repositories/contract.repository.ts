@@ -3,18 +3,27 @@ import type { ContractFormData } from "@/features/contracts/validation";
 import type { Database } from "@/shared/types/database";
 import { RepositoryError } from "@/shared/api/errors";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
+import type { ContractPaymentTerms, ContractNegotiatedTerms } from "@/features/contracts/types";
 
 type ContractRow = Omit<Database["public"]["Tables"]["contracts"]["Row"], "client" | "product"> & {
   client_trade_name: string | null;
   client_legal_name: string | null;
   product_name: string | null;
   signer_name?: string | null;
+  signer_document?: string | null;
+  signer_email?: string | null;
+  signer_phone?: string | null;
+  automy_representative?: string | null;
   witness_name?: string | null;
+  witness_document?: string | null;
   contract_text?: string | null;
   contract_version?: number | null;
   contract_hash?: string | null;
   signature_status?: Contract["signatureStatus"] | null;
   signed_document_path?: string | null;
+  payment_terms?: ContractPaymentTerms | null;
+  negotiated_terms?: ContractNegotiatedTerms | null;
+  contract_snapshot?: unknown;
 };
 
 function mapContractStatus(status: string): ContractStatus {
@@ -34,10 +43,29 @@ function mapContract(row: ContractRow): Contract {
     productId: row.product_id ?? "",
     client: row.client_trade_name ?? row.client_legal_name ?? row.client_id,
     product: row.product_name ?? "",
-    plan: row.product_name ?? row.name ?? "",
+    plan: row.name ?? row.product_name ?? "",
+    description: row.description ?? null,
+    scope: row.scope ?? null,
+    deliverables: row.deliverables ?? null,
     value: row.monthly_value ? formatCurrency(row.monthly_value) : "",
+    basePriceReference: Number(row.base_price_reference ?? 0),
     monthlyValue: Number(row.monthly_value ?? 0),
     implementationValue: Number(row.implementation_value ?? 0),
+    implementationDays: Number(row.implementation_days ?? 0),
+    discountPercent: Number(row.discount_percent ?? 0),
+    paymentMethod: row.payment_method ?? "Boleto",
+    installmentsCount: Number(row.installments_count ?? 1),
+    installmentDueDays: Array.isArray(row.installment_due_days) ? row.installment_due_days : [],
+    paymentTerms: row.payment_terms ?? null,
+    includedUsers: Number(row.included_users ?? 1),
+    additionalUsers: Number(row.additional_users ?? 0),
+    additionalUserAmount: Number(row.additional_user_amount ?? 0),
+    hostedByAutomy: Boolean(row.hosted_by_automy ?? true),
+    customUrlEnabled: Boolean(row.custom_url_enabled ?? false),
+    databaseCost: Number(row.database_cost ?? 0),
+    databaseQuantity: Number(row.database_quantity ?? 0),
+    loyaltyMonths: Number(row.loyalty_months ?? 0),
+    currency: row.currency ?? "BRL",
     start: row.starts_at ? formatDate(row.starts_at) : "",
     startsAt: row.starts_at ?? "",
     renewal: row.ends_at ? formatDate(row.ends_at) : "",
@@ -46,13 +74,21 @@ function mapContract(row: ContractRow): Contract {
     billingPeriod: row.billing_period ?? "",
     status: mapContractStatus(row.status),
     signerName: row.signer_name ?? null,
+    signerDocument: row.signer_document ?? null,
+    signerEmail: row.signer_email ?? null,
+    signerPhone: row.signer_phone ?? null,
+    automyRepresentative: row.automy_representative ?? null,
     witnessName: row.witness_name ?? null,
+    witnessDocument: row.witness_document ?? null,
     contractText: row.contract_text ?? null,
     contractVersion: Number(row.contract_version ?? 1),
     contractHash: row.contract_hash ?? null,
     signatureStatus: row.signature_status ?? "draft",
     signedDocumentPath: row.signed_document_path ?? null,
     notes: row.notes ?? null,
+    operationalNotes: row.operational_notes ?? null,
+    negotiatedTerms: row.negotiated_terms ?? null,
+    contractSnapshot: row.contract_snapshot,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,

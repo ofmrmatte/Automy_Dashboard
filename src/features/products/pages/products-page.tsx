@@ -351,10 +351,10 @@ function ProductViewModal({ product, onClose }: { product: Product | null; onClo
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Observações
+              Contrato pré-moldado
             </p>
-            <p className="mt-2 rounded-card border border-border bg-muted/30 p-4 text-sm text-foreground">
-              {product.notes || "Nenhuma observação cadastrada."}
+            <p className="mt-2 whitespace-pre-wrap rounded-card border border-border bg-muted/30 p-4 text-sm text-foreground">
+              {product.contractTemplate || "Nenhum modelo-base cadastrado."}
             </p>
           </div>
         </div>

@@ -23,8 +23,42 @@ const brazilDateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
+function digits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 export function formatCurrency(value: number): string {
-  return brazilCurrencyFormatter.format(value);
+  return brazilCurrencyFormatter.format(value).replace(/\u00a0/g, " ");
+}
+
+export function formatBrazilianCurrencyInput(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "";
+  return brazilCurrencyFormatter.format(Number(value)).replace(/\u00a0/g, " ");
+}
+
+export function parseBrazilianCurrency(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+
+  const normalized = value.trim();
+  if (!normalized) return 0;
+
+  const hasComma = normalized.includes(",");
+  const cleaned = normalized.replace(/[^\d,.-]/g, "");
+  const numeric = hasComma
+    ? cleaned.replace(/\./g, "").replace(",", ".")
+    : cleaned.replace(/,/g, "");
+  const parsed = Number(numeric);
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function formatPercent(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    style: "percent",
+  }).format((Number.isFinite(value) ? value : 0) / 100);
 }
 
 export function formatDate(value: Date | string | number): string {
@@ -40,9 +74,25 @@ export function formatDateTime(value: Date | string | number): string {
   return brazilDateTimeFormatter.format(new Date(value));
 }
 
+export function formatCpf(value: string): string {
+  const valueDigits = digits(value).slice(0, 11);
+  return valueDigits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+}
+
 export function formatCnpj(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  const valueDigits = digits(value).slice(0, 14);
+  return valueDigits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+}
+
+export function formatCpfCnpj(value: string): string {
+  return digits(value).length <= 11 ? formatCpf(value) : formatCnpj(value);
 }
 
 export function formatPhone(value: string): string {

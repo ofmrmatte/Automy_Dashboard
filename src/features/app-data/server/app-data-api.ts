@@ -5,6 +5,10 @@ import {
   type ContractPdfItem,
 } from "@/features/contracts/server/contract-pdf-service";
 import { contractPdfHeaders } from "@/features/contracts/server/contract-pdf-http";
+import {
+  buildPaymentTerms,
+  stripDuplicatedSignatureSection,
+} from "@/features/contracts/utils/contract-template";
 import { clientFormSchema, type ClientFormData } from "@/features/clients/validation";
 import {
   contractFormSchema,
@@ -44,8 +48,14 @@ type QueryableConnection = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: QueryResultRow[] }>;
 };
 
+type PartialContractFormData = {
+  [Key in keyof ContractFormData]?: ContractFormData[Key] | undefined;
+};
+
 type ProductTermsPayload = {
   category?: string | undefined;
+  basePrice?: number | undefined;
+  billingMode?: string | undefined;
   hostedOnAutomyUrl?: boolean | undefined;
   customUrl?: boolean | undefined;
   userLimit?: number | undefined;
@@ -744,7 +754,7 @@ async function handleCreateProduct(request: Request, context: AuthenticatedUserC
         mapProductStatusToDatabase(parsed.data.status),
         parsed.data.basePrice,
         parsed.data.billingMode,
-        parsed.data.notes,
+        null,
         JSON.stringify(buildProductCommercialTerms(parsed.data)),
         parsed.data.contractTemplate,
         context.authUserId,
@@ -810,6 +820,7 @@ async function handleUpdateProduct(request: Request, context: AuthenticatedUserC
         where id = $1
           and company_id = $2
           and deleted_at is null
+          and signature_status <> 'signed'
         returning *
       `,
       [
@@ -822,7 +833,7 @@ async function handleUpdateProduct(request: Request, context: AuthenticatedUserC
         mapProductStatusToDatabase(parsed.data.status ?? ""),
         parsed.data.basePrice ?? null,
         parsed.data.billingMode ?? "",
-        parsed.data.notes ?? null,
+        null,
         hasCompleteProductTerms(parsed.data)
           ? JSON.stringify(buildProductCommercialTerms(parsed.data))
           : null,
@@ -922,34 +933,17 @@ async function handleProductById(
 
 function buildProductCommercialTerms(payload: ProductTermsPayload) {
   return {
-    hostedOnAutomyUrl: payload.hostedOnAutomyUrl ?? true,
-    customUrl: payload.customUrl ?? false,
-    userLimit: payload.userLimit ?? 5,
-    segment: payload.segment || payload.category || "Automação operacional",
-    implementationDays: payload.implementationDays ?? 30,
-    implementationFee: payload.implementationFee ?? 0,
-    paymentMethod: payload.paymentMethod ?? "Boleto à vista",
-    installments: payload.installments ?? 1,
-    discountPercent: payload.discountPercent ?? 0,
-    hasMonthlyFee: payload.hasMonthlyFee ?? true,
-    monthlyFee: payload.monthlyFee ?? 0,
-    hasDatabaseCost: payload.hasDatabaseCost ?? false,
-    databaseCost: payload.databaseCost ?? 0,
-    extraUserPrice: payload.extraUserPrice ?? 0,
-    loyaltyMonths: payload.loyaltyMonths ?? 12,
-    deliverables:
-      payload.deliverables ??
-      "Implantação, configuração inicial, treinamento operacional e suporte conforme plano contratado.",
+    schemaVersion: 2,
+    source: "catalog",
+    deprecated: true,
+    category: payload.category ?? "",
+    basePriceReference: payload.basePrice ?? 0,
+    billingMode: payload.billingMode ?? "",
   };
 }
 
 function hasCompleteProductTerms(payload: ProductTermsPayload) {
-  return Boolean(
-    payload.paymentMethod &&
-    payload.deliverables &&
-    payload.userLimit !== undefined &&
-    payload.implementationDays !== undefined,
-  );
+  return Boolean(payload.category || payload.basePrice !== undefined || payload.billingMode);
 }
 
 async function recordProductAudit(
@@ -1092,6 +1086,7 @@ async function handleCreateContract(request: Request, context: AuthenticatedUser
       return jsonResponse({ error: "Cliente ou produto não encontrado." }, { status: 404 });
     }
 
+    await updateContractNegotiatedFields(client, context, created.id, parsed.data);
     await upsertContractItem(client, context, created.id, parsed.data);
     await persistContractSnapshot(client, context, created.id, parsed.data, true);
     await recordContractAudit(client, context, "contract.create", created.id, {
@@ -1182,6 +1177,8 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
       await client.query("rollback");
       return jsonResponse({ error: "Contrato não encontrado." }, { status: 404 });
     }
+
+    await updateContractNegotiatedFields(client, context, updated.id, parsed.data);
 
     const normalizedContractPayload = {
       ...parsed.data,
@@ -1312,6 +1309,10 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
     const items = await getContractItems(db, context, id);
     const generatedAt = new Date().toISOString();
     const hash = refreshed["contract_hash"] ?? contractHash(refreshed.contract_text);
+    const paymentTerms =
+      typeof refreshed.payment_terms === "object" && refreshed.payment_terms !== null
+        ? (refreshed.payment_terms as { description?: string })
+        : {};
     const pdf = await generateContractPdf({
       id: refreshed.id,
       version: Number(refreshed.contract_version ?? 1),
@@ -1323,12 +1324,33 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       productName: refreshed.product_name ?? "Produto",
       plan: refreshed.name ?? "Contrato Automy",
       status: refreshed.status,
+      description: refreshed.description,
+      scope: refreshed.scope,
+      deliverables: refreshed.deliverables,
+      includedUsers: Number(refreshed.included_users ?? 1),
+      hostedByAutomy: Boolean(refreshed.hosted_by_automy ?? true),
+      customUrlEnabled: Boolean(refreshed.custom_url_enabled ?? false),
+      implementationDays: Number(refreshed.implementation_days ?? 0),
+      databaseCost: Number(refreshed.database_cost ?? 0),
+      databaseQuantity: Number(refreshed.database_quantity ?? 0),
+      basePriceReference: Number(refreshed.base_price_reference ?? 0),
+      discountPercent: Number(refreshed.discount_percent ?? 0),
+      paymentMethod: refreshed.payment_method ?? "Boleto",
+      installmentsCount: Number(refreshed.installments_count ?? 1),
+      installmentDueDays: refreshed.installment_due_days ?? [],
+      paymentTermsDescription: paymentTerms.description ?? "",
+      loyaltyMonths: Number(refreshed.loyalty_months ?? 0),
       monthlyValue: Number(refreshed.monthly_value ?? 0),
       implementationValue: Number(refreshed.implementation_value ?? 0),
       startsAt: refreshed.starts_at ?? "",
       endsAt: refreshed.ends_at ?? "",
       signerName: refreshed.signer_name ?? "",
+      signerDocument: refreshed.signer_document ?? "",
+      signerEmail: refreshed.signer_email ?? "",
+      signerPhone: refreshed.signer_phone ?? "",
+      automyRepresentative: refreshed.automy_representative ?? "",
       witnessName: refreshed.witness_name ?? "",
+      witnessDocument: refreshed.witness_document ?? "",
       items,
       contractText: refreshed.contract_text ?? "",
     });
@@ -1460,21 +1482,190 @@ function contractQueryValues(payload: ContractFormData, context: AuthenticatedUs
   ];
 }
 
+async function updateContractNegotiatedFields(
+  db: QueryableConnection,
+  context: AuthenticatedUserContext,
+  contractId: string,
+  payload: PartialContractFormData,
+) {
+  const keys = new Set(Object.keys(payload));
+  const negotiatedKeys = [
+    "description",
+    "scope",
+    "deliverables",
+    "includedUsers",
+    "additionalUsers",
+    "additionalUserAmount",
+    "hostedByAutomy",
+    "customUrlEnabled",
+    "implementationDays",
+    "databaseCost",
+    "databaseQuantity",
+    "operationalNotes",
+    "basePriceReference",
+    "discountPercent",
+    "paymentMethod",
+    "installmentsCount",
+    "firstDueInDays",
+    "installmentIntervalDays",
+    "installmentDueDays",
+    "specificDueDates",
+    "loyaltyMonths",
+    "currency",
+    "signerDocument",
+    "signerEmail",
+    "signerPhone",
+    "automyRepresentative",
+    "witnessDocument",
+  ];
+
+  if (!negotiatedKeys.some((key) => keys.has(key))) return;
+
+  const paymentTerms = buildPaymentTerms({
+    paymentMethod: payload.paymentMethod,
+    installmentsCount: payload.installmentsCount,
+    installmentDueDays: payload.installmentDueDays,
+    firstDueInDays: payload.firstDueInDays,
+    intervalDays: payload.installmentIntervalDays,
+    specificDates: payload.specificDueDates,
+  });
+  const negotiatedTerms = {
+    description: payload.description ?? null,
+    scope: payload.scope ?? null,
+    deliverables: payload.deliverables ?? null,
+    includedUsers: payload.includedUsers ?? null,
+    additionalUsers: payload.additionalUsers ?? null,
+    additionalUserAmount: payload.additionalUserAmount ?? null,
+    hostedByAutomy: payload.hostedByAutomy ?? null,
+    customUrlEnabled: payload.customUrlEnabled ?? null,
+    implementationDays: payload.implementationDays ?? null,
+    implementationValue: payload.implementationValue ?? null,
+    databaseCost: payload.databaseCost ?? null,
+    databaseQuantity: payload.databaseQuantity ?? null,
+    basePriceReference: payload.basePriceReference ?? null,
+    monthlyValue: payload.monthlyValue ?? null,
+    discountPercent: payload.discountPercent ?? null,
+    paymentTerms,
+    billingPeriod: payload.billingPeriod ?? null,
+    loyaltyMonths: payload.loyaltyMonths ?? null,
+    currency: payload.currency ?? null,
+    startsAt: payload.startsAt ?? null,
+    endsAt: payload.endsAt ?? null,
+    renewalAt: payload.renewalAt ?? null,
+    operationalNotes: payload.operationalNotes ?? null,
+  };
+
+  await db.query(
+    `
+      update public.contracts
+      set
+        description = coalesce($3, description),
+        scope = coalesce($4, scope),
+        deliverables = coalesce($5, deliverables),
+        included_users = coalesce($6, included_users),
+        additional_users = coalesce($7, additional_users),
+        additional_user_amount = coalesce($8, additional_user_amount),
+        hosted_by_automy = coalesce($9, hosted_by_automy),
+        custom_url_enabled = coalesce($10, custom_url_enabled),
+        implementation_days = coalesce($11, implementation_days),
+        database_cost = coalesce($12, database_cost),
+        database_quantity = coalesce($13, database_quantity),
+        operational_notes = coalesce($14, operational_notes),
+        base_price_reference = coalesce($15, base_price_reference),
+        discount_percent = coalesce($16, discount_percent),
+        payment_method = coalesce($17, payment_method),
+        installments_count = coalesce($18, installments_count),
+        installment_due_days = coalesce($19, installment_due_days),
+        payment_terms = coalesce($20, payment_terms),
+        loyalty_months = coalesce($21, loyalty_months),
+        currency = coalesce($22, currency),
+        signer_document = coalesce($23, signer_document),
+        signer_email = coalesce($24, signer_email),
+        signer_phone = coalesce($25, signer_phone),
+        automy_representative = coalesce($26, automy_representative),
+        witness_document = coalesce($27, witness_document),
+        negotiated_terms = coalesce($28, negotiated_terms),
+        updated_by = $29,
+        updated_at = now()
+      where id = $1
+        and company_id = $2
+        and deleted_at is null
+        and signature_status <> 'signed'
+    `,
+    [
+      contractId,
+      context.companyId,
+      payload.description ?? null,
+      payload.scope ?? null,
+      payload.deliverables ?? null,
+      payload.includedUsers ?? null,
+      payload.additionalUsers ?? null,
+      payload.additionalUserAmount ?? null,
+      payload.hostedByAutomy ?? null,
+      payload.customUrlEnabled ?? null,
+      payload.implementationDays ?? null,
+      payload.databaseCost ?? null,
+      payload.databaseQuantity ?? null,
+      payload.operationalNotes ?? null,
+      payload.basePriceReference ?? null,
+      payload.discountPercent ?? null,
+      payload.paymentMethod ?? null,
+      payload.installmentsCount ?? null,
+      payload.installmentDueDays?.length ? payload.installmentDueDays : null,
+      JSON.stringify(paymentTerms),
+      payload.loyaltyMonths ?? null,
+      payload.currency ?? null,
+      payload.signerDocument ?? null,
+      payload.signerEmail ?? null,
+      payload.signerPhone ?? null,
+      payload.automyRepresentative ?? null,
+      payload.witnessDocument ?? null,
+      JSON.stringify(negotiatedTerms),
+      context.authUserId,
+    ],
+  );
+}
+
 type ContractSnapshotRow = QueryResultRow & {
   id: string;
   company_id: string;
   client_id: string;
   product_id: string | null;
   name: string | null;
+  description: string | null;
+  scope: string | null;
+  deliverables: string | null;
   monthly_value: string | number | null;
   implementation_value: string | number | null;
+  implementation_days: number | null;
+  database_cost: string | number | null;
+  database_quantity: number | null;
+  operational_notes: string | null;
+  base_price_reference: string | number | null;
+  discount_percent: string | number | null;
+  payment_method: string | null;
+  installments_count: number | null;
+  installment_due_days: number[] | null;
+  payment_terms: unknown;
+  included_users: number | null;
+  additional_users: number | null;
+  additional_user_amount: string | number | null;
+  hosted_by_automy: boolean | null;
+  custom_url_enabled: boolean | null;
+  loyalty_months: number | null;
+  currency: string | null;
   starts_at: string | null;
   ends_at: string | null;
   renewal_at: string | null;
   billing_period: string | null;
   status: string;
   signer_name: string | null;
+  signer_document: string | null;
+  signer_email: string | null;
+  signer_phone: string | null;
+  automy_representative: string | null;
   witness_name: string | null;
+  witness_document: string | null;
   contract_text: string | null;
   notes: string | null;
   contract_version: number;
@@ -1562,14 +1753,39 @@ async function getContractItems(
 
 function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
   const negotiatedTerms = {
+    description: row.description,
+    scope: row.scope,
+    deliverables: row.deliverables,
+    includedUsers: Number(row.included_users ?? 1),
+    additionalUsers: Number(row.additional_users ?? 0),
+    additionalUserAmount: Number(row.additional_user_amount ?? 0),
+    hostedByAutomy: Boolean(row.hosted_by_automy ?? true),
+    customUrlEnabled: Boolean(row.custom_url_enabled ?? false),
+    implementationDays: Number(row.implementation_days ?? 0),
     monthlyValue: Number(row.monthly_value ?? 0),
     implementationValue: Number(row.implementation_value ?? 0),
+    databaseCost: Number(row.database_cost ?? 0),
+    databaseQuantity: Number(row.database_quantity ?? 0),
+    basePriceReference: Number(row.base_price_reference ?? 0),
+    discountPercent: Number(row.discount_percent ?? 0),
+    paymentMethod: row.payment_method,
+    installmentsCount: Number(row.installments_count ?? 1),
+    installmentDueDays: row.installment_due_days ?? [],
+    paymentTerms: row.payment_terms ?? {},
+    loyaltyMonths: Number(row.loyalty_months ?? 0),
+    currency: row.currency ?? "BRL",
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     renewalAt: row.renewal_at,
     billingPeriod: row.billing_period,
     signerName: row.signer_name,
+    signerDocument: row.signer_document,
+    signerEmail: row.signer_email,
+    signerPhone: row.signer_phone,
+    automyRepresentative: row.automy_representative,
     witnessName: row.witness_name,
+    witnessDocument: row.witness_document,
+    operationalNotes: row.operational_notes,
   };
   const productTerms = row.product_commercial_terms ?? {};
   const snapshot = {
@@ -1591,7 +1807,7 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
       name: row.product_name,
       category: row.product_category,
       version: row.product_version,
-      commercialTerms: productTerms,
+      legacyCommercialTerms: productTerms,
       contractTemplate: row.product_contract_template,
     },
     negotiatedTerms,
@@ -1609,7 +1825,7 @@ async function persistContractSnapshot(
   db: QueryableConnection,
   context: AuthenticatedUserContext,
   contractId: string,
-  _payload: ContractFormData,
+  _payload: PartialContractFormData,
   createNewVersion: boolean,
 ) {
   const row = await getContractSnapshotRow(db, context, contractId);
@@ -1719,7 +1935,7 @@ async function upsertContractItem(
   db: QueryableConnection,
   context: AuthenticatedUserContext,
   contractId: string,
-  payload: ContractFormData,
+  payload: Pick<ContractFormData, "monthlyValue" | "name" | "productId">,
 ) {
   await db.query(
     `

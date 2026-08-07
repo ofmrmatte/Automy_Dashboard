@@ -3,22 +3,25 @@ import type { AuditableEntity } from "@/shared/types/entity";
 export type ProductStatus = "Ativo" | "Beta" | "Inativo" | "Descontinuando";
 
 export type ProductCommercialTerms = {
-  hostedOnAutomyUrl: boolean;
-  customUrl: boolean;
-  userLimit: number;
-  segment: string;
-  implementationDays: number;
-  implementationFee: number;
-  paymentMethod: string;
-  installments: number;
-  discountPercent: number;
-  hasMonthlyFee: boolean;
-  monthlyFee: number;
-  hasDatabaseCost: boolean;
-  databaseCost: number;
-  extraUserPrice: number;
-  loyaltyMonths: number;
-  deliverables: string;
+  schemaVersion?: number;
+  source?: "catalog" | "legacy_product_terms";
+  deprecated?: boolean;
+  hostedOnAutomyUrl?: boolean;
+  customUrl?: boolean;
+  userLimit?: number;
+  segment?: string;
+  implementationDays?: number;
+  implementationFee?: number;
+  paymentMethod?: string;
+  installments?: number;
+  discountPercent?: number;
+  hasMonthlyFee?: boolean;
+  monthlyFee?: number;
+  hasDatabaseCost?: boolean;
+  databaseCost?: number;
+  extraUserPrice?: number;
+  loyaltyMonths?: number;
+  deliverables?: string;
 };
 
 export type Product = AuditableEntity & {
