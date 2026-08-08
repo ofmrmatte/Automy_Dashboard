@@ -98,7 +98,8 @@ export class ResendEmailProvider implements EmailProvider {
       );
       const status = domain?.status?.toLowerCase();
       const sending = domain?.capabilities?.sending;
-      const sendingEnabled = sending === true || String(sending).toLowerCase() === "enabled";
+      const sendingEnabled =
+        sending === undefined || sending === true || String(sending).toLowerCase() === "enabled";
       const connected = status === "verified" && sendingEnabled;
 
       return {
