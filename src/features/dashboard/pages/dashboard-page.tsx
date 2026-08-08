@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  CalendarClock,
   CalendarDays,
   CircleDollarSign,
   ClipboardCheck,
@@ -11,24 +10,18 @@ import {
   Rocket,
   UserCheck,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   dashboardChartsQueryOptions,
   dashboardRecentClientsQueryOptions,
   dashboardSummaryQueryOptions,
-  recentActivitiesQueryOptions,
 } from "@/features/dashboard/api/dashboard.queries";
-import {
-  ClientChart,
-  DistributionChart,
-  ProductUsageChart,
-  RevenueChart,
-} from "@/features/dashboard/components/dashboard-charts";
+import { ClientChart, RevenueChart } from "@/features/dashboard/components/dashboard-charts";
 import { useIdentity } from "@/features/identity/context/identity-context";
 import { EmptyState } from "@/shared/components/empty-state";
-import { Badge, Card } from "@/shared/components/ui";
-import { MetricCard } from "@/shared/components/metric-card";
+import { Badge, Card, Skeleton } from "@/shared/components/ui";
 import { PageHeader } from "@/shared/components/page-header";
 import { toneForStatus } from "@/shared/types/status";
 import {
@@ -64,16 +57,73 @@ function ChartCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="p-5">
-      <div className="mb-5">
+    <Card className="p-4 sm:p-5">
+      <div className="mb-4">
         <h2 className="font-semibold">{title}</h2>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       {isLoading || hasData ? (
         children
       ) : (
-        <EmptyState title={emptyTitle} description={emptyDescription} />
+        <div className="py-2">
+          <EmptyState title={emptyTitle} description={emptyDescription} />
+        </div>
       )}
+    </Card>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <h2 className="mb-3 text-sm font-semibold text-foreground">{title}</h2>;
+}
+
+function DashboardMetricCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  loading,
+  secondary = false,
+  attention = false,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  icon: LucideIcon;
+  loading: boolean;
+  secondary?: boolean;
+  attention?: boolean;
+}) {
+  return (
+    <Card
+      className={[
+        "min-w-0 p-3.5 transition-colors sm:p-4",
+        secondary ? "bg-card/70" : "bg-card",
+      ].join(" ")}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 text-xs font-medium text-muted-foreground">{label}</div>
+        <div className="relative grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+          <Icon className="size-4" />
+          {attention && !loading && (
+            <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-warning ring-2 ring-card" />
+          )}
+        </div>
+      </div>
+      {loading ? (
+        <Skeleton className="mt-3 h-7 w-20" />
+      ) : (
+        <div
+          className={[
+            "mt-3 truncate font-semibold tracking-tight text-foreground",
+            secondary ? "text-xl" : "text-2xl",
+          ].join(" ")}
+          title={value}
+        >
+          {value}
+        </div>
+      )}
+      {!loading && <div className="mt-1 text-xs text-muted-foreground">{helper}</div>}
     </Card>
   );
 }
@@ -91,9 +141,6 @@ export function DashboardPage() {
   const { data: clients = [], isLoading: clientsLoading } = useQuery(
     dashboardRecentClientsQueryOptions(),
   );
-  const { data: recentActivities = [], isLoading: activitiesLoading } = useQuery(
-    recentActivitiesQueryOptions(),
-  );
 
   return (
     <div>
@@ -106,114 +153,116 @@ export function DashboardPage() {
         )}
         description="Acompanhe os principais indicadores e movimentos da operação."
       />
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-        <MetricCard
-          label="Clientes ativos"
-          value={String(summary?.activeClients ?? 0)}
-          helper="clientes ativos"
-          icon={Users}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Em implantação"
-          value={String(summary?.onboardingClients ?? 0)}
-          helper="clientes em implantação"
-          icon={Rocket}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Clientes inativos"
-          value={String(summary?.inactiveClients ?? 0)}
-          positive={false}
-          helper="clientes inativos"
-          icon={Users}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Contratos ativos"
-          value={String(summary?.activeContracts ?? 0)}
-          helper="contratos vigentes"
-          icon={ClipboardCheck}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Vencem em 30 dias"
-          value={String(summary?.expiringContracts30 ?? 0)}
-          positive={false}
-          helper="contratos próximos"
-          icon={FileWarning}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Vencem em 60 dias"
-          value={String(summary?.expiringContracts60 ?? 0)}
-          positive={false}
-          helper="janela de renovação"
-          icon={FileWarning}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Receita mensal"
-          value={formatCurrency(summary?.monthlyRevenue ?? 0, regionalPreferences)}
-          helper="contratos ativos"
-          icon={CircleDollarSign}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Receita anual"
-          value={formatCurrency(summary?.annualRevenue ?? 0, regionalPreferences)}
-          helper="receita anualizada"
-          icon={CircleDollarSign}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Pendentes"
-          value={String(summary?.pendingCharges ?? 0)}
-          positive={false}
-          helper="cobranças pendentes"
-          icon={CreditCard}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Vencidas"
-          value={String(summary?.overdueCharges ?? 0)}
-          positive={false}
-          helper="cobranças vencidas"
-          icon={AlertTriangle}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Chamados abertos"
-          value={String(summary?.openTickets ?? 0)}
-          positive={false}
-          helper="tickets em aberto"
-          icon={Headphones}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Chamados críticos"
-          value={String(summary?.criticalTickets ?? 0)}
-          positive={false}
-          helper="prioridade crítica"
-          icon={AlertTriangle}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Agendamentos"
-          value={String(summary?.futureScheduledCalls ?? 0)}
-          helper="futuros"
-          icon={CalendarDays}
-          loading={summaryLoading}
-        />
-        <MetricCard
-          label="Usuários ativos"
-          value={String(summary?.activeUsers ?? 0)}
-          helper="contas ativas"
-          icon={UserCheck}
-          loading={summaryLoading}
-        />
+
+      <section>
+        <SectionTitle title="Visão principal" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <DashboardMetricCard
+            label="Clientes ativos"
+            value={String(summary?.activeClients ?? 0)}
+            helper="clientes ativos"
+            icon={Users}
+            loading={summaryLoading}
+          />
+          <DashboardMetricCard
+            label="Em implantação"
+            value={String(summary?.onboardingClients ?? 0)}
+            helper="clientes em implantação"
+            icon={Rocket}
+            loading={summaryLoading}
+          />
+          <DashboardMetricCard
+            label="Contratos ativos"
+            value={String(summary?.activeContracts ?? 0)}
+            helper="contratos vigentes"
+            icon={ClipboardCheck}
+            loading={summaryLoading}
+          />
+          <DashboardMetricCard
+            label="Receita mensal"
+            value={formatCurrency(summary?.monthlyRevenue ?? 0, regionalPreferences)}
+            helper="contratos ativos"
+            icon={CircleDollarSign}
+            loading={summaryLoading}
+          />
+          <DashboardMetricCard
+            label="Pendências financeiras"
+            value={String(summary?.pendingCharges ?? 0)}
+            helper="cobranças pendentes"
+            icon={CreditCard}
+            loading={summaryLoading}
+            attention={Boolean((summary?.pendingCharges ?? 0) > 0)}
+          />
+          <DashboardMetricCard
+            label="Chamados abertos"
+            value={String(summary?.openTickets ?? 0)}
+            helper="tickets em aberto"
+            icon={Headphones}
+            loading={summaryLoading}
+            attention={Boolean((summary?.openTickets ?? 0) > 0)}
+          />
+        </div>
       </section>
-      <section className="mt-6 grid gap-6 xl:grid-cols-2">
+
+      <section className="mt-6">
+        <SectionTitle title="Alertas e operação" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <DashboardMetricCard
+            label="Vencem em 30 dias"
+            value={String(summary?.expiringContracts30 ?? 0)}
+            helper="contratos próximos"
+            icon={FileWarning}
+            loading={summaryLoading}
+            secondary
+            attention={Boolean((summary?.expiringContracts30 ?? 0) > 0)}
+          />
+          <DashboardMetricCard
+            label="Vencem em 60 dias"
+            value={String(summary?.expiringContracts60 ?? 0)}
+            helper="janela de renovação"
+            icon={FileWarning}
+            loading={summaryLoading}
+            secondary
+            attention={Boolean((summary?.expiringContracts60 ?? 0) > 0)}
+          />
+          <DashboardMetricCard
+            label="Cobranças vencidas"
+            value={String(summary?.overdueCharges ?? 0)}
+            helper="cobranças vencidas"
+            icon={AlertTriangle}
+            loading={summaryLoading}
+            secondary
+            attention={Boolean((summary?.overdueCharges ?? 0) > 0)}
+          />
+          <DashboardMetricCard
+            label="Chamados críticos"
+            value={String(summary?.criticalTickets ?? 0)}
+            helper="prioridade crítica"
+            icon={AlertTriangle}
+            loading={summaryLoading}
+            secondary
+            attention={Boolean((summary?.criticalTickets ?? 0) > 0)}
+          />
+          <DashboardMetricCard
+            label="Agendamentos"
+            value={String(summary?.futureScheduledCalls ?? 0)}
+            helper="próximos compromissos"
+            icon={CalendarDays}
+            loading={summaryLoading}
+            secondary
+          />
+          <DashboardMetricCard
+            label="Usuários ativos"
+            value={String(summary?.activeUsers ?? 0)}
+            helper="contas ativas"
+            icon={UserCheck}
+            loading={summaryLoading}
+            secondary
+          />
+        </div>
+      </section>
+
+      <section className="mt-8 grid gap-6 xl:grid-cols-2">
         <ChartCard
           title="Crescimento de clientes"
           description="Ativos e em implantação por período"
@@ -234,48 +283,8 @@ export function DashboardPage() {
         >
           <RevenueChart data={charts?.revenueGrowth ?? []} />
         </ChartCard>
-        <ChartCard
-          title="Contratos por status"
-          description="Distribuição real da carteira contratual"
-          emptyTitle="Sem contratos cadastrados"
-          emptyDescription="A distribuição será exibida quando houver contratos reais."
-          isLoading={chartsLoading}
-          hasData={(charts?.contractsByStatus ?? []).length > 0}
-        >
-          <DistributionChart data={charts?.contractsByStatus ?? []} valueLabel="Contratos" />
-        </ChartCard>
-        <ChartCard
-          title="Tickets por prioridade"
-          description="Distribuição dos chamados por nível de impacto"
-          emptyTitle="Sem chamados cadastrados"
-          emptyDescription="A distribuição será exibida quando houver tickets reais."
-          isLoading={chartsLoading}
-          hasData={(charts?.ticketsByPriority ?? []).length > 0}
-        >
-          <DistributionChart data={charts?.ticketsByPriority ?? []} valueLabel="Tickets" />
-        </ChartCard>
-        <ChartCard
-          title="Produtos por utilização"
-          description="Clientes vinculados a cada produto"
-          emptyTitle="Sem utilização de produtos"
-          emptyDescription="A utilização será exibida quando produtos forem vinculados a contratos."
-          isLoading={chartsLoading}
-          hasData={(charts?.productsByUsage ?? []).some((point) => point.clients > 0)}
-        >
-          <ProductUsageChart data={charts?.productsByUsage ?? []} />
-        </ChartCard>
-        <ChartCard
-          title="Cobranças por status"
-          description="Distribuição financeira operacional"
-          emptyTitle="Sem cobranças cadastradas"
-          emptyDescription="A distribuição será exibida quando houver cobranças reais."
-          isLoading={chartsLoading}
-          hasData={(charts?.chargesByStatus ?? []).length > 0}
-        >
-          <DistributionChart data={charts?.chargesByStatus ?? []} valueLabel="Cobranças" />
-        </ChartCard>
       </section>
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+      <section className="mt-8">
         <Card>
           <div className="flex items-center justify-between border-b border-border p-5">
             <div>
@@ -313,34 +322,6 @@ export function DashboardPage() {
               <EmptyState
                 title="Sem clientes cadastrados"
                 description="Os clientes recentes aparecerão aqui quando houver registros reais."
-              />
-            )}
-          </div>
-        </Card>
-        <Card>
-          <div className="border-b border-border p-5">
-            <h2 className="font-semibold">Atividades recentes</h2>
-            <p className="text-xs text-muted-foreground">Atualizações da equipe</p>
-          </div>
-          <div className="space-y-5 p-5">
-            {activitiesLoading || recentActivities.length > 0 ? (
-              recentActivities.map((activity) => (
-                <div key={activity.id} className="flex gap-3">
-                  <div className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-accent">
-                    <CalendarClock className="size-3.5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{activity.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {activity.meta} · {formatShortDate(activity.createdAt, regionalPreferences)}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title="Sem atividades recentes"
-                description="Eventos reais da operação aparecerão aqui quando registrados."
               />
             )}
           </div>

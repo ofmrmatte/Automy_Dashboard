@@ -5,7 +5,6 @@ export const dashboardQueryKeys = {
   summary: ["dashboard", "summary"] as const,
   charts: ["dashboard", "charts"] as const,
   recentClients: ["dashboard", "recent-clients"] as const,
-  recentActivities: ["dashboard", "recent-activities"] as const,
 };
 
 export function dashboardSummaryQueryOptions() {
@@ -28,14 +27,6 @@ export function dashboardRecentClientsQueryOptions() {
   return queryOptions({
     queryKey: dashboardQueryKeys.recentClients,
     queryFn: () => dashboardService.getRecentClients(),
-    enabled: typeof window !== "undefined",
-  });
-}
-
-export function recentActivitiesQueryOptions() {
-  return queryOptions({
-    queryKey: dashboardQueryKeys.recentActivities,
-    queryFn: () => dashboardService.getRecentActivities(),
     enabled: typeof window !== "undefined",
   });
 }
