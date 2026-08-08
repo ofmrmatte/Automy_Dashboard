@@ -33,6 +33,11 @@ type ResendDomainListPayload =
       }>;
     };
 
+function domainFromEmailAddress(value: string) {
+  const match = value.match(/@([^>\s]+)>?$/);
+  return match?.[1]?.trim().toLowerCase() ?? null;
+}
+
 export class ResendEmailProvider implements EmailProvider {
   readonly name = "resend" as const;
 
@@ -96,6 +101,26 @@ export class ResendEmailProvider implements EmailProvider {
       const domain = domainList.find(
         (item) => item.name?.toLowerCase() === this.config.domain.toLowerCase(),
       );
+      const senderDomain = domainFromEmailAddress(this.config.from);
+      const senderMatchesConfiguredDomain =
+        senderDomain === this.config.domain.toLowerCase() ||
+        senderDomain?.endsWith(`.${this.config.domain.toLowerCase()}`) === true;
+
+      if (!domain) {
+        return {
+          provider: "resend",
+          status: senderMatchesConfiguredDomain ? "connected" : "error",
+          sender: this.config.from,
+          replyTo: this.config.replyTo,
+          appUrl: this.config.appUrl,
+          siteUrl: this.config.siteUrl,
+          domain: this.config.domain,
+          message: senderMatchesConfiguredDomain
+            ? "Resend configurado com remetente do domínio Automy. Use o envio de teste para validar entrega."
+            : "RESEND_API_KEY configurada, mas o remetente não pertence ao domínio configurado.",
+        };
+      }
+
       const status = domain?.status?.toLowerCase();
       const sending = domain?.capabilities?.sending;
       const sendingEnabled =
