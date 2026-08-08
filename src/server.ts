@@ -55,6 +55,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+
     try {
       const authResponse = await handleBetterAuthRequest(request);
       if (authResponse) return authResponse;
@@ -90,6 +92,13 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
+      if (url.pathname.startsWith("/api/")) {
+        return new Response(JSON.stringify({ error: "Erro interno ao processar a solicitação." }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      }
+
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
