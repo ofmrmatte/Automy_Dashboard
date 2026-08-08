@@ -14,46 +14,50 @@ export function SettingsPage() {
   const [active, setActive] = useState<SettingsSectionId>("Perfil");
 
   return (
-    <div>
-      <PageHeader
-        title="Configurações"
-        description="Gerencie preferências da empresa, acesso e integrações."
-      />
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-          {SETTINGS_SECTIONS.map((section) => {
-            const Icon = section.icon;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActive(section.id)}
-                className={
-                  active === section.id
-                    ? "flex shrink-0 items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-foreground"
-                    : "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                }
-              >
-                <Icon className="size-4" />
-                {section.id}
-              </button>
-            );
-          })}
-        </nav>
-        {active === "Perfil" ? (
-          <ProfileSettingsPanel />
-        ) : active === "Empresa" ? (
-          <CompanySettingsPanel />
-        ) : active === "Usuários" ? (
-          <UsersPage />
-        ) : active === "Permissões" ? (
-          <PermissionsPage />
-        ) : active === "Segurança" ? (
-          <SecuritySettingsPanel />
-        ) : active === "Integrações" ? (
-          <IntegrationsSettingsPanel />
-        ) : active === "Notificações" ? (
-          <NotificationsSettingsPanel />
-        ) : null}
+    <div className="h-[calc(100vh-6rem)] overflow-hidden sm:h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)]">
+      <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <PageHeader
+            title="Configurações"
+            description="Gerencie preferências da empresa, acesso e integrações."
+          />
+          <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+            {SETTINGS_SECTIONS.map((section) => {
+              const Icon = section.icon;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActive(section.id)}
+                  className={
+                    active === section.id
+                      ? "flex shrink-0 items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-foreground"
+                      : "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  }
+                >
+                  <Icon className="size-4" />
+                  {section.id}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+        <section className="min-h-0 overflow-y-auto pr-1">
+          {active === "Perfil" ? (
+            <ProfileSettingsPanel />
+          ) : active === "Empresa" ? (
+            <CompanySettingsPanel />
+          ) : active === "Usuários" ? (
+            <UsersPage />
+          ) : active === "Permissões" ? (
+            <PermissionsPage />
+          ) : active === "Segurança" ? (
+            <SecuritySettingsPanel />
+          ) : active === "Integrações" ? (
+            <IntegrationsSettingsPanel />
+          ) : active === "Notificações" ? (
+            <NotificationsSettingsPanel />
+          ) : null}
+        </section>
       </div>
     </div>
   );
