@@ -19,6 +19,20 @@ type ResendProviderConfig = {
   domain: string;
 };
 
+type ResendDomainListPayload =
+  | Array<{
+      name?: string;
+      status?: string;
+      capabilities?: { sending?: string | boolean };
+    }>
+  | {
+      data?: Array<{
+        name?: string;
+        status?: string;
+        capabilities?: { sending?: string | boolean };
+      }>;
+    };
+
 export class ResendEmailProvider implements EmailProvider {
   readonly name = "resend" as const;
 
@@ -77,8 +91,15 @@ export class ResendEmailProvider implements EmailProvider {
 
     try {
       const domains = await this.client().domains.list({ limit: 100 });
-      const domain = domains.data?.data.find((item) => item.name === this.config.domain);
-      const connected = domain?.status === "verified" && domain.capabilities?.sending === "enabled";
+      const payload = domains.data as ResendDomainListPayload | undefined;
+      const domainList = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const domain = domainList.find(
+        (item) => item.name?.toLowerCase() === this.config.domain.toLowerCase(),
+      );
+      const status = domain?.status?.toLowerCase();
+      const sending = domain?.capabilities?.sending;
+      const sendingEnabled = sending === true || String(sending).toLowerCase() === "enabled";
+      const connected = status === "verified" && sendingEnabled;
 
       return {
         provider: "resend",
