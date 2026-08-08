@@ -8,7 +8,9 @@ import { handleFinanceApiRequest } from "./features/finance/server/mercado-pago-
 import { handleIdentityApiRequest } from "./features/identity/server/identity-api";
 import { handleLeadsApiRequest } from "./features/leads/server/leads-api";
 import { handleBetterAuthRequest } from "./features/identity/server/better-auth";
+import { handleEmailApiRequest } from "./features/email/server/email-api";
 import { handlePortalApiRequest } from "./features/portal/server/portal-api";
+import { handleResendWebhookRequest } from "./features/email/server/resend-webhook";
 import { handleSettingsApiRequest } from "./features/settings/server/settings-api";
 import { handleUsersApiRequest } from "./features/users/server/users-api";
 
@@ -66,6 +68,12 @@ export default {
 
       const leadsResponse = await handleLeadsApiRequest(request);
       if (leadsResponse) return leadsResponse;
+
+      const resendWebhookResponse = await handleResendWebhookRequest(request);
+      if (resendWebhookResponse) return resendWebhookResponse;
+
+      const emailResponse = await handleEmailApiRequest(request);
+      if (emailResponse) return emailResponse;
 
       // Portal users are authenticated by Better Auth but intentionally do not exist in
       // public.users. Resolve Portal routes before the internal ERP authorization layer.

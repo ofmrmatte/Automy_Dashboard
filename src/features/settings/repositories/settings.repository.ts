@@ -88,6 +88,13 @@ export const settingsRepository = {
       "Não foi possível testar integração.",
     ),
 
+  sendIntegrationTestEmail: async (provider: CompanyIntegration["provider"]) =>
+    apiRequest<{ result: IntegrationTestResult }>(
+      `/api/settings/integrations/${provider}/test-email`,
+      { method: "POST" },
+      "Não foi possível enviar e-mail de teste.",
+    ),
+
   getNotificationSettings: async () =>
     apiRequest<{ notifications: NotificationsSettings }>(
       "/api/settings/notifications",

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Implementado subsistema transacional de e-mail com Resend como provider oficial, templates centralizados com Brand Kit Automy, text/plain obrigatorio, logs em `transactional_emails`, idempotencia e webhook `/api/webhooks/resend`.
+- Alterado cadastro de usuarios internos para convite seguro sem senha provisoria, usando token de definicao de senha via Better Auth e auditoria `user.invited`.
+- Adicionado envio de teste em Configuracoes > Integracoes > E-mail transacional para o proprio admin autenticado, sem expor secrets no frontend.
+
 ## v1.0.0-rc9
 
 - Finalizada a migracao de dominios entre os projetos Vercel da Automy.

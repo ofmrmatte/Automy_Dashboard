@@ -39,8 +39,7 @@ export function UserFormModal({
       name: user?.name ?? "",
       email: user?.email ?? "",
       role: user?.role ?? "operator",
-      status: user?.status ?? "active",
-      password: "",
+      status: user?.status ?? "invited",
     } as UserFormValues,
   });
 
@@ -50,8 +49,7 @@ export function UserFormModal({
       name: user?.name ?? "",
       email: user?.email ?? "",
       role: user?.role ?? "operator",
-      status: user?.status ?? "active",
-      password: "",
+      status: user?.status ?? "invited",
     } as UserFormValues);
   }, [form, user, open]);
 
@@ -65,7 +63,11 @@ export function UserFormModal({
       open={open}
       onClose={onClose}
       title={isEditing ? "Editar usuário" : "Novo usuário"}
-      description="Gerencie o acesso com dados reais da base Railway."
+      description={
+        isEditing
+          ? "Gerencie o acesso com dados reais da base Railway."
+          : "O usuário receberá um convite para definir a própria senha."
+      }
       size="lg"
     >
       <form className="grid gap-4" onSubmit={form.handleSubmit(handleSubmit)}>
@@ -89,32 +91,19 @@ export function UserFormModal({
             </Select>
             <FormError message={form.formState.errors.role?.message} />
           </Field>
-          <Field label="Status">
-            <Select {...form.register("status")}>
-              {statusOptions.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            <FormError message={form.formState.errors.status?.message} />
-          </Field>
-          {!isEditing && (
-            <Field label="Senha provisória">
-              <Input
-                type="password"
-                autoComplete="new-password"
-                placeholder="Mínimo de 8 caracteres"
-                {...form.register("password" as keyof UserFormValues)}
-              />
-              <FormError
-                message={
-                  "password" in form.formState.errors
-                    ? form.formState.errors.password?.message
-                    : undefined
-                }
-              />
+          {isEditing ? (
+            <Field label="Status">
+              <Select {...form.register("status")}>
+                {statusOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              <FormError message={form.formState.errors.status?.message} />
             </Field>
+          ) : (
+            <input type="hidden" value="invited" {...form.register("status")} />
           )}
         </div>
         <div className="flex justify-end gap-2 pt-2">

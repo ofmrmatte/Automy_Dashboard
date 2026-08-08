@@ -37,8 +37,7 @@ export type CreateUserPayload = {
   name: string;
   email: string;
   role: UserRole;
-  status: UserStatus;
-  password: string;
+  status?: UserStatus | undefined;
 };
 
 export type UpdateUserPayload = {

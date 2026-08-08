@@ -1,6 +1,10 @@
 import { hashPassword } from "better-auth/crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import {
+  sendPasswordChangedEmail,
+  sendUserInvitationEmail,
+} from "@/features/email/transactional-email";
+import {
   createUserSchema,
   updateUserPasswordSchema,
   updateUserSchema,
@@ -325,6 +329,17 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
   try {
     await client.query("begin");
     const role = await findRole(client, parsed.data.role);
+    const companyResult = await client.query<{ name: string }>(
+      `
+        select coalesce(nullif(trade_name, ''), legal_name, 'Automy') as name
+        from public.companies
+        where id = $1
+          and deleted_at is null
+        limit 1
+      `,
+      [context.companyId],
+    );
+    const companyName = companyResult.rows[0]?.name ?? "Automy";
 
     const existing = await client.query<{ id: string }>(
       `
@@ -341,7 +356,6 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
       throw new ApiError("Já existe um usuário com este e-mail.", 409, "conflict");
     }
 
-    const passwordHash = await hashPassword(parsed.data.password);
     const authUserResult = await client.query<{ id: string }>(
       `
         insert into public."user" (
@@ -356,25 +370,10 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
         values ($1, lower($2), false, $3, $4, now(), now())
         returning id
       `,
-      [parsed.data.name, parsed.data.email, parsed.data.role, parsed.data.status],
+      [parsed.data.name, parsed.data.email, parsed.data.role, "invited"],
     );
     const authUserId = authUserResult.rows[0]?.id;
     if (!authUserId) throw new ApiError("Não foi possível criar o usuário.", 500, "bad_request");
-
-    await client.query(
-      `
-        insert into public.account (
-          "accountId",
-          "providerId",
-          "userId",
-          password,
-          "createdAt",
-          "updatedAt"
-        )
-        values ($1, 'credential', $2, $3, now(), now())
-      `,
-      [authUserId, authUserId, passwordHash],
-    );
 
     const domainUserResult = await client.query<{ id: string }>(
       `
@@ -397,7 +396,7 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
         role.id,
         parsed.data.name,
         parsed.data.email,
-        parsed.data.status,
+        "invited",
         context.authUserId,
       ],
     );
@@ -425,11 +424,37 @@ async function handleCreateUser(request: Request, context: AuthenticatedUserCont
     await writeAuditLog(client, context, "user.created", domainUserId, {
       email: parsed.data.email,
       role: parsed.data.role,
-      status: parsed.data.status,
+      status: "invited",
+    });
+    await writeAuditLog(client, context, "user.invited", domainUserId, {
+      email: parsed.data.email,
+      role: parsed.data.role,
     });
     await client.query("commit");
 
-    return jsonResponse({ id: domainUserId }, { status: 201 });
+    try {
+      await sendUserInvitationEmail({
+        companyId: context.companyId,
+        authUserId,
+        domainUserId,
+        roleId: role.id,
+        email: parsed.data.email,
+        name: parsed.data.name,
+        roleLabel: role.name,
+        companyName,
+        invitedBy: context.authUserId,
+      });
+      return jsonResponse({ id: domainUserId, invitationStatus: "sent" }, { status: 201 });
+    } catch (error) {
+      console.error(
+        "user.invitation.delivery_failed",
+        error instanceof Error ? error.message : error,
+      );
+      return jsonResponse(
+        { id: domainUserId, invitationStatus: "delivery_failed" },
+        { status: 202 },
+      );
+    }
   } catch (error) {
     await client.query("rollback");
     if (error instanceof ApiError) throw error;
@@ -590,6 +615,10 @@ async function handleUpdatePassword(request: Request, context: AuthenticatedUser
     await client.query("begin");
     const target = await getTargetUser(client, parsed.data.id, context.companyId);
     if (!target) throw new ApiError("Usuário não encontrado.", 404, "not_found");
+    const targetAuth = await client.query<{ name: string; email: string }>(
+      `select name, email from public."user" where id = $1 and deleted_at is null limit 1`,
+      [target.auth_user_id],
+    );
 
     const passwordHash = await hashPassword(parsed.data.password);
     await client.query(
@@ -605,6 +634,20 @@ async function handleUpdatePassword(request: Request, context: AuthenticatedUser
     await client.query(`delete from public.session where "userId" = $1`, [target.auth_user_id]);
     await writeAuditLog(client, context, "user.password.updated", parsed.data.id);
     await client.query("commit");
+    const row = targetAuth.rows[0];
+    if (row?.email) {
+      sendPasswordChangedEmail({
+        to: row.email,
+        name: row.name || row.email,
+        authUserId: target.auth_user_id,
+        companyId: context.companyId,
+      }).catch((error) => {
+        console.error(
+          "email.password_changed.failure",
+          error instanceof Error ? error.message : error,
+        );
+      });
+    }
 
     return jsonResponse({ ok: true });
   } catch (error) {

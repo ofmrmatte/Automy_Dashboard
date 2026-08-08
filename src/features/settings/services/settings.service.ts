@@ -9,6 +9,7 @@ export const settingsService = {
   listIntegrations: () => settingsRepository.listIntegrations(),
   updateIntegration: settingsRepository.updateIntegration,
   testIntegration: settingsRepository.testIntegration,
+  sendIntegrationTestEmail: settingsRepository.sendIntegrationTestEmail,
   getNotificationSettings: () => settingsRepository.getNotificationSettings(),
   updateNotificationSettings: settingsRepository.updateNotificationSettings,
   listNotifications: () => settingsRepository.listNotifications(),

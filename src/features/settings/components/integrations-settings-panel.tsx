@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Cable, CheckCircle2, Save, ShieldAlert, Zap } from "lucide-react";
+import { Cable, CheckCircle2, Mail, Save, ShieldAlert, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -80,6 +80,7 @@ function IntegrationCard({
 }) {
   const queryClient = useQueryClient();
   const [testing, setTesting] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const form = useForm<IntegrationUpdateFormValues>({
     resolver: zodResolver(integrationUpdateSchema),
     defaultValues: {
@@ -120,6 +121,20 @@ function IntegrationCard({
       toast.danger(error instanceof Error ? error.message : "Não foi possível testar integração.");
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function sendTestEmail() {
+    try {
+      setSendingTestEmail(true);
+      const { result } = await settingsService.sendIntegrationTestEmail(integration.provider);
+      await queryClient.invalidateQueries({ queryKey: settingsQueryKeys.integrations });
+      if (result.status === "connected") toast.success(result.message);
+      else toast.warning(result.message);
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : "Não foi possível enviar teste.");
+    } finally {
+      setSendingTestEmail(false);
     }
   }
 
@@ -208,6 +223,17 @@ function IntegrationCard({
               <Button type="button" variant="outline" loading={testing} onClick={testIntegration}>
                 <Zap className="size-4" />
                 Testar conexão
+              </Button>
+            )}
+            {canManage && integration.provider === "transactional_email" && (
+              <Button
+                type="button"
+                variant="outline"
+                loading={sendingTestEmail}
+                onClick={sendTestEmail}
+              >
+                <Mail className="size-4" />
+                Enviar e-mail de teste
               </Button>
             )}
           </div>

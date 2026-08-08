@@ -2,6 +2,7 @@ import {
   getAutomyAuth,
   getBetterAuthSessionFromRequest,
 } from "@/features/identity/server/better-auth";
+import { sendPasswordChangedEmail } from "@/features/email/transactional-email";
 import { uploadAvatarToPersistentStorage } from "@/features/identity/server/avatar-storage";
 import {
   passwordChangeSchema,
@@ -690,6 +691,26 @@ async function handleChangePassword(request: Request, context: AuthenticatedUser
   await writeAuditLog(context, "identity.password.updated", context.domainUserId, {
     revokeOtherSessions: parsed.data.revokeOtherSessions,
   });
+
+  const db = await getRailwayPostgresPool();
+  const user = await db.query<{ name: string; email: string }>(
+    `select name, email from public."user" where id = $1 and deleted_at is null limit 1`,
+    [context.authUserId],
+  );
+  const row = user.rows[0];
+  if (row?.email) {
+    sendPasswordChangedEmail({
+      to: row.email,
+      name: row.name || row.email,
+      authUserId: context.authUserId,
+      companyId: context.companyId,
+    }).catch((error) => {
+      console.error(
+        "email.password_changed.failure",
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }
 
   return jsonResponse({ ok: Boolean(response) });
 }

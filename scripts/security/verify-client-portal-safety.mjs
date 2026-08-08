@@ -23,7 +23,7 @@ const provisioning = readFileSync(
   "utf8",
 );
 const email = readFileSync(
-  resolve(packageRoot, "src/features/email/transactional-email.ts"),
+  resolve(packageRoot, "src/features/email/server/transactional-email.service.ts"),
   "utf8",
 );
 

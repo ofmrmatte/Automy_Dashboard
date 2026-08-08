@@ -494,7 +494,7 @@ async function prepareInvitation(
     { provisioningId: provisioning.rows[0]?.id, expiresAt: expiresAt.toISOString() },
   );
 
-  return { provisioningId: provisioning.rows[0]?.id, token };
+  return { provisioningId: provisioning.rows[0]?.id, token, authUserId };
 }
 
 export async function processContractPortalProvisioning(
@@ -506,6 +506,7 @@ export async function processContractPortalProvisioning(
   let invitation: {
     provisioningId: string | undefined;
     token: string;
+    authUserId: string;
     name: string;
     email: string;
     contractId: string;
@@ -585,6 +586,7 @@ export async function processContractPortalProvisioning(
     invitation = {
       provisioningId: prepared.provisioningId,
       token: prepared.token,
+      authUserId: prepared.authUserId,
       name: contactName,
       email: contactEmail,
       contractId: contract.id,
@@ -606,6 +608,12 @@ export async function processContractPortalProvisioning(
       to: invitation.email,
       name: invitation.name,
       activationUrl: activationUrl(invitation.token),
+      companyId: context.companyId,
+      authUserId: invitation.authUserId,
+      relatedEntityId: invitation.provisioningId,
+      idempotencyKey: `portal-invite:${invitation.provisioningId}:${tokenHash(
+        invitation.token,
+      ).slice(0, 16)}`,
     });
     await pool.query(
       `

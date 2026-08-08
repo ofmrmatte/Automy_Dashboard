@@ -72,6 +72,7 @@ function createAutomyAuth() {
           to: user.email,
           name: user.name || user.email,
           resetUrl: url,
+          authUserId: user.id,
         });
       },
     },

@@ -170,6 +170,12 @@ export const identityRepository = {
           getBetterAuthErrorMessage(response.error, "Não foi possível alterar a senha."),
         );
       }
+      await fetch("/api/email/invitations/accepted", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token }),
+      }).catch(() => undefined);
       return;
     }
 
@@ -194,6 +200,14 @@ export const identityRepository = {
       throw new RepositoryError(
         getBetterAuthErrorMessage(response.error, "Não foi possível alterar a senha."),
       );
+    }
+    if (token) {
+      await fetch("/api/email/invitations/accepted", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token }),
+      }).catch(() => undefined);
     }
   },
 

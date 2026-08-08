@@ -16,6 +16,10 @@ import type {
   NotificationRecord,
   SettingsAccess,
 } from "@/features/settings/types";
+import {
+  sendEmailTest,
+  validateTransactionalEmailConfiguration,
+} from "@/features/email/transactional-email";
 import { getRailwayPostgresPool, isRailwayPostgresConfigured } from "@/shared/server/postgres";
 import {
   hasPermission,
@@ -346,14 +350,28 @@ function providerRuntimeStatus(provider: CompanyIntegration["provider"]): {
     };
   }
   if (provider === "transactional_email") {
-    const configured = hasEnv("RESEND_API_KEY", "EMAIL_API_KEY");
+    const configured = hasEnv("RESEND_API_KEY");
+    const sender =
+      process.env["EMAIL_FROM"] ??
+      process.env["RESEND_FROM_EMAIL"] ??
+      "Automy <noreply@automy.dev.br>";
     return {
       status: configured ? "connected" : "not_configured",
-      environment: process.env["EMAIL_PROVIDER"] ?? "not_configured",
-      maskedConfig: { apiKey: configured ? "Configurada" : "Não configurada" },
+      environment: process.env["EMAIL_PROVIDER"] ?? "resend",
+      maskedConfig: {
+        apiKey: configured ? "Configurada" : "Não configurada",
+        webhookSecret: hasEnv("RESEND_WEBHOOK_SECRET") ? "Configurado" : "Não configurado",
+      },
       publicConfig: {
-        provider: process.env["EMAIL_PROVIDER"] ?? "Não definido",
-        sender: process.env["EMAIL_FROM"] ?? "",
+        provider: process.env["EMAIL_PROVIDER"] ?? "resend",
+        domain: "automy.dev.br",
+        sender,
+        replyTo: process.env["EMAIL_REPLY_TO"] ?? "contato@automy.dev.br",
+        appUrl:
+          process.env["EMAIL_APP_URL"] ??
+          process.env["BETTER_AUTH_URL"] ??
+          "https://app.automy.dev.br",
+        siteUrl: process.env["EMAIL_SITE_URL"] ?? "https://automy.dev.br",
       },
     };
   }
@@ -820,13 +838,18 @@ async function testIntegration(url: URL, context: AuthenticatedUserContext) {
   const parts = url.pathname.split("/");
   const provider = integrationProviderSchema.safeParse(parts.at(-2));
   if (!provider.success) throw new ApiError("Integração inválida.", 400, "bad_request");
+  const emailStatus =
+    provider.data === "transactional_email"
+      ? await validateTransactionalEmailConfiguration()
+      : null;
   const runtime = providerRuntimeStatus(provider.data);
   const checkedAt = new Date().toISOString();
-  const status = runtime.status;
+  const status = emailStatus?.status ?? runtime.status;
   const message =
-    status === "connected"
+    emailStatus?.message ??
+    (status === "connected"
       ? "Configuração operacional validada sem expor credenciais."
-      : "Integração não configurada nas variáveis de ambiente oficiais.";
+      : "Integração não configurada nas variáveis de ambiente oficiais.");
   return withClient(context, async (client) => {
     await client.query(
       `
@@ -858,6 +881,43 @@ async function testIntegration(url: URL, context: AuthenticatedUserContext) {
       },
     );
     return jsonResponse({ result: { provider: provider.data, status, message, checkedAt } });
+  });
+}
+
+async function sendIntegrationTestEmail(url: URL, context: AuthenticatedUserContext) {
+  const parts = url.pathname.split("/");
+  const provider = integrationProviderSchema.safeParse(parts.at(-2));
+  if (!provider.success || provider.data !== "transactional_email") {
+    throw new ApiError("Integração inválida.", 400, "bad_request");
+  }
+
+  return withClient(context, async (client) => {
+    const user = await client.query<{ name: string; email: string }>(
+      `select name, email from public."user" where id = $1 and deleted_at is null limit 1`,
+      [context.authUserId],
+    );
+    const row = user.rows[0];
+    if (!row?.email) throw new ApiError("Usuário autenticado sem e-mail.", 400, "bad_request");
+
+    await sendEmailTest(row.email, row.name || row.email, context.authUserId, context.companyId);
+    await writeAuditLog(
+      client,
+      context,
+      "settings.integration.email_test_sent",
+      "company",
+      context.companyId,
+      {
+        provider: provider.data,
+      },
+    );
+    return jsonResponse({
+      result: {
+        provider: provider.data,
+        status: "connected" as IntegrationStatus,
+        message: "E-mail de teste enviado para o seu usuário.",
+        checkedAt: new Date().toISOString(),
+      },
+    });
   });
 }
 
@@ -1168,6 +1228,15 @@ export async function handleSettingsApiRequest(request: Request) {
       const permissionError = requirePermission(context, "settings.read");
       if (permissionError && !hasPermission(context, "settings.manage")) return permissionError;
       return await listIntegrations(context);
+    }
+    if (
+      url.pathname.startsWith("/api/settings/integrations/") &&
+      url.pathname.endsWith("/test-email") &&
+      request.method === "POST"
+    ) {
+      const permissionError = requirePermission(context, "settings.manage");
+      if (permissionError) return permissionError;
+      return await sendIntegrationTestEmail(url, context);
     }
     if (
       url.pathname.startsWith("/api/settings/integrations/") &&

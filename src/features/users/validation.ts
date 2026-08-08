@@ -7,8 +7,7 @@ export const createUserSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome do usuário."),
   email: z.email("Informe um e-mail válido.").transform((email) => email.toLowerCase()),
   role: userRoleSchema,
-  status: userStatusSchema,
-  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
+  status: userStatusSchema.optional().default("invited"),
 });
 
 export const updateUserSchema = z.object({
