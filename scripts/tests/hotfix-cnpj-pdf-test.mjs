@@ -128,12 +128,23 @@ assert.equal(isValidCnpj("27.865.757/0001-02"), true);
 
 assert.equal(addMonthsClamped("2026-08-07", 6), "2027-02-07");
 assert.equal(addMonthsClamped("2026-08-07", 12), "2027-08-07");
+assert.equal(addMonthsClamped("2026-08-08", 6), "2027-02-08");
+assert.equal(addMonthsClamped("2026-08-08", 12), "2027-08-08");
 assert.equal(addMonthsClamped("2026-08-31", 6), "2027-02-28");
+assert.equal(addMonthsClamped("2027-08-31", 6), "2028-02-29");
 assert.equal(addMonthsClamped("2024-02-29", 12), "2025-02-28");
+assert.equal(addMonthsClamped(new Date(Date.UTC(2026, 7, 8)), 6), "2027-02-08");
 assert.deepEqual(calculateContractTermDates({ startsAt: "2026-08-07", loyaltyMonths: 6 }), {
   minimumTermEndDate: "2027-02-07",
   renewalDate: "2027-02-07",
 });
+assert.deepEqual(
+  calculateContractTermDates({ startsAt: new Date(Date.UTC(2026, 7, 8)), loyaltyMonths: 6 }),
+  {
+    minimumTermEndDate: "2027-02-08",
+    renewalDate: "2027-02-08",
+  },
+);
 
 const paymentTerms = buildPaymentTerms({
   paymentMethod: "Boleto parcelado",
@@ -178,6 +189,41 @@ const baseContractPayload = {
   signerName: "Responsável Teste",
   portalAccessEnabled: false,
 };
+
+const paymentMethodPayloads = [
+  { paymentMethod: "À vista", paymentDueInDays: 0 },
+  { paymentMethod: "Boleto", paymentDueInDays: 30 },
+  { paymentMethod: "Boleto parcelado", installmentsCount: 3, firstDueInDays: 30 },
+  {
+    paymentMethod: "Entrada + parcelamento",
+    implementationValue: 10000,
+    downPaymentAmount: 2000,
+    installmentsCount: 4,
+    firstDueInDays: 30,
+  },
+  { paymentMethod: "PIX", paymentDueInDays: 0 },
+  { paymentMethod: "Transferência", paymentDueInDays: 5 },
+  { paymentMethod: "Cartão", gatewayInstallments: 3 },
+  {
+    paymentMethod: "Recorrência",
+    recurrenceDueDay: 10,
+    recurrenceStartDate: "2026-08-06",
+  },
+  { paymentMethod: "Outro", customPaymentDescription: "Conforme proposta comercial aprovada." },
+];
+
+for (const paymentPayload of paymentMethodPayloads) {
+  const parsedPaymentContract = contractFormSchema.safeParse({
+    ...baseContractPayload,
+    ...paymentPayload,
+  });
+  assert.equal(
+    parsedPaymentContract.success,
+    true,
+    `payment method should parse: ${paymentPayload.paymentMethod}`,
+  );
+}
+
 assert.equal(
   contractFormSchema.safeParse({
     ...baseContractPayload,

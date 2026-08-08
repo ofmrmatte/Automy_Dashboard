@@ -1,5 +1,13 @@
-function parseIsoDate(value: string | null | undefined) {
+type ContractDateInput = Date | string | null | undefined;
+
+function parseIsoDate(value: ContractDateInput) {
   if (!value) return null;
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+  }
+
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return null;
   return new Date(Date.UTC(year, month - 1, day));
@@ -9,8 +17,8 @@ function formatIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export function addMonthsClamped(isoDate: string, months: number) {
-  const parsed = parseIsoDate(isoDate);
+export function addMonthsClamped(date: ContractDateInput, months: number) {
+  const parsed = parseIsoDate(date);
   if (!parsed || !Number.isInteger(months) || months < 0) return "";
 
   const sourceDay = parsed.getUTCDate();
@@ -23,7 +31,7 @@ export function addMonthsClamped(isoDate: string, months: number) {
 }
 
 export function calculateMinimumTermEndDate(
-  startDate: string | null | undefined,
+  startDate: ContractDateInput,
   minimumTermMonths: number | string | null | undefined,
 ) {
   const months = Number(minimumTermMonths ?? 0);
@@ -32,7 +40,7 @@ export function calculateMinimumTermEndDate(
 }
 
 export function calculateContractTermDates(input: {
-  startsAt: string | null | undefined;
+  startsAt: ContractDateInput;
   loyaltyMonths: number | string | null | undefined;
   autoRenew?: boolean | null | undefined;
 }) {

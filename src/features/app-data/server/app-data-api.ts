@@ -727,7 +727,7 @@ async function handleContracts(context: AuthenticatedUserContext) {
     [context.companyId],
   );
 
-  return jsonResponse({ contracts });
+  return jsonResponse({ contracts: contracts.map(serializeContractRow) });
 }
 
 async function handleProducts(context: AuthenticatedUserContext) {
@@ -1249,15 +1249,15 @@ async function handleUpdateContract(request: Request, context: AuthenticatedUser
       name: updated.name ?? "",
       monthlyValue: Number(updated.monthly_value ?? 0),
       implementationValue: Number(updated.implementation_value ?? 0),
-      startsAt: updated.starts_at ?? "",
-      endsAt: updated.ends_at ?? "",
+      startsAt: toIsoDateString(updated.starts_at as Date | string | null | undefined),
+      endsAt: toIsoDateString(updated.ends_at as Date | string | null | undefined),
       billingPeriod: updated.billing_period ?? "Mensal",
       status: parsed.data.status ?? "Pendente",
       signerName: updated.signer_name ?? "",
       portalAccessEnabled: Boolean(updated.portal_access_enabled ?? true),
       portalContactName: updated.portal_contact_name ?? "",
       portalContactEmail: updated.portal_contact_email ?? "",
-      renewalAt: updated.renewal_at ?? "",
+      renewalAt: toIsoDateString(updated.renewal_at as Date | string | null | undefined),
       witnessName: updated.witness_name ?? "",
       notes: updated.notes ?? "",
       contractText: updated.contract_text ?? "",
@@ -1356,9 +1356,9 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
           name: row.name ?? "",
           monthlyValue: Number(row.monthly_value ?? 0),
           implementationValue: Number(row.implementation_value ?? 0),
-          startsAt: row.starts_at ?? "",
-          endsAt: row.ends_at ?? "",
-          renewalAt: row.renewal_at ?? "",
+          startsAt: toIsoDateString(row.starts_at),
+          endsAt: toIsoDateString(row.ends_at),
+          renewalAt: toIsoDateString(row.renewal_at),
           billingPeriod: "Mensal",
           status: "Pendente",
           signerName: row.signer_name ?? "",
@@ -1406,9 +1406,9 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
         installmentDueDays: refreshed.installment_due_days ?? [],
         paymentTerms: refreshed.payment_terms ?? {},
         loyaltyMonths: Number(refreshed.loyalty_months ?? 0),
-        startsAt: refreshed.starts_at,
-        endsAt: refreshed.ends_at,
-        renewalAt: refreshed.renewal_at,
+        startsAt: toIsoDateString(refreshed.starts_at),
+        endsAt: toIsoDateString(refreshed.ends_at),
+        renewalAt: toIsoDateString(refreshed.renewal_at),
       },
       contractText: refreshed.contract_text ?? "",
     });
@@ -1444,9 +1444,9 @@ async function handleContractPdf(request: Request, context: AuthenticatedUserCon
       loyaltyMonths: Number(refreshed.loyalty_months ?? 0),
       monthlyValue: Number(refreshed.monthly_value ?? 0),
       implementationValue: Number(refreshed.implementation_value ?? 0),
-      startsAt: refreshed.starts_at ?? "",
-      endsAt: refreshed.ends_at ?? "",
-      renewalAt: refreshed.renewal_at ?? "",
+      startsAt: toIsoDateString(refreshed.starts_at),
+      endsAt: toIsoDateString(refreshed.ends_at),
+      renewalAt: toIsoDateString(refreshed.renewal_at),
       signerName: refreshed.signer_name ?? "",
       signerDocument: refreshed.signer_document ?? "",
       signerEmail: refreshed.signer_email ?? "",
@@ -1562,8 +1562,8 @@ async function handleContractSignature(request: Request, context: AuthenticatedU
     monthlyValue: Number(row.monthly_value ?? 0),
     implementationValue: Number(row.implementation_value ?? 0),
     paymentMethod: row.payment_method,
-    startsAt: row.starts_at ?? "",
-    endsAt: row.ends_at ?? "",
+    startsAt: toIsoDateString(row.starts_at),
+    endsAt: toIsoDateString(row.ends_at),
     loyaltyMonths: Number(row.loyalty_months ?? 0),
     contractText: row.contract_text,
     contractHash: row["contract_hash"] as string | null,
@@ -1855,9 +1855,9 @@ type ContractSnapshotRow = QueryResultRow & {
   custom_url_enabled: boolean | null;
   loyalty_months: number | null;
   currency: string | null;
-  starts_at: string | null;
-  ends_at: string | null;
-  renewal_at: string | null;
+  starts_at: Date | string | null;
+  ends_at: Date | string | null;
+  renewal_at: Date | string | null;
   billing_period: string | null;
   status: string;
   signer_name: string | null;
@@ -1885,6 +1885,24 @@ type ContractSnapshotRow = QueryResultRow & {
 
 function contractHash(input: unknown) {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
+function toIsoDateString(value: Date | string | null | undefined) {
+  if (!value) return "";
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return "";
+    return value.toISOString().slice(0, 10);
+  }
+  return value.slice(0, 10);
+}
+
+function serializeContractRow<T extends QueryResultRow>(row: T): T {
+  return {
+    ...row,
+    starts_at: toIsoDateString(row["starts_at"] as Date | string | null | undefined) || null,
+    ends_at: toIsoDateString(row["ends_at"] as Date | string | null | undefined) || null,
+    renewal_at: toIsoDateString(row["renewal_at"] as Date | string | null | undefined) || null,
+  };
 }
 
 async function getContractSnapshotRow(
@@ -1955,12 +1973,15 @@ async function getContractItems(
 }
 
 function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
+  const startsAt = toIsoDateString(row.starts_at);
+  const currentEndsAt = toIsoDateString(row.ends_at);
+  const currentRenewalAt = toIsoDateString(row.renewal_at);
   const termDates = calculateContractTermDates({
-    startsAt: row.starts_at,
+    startsAt,
     loyaltyMonths: Number(row.loyalty_months ?? 0),
   });
-  const minimumTermEndDate = row.ends_at || termDates.minimumTermEndDate;
-  const renewalDate = row.renewal_at || termDates.renewalDate;
+  const minimumTermEndDate = currentEndsAt || termDates.minimumTermEndDate;
+  const renewalDate = currentRenewalAt || termDates.renewalDate;
   const negotiatedTerms = {
     description: row.description ?? undefined,
     scope: row.scope ?? undefined,
@@ -1991,7 +2012,7 @@ function buildContractSnapshot(row: ContractSnapshotRow, nextVersion: number) {
         : 0,
     loyaltyMonths: Number(row.loyalty_months ?? 0),
     currency: row.currency ?? "BRL",
-    startsAt: row.starts_at ?? undefined,
+    startsAt: startsAt || undefined,
     endsAt: minimumTermEndDate || undefined,
     renewalAt: renewalDate || undefined,
     billingPeriod: row.billing_period ?? undefined,
@@ -2185,7 +2206,7 @@ async function handleContractById(
     [context.companyId, contractId],
   );
 
-  return jsonResponse({ contract: rows[0] ?? null }, { status });
+  return jsonResponse({ contract: rows[0] ? serializeContractRow(rows[0]) : null }, { status });
 }
 
 async function upsertContractItem(
